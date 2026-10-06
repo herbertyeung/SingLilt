@@ -1,0 +1,14 @@
+{
+  "ui.capabilities.piano": "采样钢琴文件",
+  "ui.capabilities.gm": "GM 乐器音色库",
+  "ui.capabilities.whisper": "本地歌词识别文件",
+  "ui.capabilities.separation": "本地人声分离文件",
+  "ui.capabilities.files_present": "本地文件齐全；尚未执行运行加载或推理验证。",
+  "ui.capabilities.missing_files": "缺失、空白或不可读的文件：\n%1",
+  "ui.capabilities.no_system_gm": "系统 GM 音色库",
+  "ui.capabilities.local_check_help": "此处仅检查本地文件，不下载或运行模型。未安装的可选组件不影响其他设置的修改；请只启用本机已经安装的能力。",
+  "messages.capabilities.separation_metadata": "人声分离模型的元数据与当前分离程序版本不匹配。",
+  "messages.capabilities.audio_missing": "采样播放需要钢琴文件和 GM 音色库，请检查本页的文件状态。",
+  "messages.capabilities.unavailable": "%1 当前缺少必要文件，尚未开始分析。\n%2\n请安装缺失的本地组件，或在选项中关闭这项能力。",
+  "cli.settings_product_check": "检查产品化选项与本地组件文件状态"
+}

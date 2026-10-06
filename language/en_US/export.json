@@ -1,0 +1,21 @@
+{
+  "cli.wave_export_check": "Check bounded WAV export, practice timing and range selection",
+  "messages.export.invalid_range": "Choose a non-empty range within the practice timeline, no longer than the export limit.",
+  "messages.export.failed": "The WAV export failed before completion.",
+  "ui.export.title": "Export synth practice WAV",
+  "ui.export.on": "on",
+  "ui.export.off": "off",
+  "ui.export.confirmed": "confirmed arrangement",
+  "ui.export.none": "no confirmed arrangement (silent accompaniment)",
+  "ui.export.settings": "Practice speed: %1× · Transpose: %2 semitones\nA / B instruments: GM %3 / %4 · Metronome: %5",
+  "ui.export.mix": "Melody: %1 (%2%) · Accompaniment: %3 (%4%)\nArrangement: %5. Preview candidates and original recordings are not exported.",
+  "ui.export.help": "The complete practice timeline is %1 s, including repeats and the current speed. Choose its start and end times; each export is limited to 600 s of music.",
+  "ui.export.start": "Start (practice seconds)",
+  "ui.export.end": "End (practice seconds)",
+  "ui.export.full": "Full score",
+  "ui.export.fragment": "Selected excerpt",
+  "ui.export.range": "%1 · %2–%3 s · %4 s of music",
+  "ui.export.tail": "A 1.5 s release tail follows the music. Notes already held at the selected start sound immediately; the metronome keeps the original beat positions. The score is unchanged.",
+  "ui.export.choose_file": "Choose WAV file…",
+  "ui.export.finished": "%1 exported: %2–%3 s (%4 s of music + 1.5 s release tail) · %5"
+}

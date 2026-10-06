@@ -1,0 +1,18 @@
+{
+  "ui.fidelity.recognized": "识别谱（待核对）",
+  "ui.fidelity.original": "原谱原图",
+  "ui.fidelity.original_help": "保留原图像素；演奏使用识别候选。音符定位标记属于识别谱，不冒充扫描原图坐标。",
+  "ui.fidelity.tempo_unknown": "待确认",
+  "ui.fidelity.tempo_review": "识谱未给出数值速度。请对照原图的四分音符速度，核对确认后再应用。",
+  "ui.fidelity.tempo_confirm": "已对照原谱确认速度",
+  "ui.fidelity.tempo_unit": " BPM",
+  "ui.fidelity.tempo_required": "请先对照原谱确认四分音符速度，再应用此候选。",
+  "cli.fidelity.check": "验证原谱保存、连梁表示和速度确认",
+  "cli.fidelity.tempo": "明确核对后的五线谱四分音符速度",
+  "messages.local_staff.tempo_needs_confirmation": "识谱未给出数值速度；请对照原谱，确认四分音符 BPM 后再应用或导出。",
+  "ui.fidelity.corrected": "人工校正已应用到实际演奏数据；其余候选仍请对照原谱核对。",
+  "ui.fidelity.confirm_tempo": "核对原谱速度…",
+  "cli.fidelity.reference": "用于诊断对照的明确人工校对MusicXML",
+  "cli.fidelity.original": "人工对照测试对应的原页图片",
+  "ui.fidelity.manual_reference": "此片段仅含人工校对的首3小节，用于对照；不是整曲自动识谱结果。"
+}

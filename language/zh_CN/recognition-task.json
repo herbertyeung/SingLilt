@@ -1,0 +1,5 @@
+{
+  "messages.recognition_task.cancelled": "AI 识谱已取消。",
+  "messages.recognition_task.failed": "AI 识谱失败，当前乐谱保持不变。",
+  "messages.recognition_task.empty_result": "AI 识谱未返回音符，当前乐谱保持不变。"
+}

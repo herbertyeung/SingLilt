@@ -1,0 +1,162 @@
+{
+  "schema": 1,
+  "id": 3,
+  "title": {
+    "zh_CN": "第三课 · 音准模唱",
+    "en_US": "Lesson 3 · Pitch matching"
+  },
+  "goal": {
+    "zh_CN": "先记住目标音，再由单音发展到两音、三音模唱。",
+    "en_US": "Remember a target and progress from one-note to short-phrase imitation."
+  },
+  "steps": {
+    "zh_CN": "1. 选择听力页的单音模唱：先听，示范结束后唱回去。\n2. 每次先在心里回忆声音，再开口。\n3. 回到课程谱练习两音、三音。\n4. 查看偏高或偏低，重听后再试。",
+    "en_US": "1. Use Single-note echo in Ear training; sing only after the example stops.\n2. Recall the sound before singing.\n3. Practise the two- and three-note phrases in the lesson.\n4. Review high/low feedback, listen again, and retry."
+  },
+  "selfCheck": {
+    "zh_CN": "是否先听后唱？是否把唱偏方向调整对了？",
+    "en_US": "Did you listen before singing? Did you correct in the right direction?"
+  },
+  "score": {
+    "tonic": 0,
+    "bpm": 76,
+    "beatsPerBar": 4,
+    "beatUnit": 4,
+    "versePrograms": [
+      0
+    ],
+    "notes": [
+      {
+        "degree": 1,
+        "durationTicks": 960,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 0,
+        "durationTicks": 960,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 2,
+        "durationTicks": 960,
+        "lyric": "re",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 0,
+        "durationTicks": 960,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "re",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 0,
+        "durationTicks": 960,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "re",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "mi",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "mi",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 4
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "re",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 4
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 4
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 4
+      }
+    ],
+    "repeats": [],
+    "accentBeats": false
+  },
+  "practice": {
+    "centsTolerance": 50,
+    "timingToleranceMs": 180,
+    "earExercises": [
+      "single_echo",
+      "phrase_echo",
+      "degree"
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "lessons": [
+    "01-scales.json",
+    "02-long-tones.json",
+    "03-matching.json",
+    "04-rhythm.json",
+    "05-intervals.json",
+    "06-phrasing.json",
+    "07-lyrics.json",
+    "08-song.json"
+  ]
+}

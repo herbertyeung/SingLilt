@@ -1,0 +1,16 @@
+{
+  "messages.staff_recognition.invalid_result": "五线谱识别结果缺少谱面字段或字段格式有误，当前乐谱保持不变。",
+  "messages.staff_recognition.incomplete_performance": "多声部识谱结果缺少完整谱表演奏事件，当前乐谱保持不变。",
+  "messages.staff_recognition.unsupported_notation": "图片含有识谱结果尚不能准确保留的谱号、调号、拍号、速度变化或时值，当前乐谱保持不变。",
+  "messages.staff_recognition.pitch_mismatch": "五线谱书写音高与演奏音高不一致，当前乐谱保持不变。",
+  "messages.staff_recognition.review": "应用候选结果前，请对照原图核对所有谱表、声部、和弦、升降记号、时值及反复；尚未实测模型对本图片的识别准确率。",
+  "ui.preview.performance.summary": "完整演奏：%1 个谱表 · %2 个声部 · %3 个音符（含领奏）",
+  "ui.preview.performance.column_staff": "谱表",
+  "ui.preview.performance.column_voice": "声部",
+  "ui.preview.performance.column_onset": "起点（♩=1）",
+  "ui.preview.performance.column_pitch": "MIDI 音高",
+  "ui.preview.performance.column_velocity": "力度",
+  "ui.preview.performance.column_ties": "延音线",
+  "ui.preview.performance.tie_start": "起始",
+  "ui.preview.performance.tie_stop": "结束"
+}

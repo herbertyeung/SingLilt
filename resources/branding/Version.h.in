@@ -1,0 +1,7 @@
+// Windows version metadata generated from the CMake project version.
+// Copyright (c) 2026 Herbert Yeung
+// Author: Herbert Yeung
+// SPDX-License-Identifier: MIT
+
+#define SINGLILT_FILE_VERSION @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+#define SINGLILT_VERSION_TEXT "@PROJECT_VERSION@\0"

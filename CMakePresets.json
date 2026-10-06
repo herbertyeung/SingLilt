@@ -1,0 +1,81 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "vs2026",
+      "displayName": "Visual Studio 2026 x64",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "SINGLILT_BUILD_APP": "ON"
+      }
+    },
+    {
+      "name": "core",
+      "displayName": "Core tests without application dependencies",
+      "inherits": "vs2026",
+      "cacheVariables": {
+        "SINGLILT_BUILD_APP": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "release",
+      "configurePreset": "vs2026",
+      "configuration": "Release",
+      "targets": [
+        "SingLilt",
+        "SingLiltCoreTests",
+        "SingLiltLanguageTests",
+        "SingLiltMigrationTests"
+      ]
+    },
+    {
+      "name": "debug",
+      "configurePreset": "vs2026",
+      "configuration": "Debug",
+      "targets": [
+        "SingLilt",
+        "SingLiltCoreTests",
+        "SingLiltLanguageTests",
+        "SingLiltMigrationTests"
+      ]
+    },
+    {
+      "name": "core-release",
+      "configurePreset": "core",
+      "configuration": "Release",
+      "targets": [
+        "SingLiltCoreTests"
+      ]
+    },
+    {
+      "name": "core-debug",
+      "configurePreset": "core",
+      "configuration": "Debug",
+      "targets": [
+        "SingLiltCoreTests"
+      ]
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "core",
+      "configurePreset": "core",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "integration",
+      "configurePreset": "vs2026",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

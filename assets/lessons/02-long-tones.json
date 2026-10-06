@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "id": 2,
+  "title": {
+    "zh_CN": "第二课 · 换气与长音",
+    "en_US": "Lesson 2 · Breathing and sustained tones"
+  },
+  "goal": {
+    "zh_CN": "在休止处换气，用舒适音量唱稳三拍长音。",
+    "en_US": "Breathe in the rests and sustain three beats at a comfortable volume."
+  },
+  "steps": {
+    "zh_CN": "1. 听清三拍长音和一拍休止。\n2. 在休止时自然换气，不把长音越唱越响。\n3. 先用 u，再用 a，重复短句。\n4. 查看音高曲线和长音结束时刻。",
+    "en_US": "1. Hear the three-beat tone and one-beat rest.\n2. Breathe naturally in the rest and keep a steady volume.\n3. Practise with u, then a.\n4. Review the pitch curve and release timing."
+  },
+  "selfCheck": {
+    "zh_CN": "声音是否稳定？是否唱满三拍？休止处是否停止发声？",
+    "en_US": "Is the tone steady? Does it last three beats? Do you stop in the rest?"
+  },
+  "score": {
+    "tonic": 0,
+    "bpm": 72,
+    "beatsPerBar": 4,
+    "beatUnit": 4,
+    "versePrograms": [
+      0
+    ],
+    "notes": [
+      {
+        "degree": 1,
+        "durationTicks": 1440,
+        "lyric": "u",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 2,
+        "durationTicks": 1440,
+        "lyric": "u",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 3,
+        "durationTicks": 1440,
+        "lyric": "a",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 2,
+        "durationTicks": 1440,
+        "lyric": "a",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      }
+    ],
+    "repeats": [],
+    "accentBeats": false
+  },
+  "practice": {
+    "centsTolerance": 50,
+    "timingToleranceMs": 180,
+    "earExercises": [
+      "same",
+      "single_echo"
+    ]
+  }
+}

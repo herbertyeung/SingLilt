@@ -1,0 +1,88 @@
+/*
+ * Shared widget layout and palette-based appearance.
+ * Copyright (c) 2026 Herbert Yeung
+ * Author: Herbert Yeung
+ * SPDX-License-Identifier: MIT
+ */
+
+QWidget { color: palette(text); }
+QMainWindow, QDialog, QWidget#root {
+    background: palette(window);
+    font-family: 'Microsoft YaHei UI';
+    font-size: 13px;
+}
+QPushButton {
+    background: palette(button);
+    color: palette(button-text);
+    border: 1px solid palette(mid);
+    border-radius: 6px;
+    padding: 5px 10px;
+}
+QPushButton:hover { background: palette(alternate-base); border-color: palette(highlight); }
+QPushButton:disabled, QComboBox:disabled { color: palette(placeholder-text); background: palette(alternate-base); }
+QPushButton#play {
+    background: palette(highlight);
+    color: palette(highlighted-text);
+    border: 0;
+    font-size: 16px;
+    font-weight: 600;
+    min-width: 72px;
+    padding: 7px 10px;
+}
+QPushButton#play:disabled { background: palette(alternate-base); color: palette(placeholder-text); }
+QLabel#title { font-size: 18px; font-weight: 600; }
+QLabel#subtitle, QLabel#inspectorHint { color: palette(placeholder-text); font-size: 12px; }
+QLabel#noteTitle { font-size: 17px; font-weight: 600; }
+QLabel#lyric {
+    color: palette(link);
+    background: palette(alternate-base);
+    font-size: 15px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+QLabel#verseStatus { font-weight: 600; color: palette(link); }
+QFrame#inspector { background: palette(base); border: 1px solid palette(mid); border-radius: 8px; }
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+    background: palette(base);
+    color: palette(text);
+    border: 1px solid palette(mid);
+    border-radius: 4px;
+    padding: 5px;
+    min-height: 20px;
+    selection-background-color: palette(highlight);
+    selection-color: palette(highlighted-text);
+}
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus { border-color: palette(highlight); }
+QPlainTextEdit { border: 0; background: palette(alternate-base); color: palette(placeholder-text); font-size: 12px; }
+QTextEdit, QAbstractItemView {
+    background: palette(base);
+    color: palette(text);
+    alternate-background-color: palette(alternate-base);
+    selection-background-color: palette(highlight);
+    selection-color: palette(highlighted-text);
+    border: 1px solid palette(mid);
+}
+QComboBox QAbstractItemView { outline: 0; }
+QComboBox QAbstractItemView::item { color: palette(text); background: palette(base); min-height: 26px; padding: 4px 8px; }
+QComboBox QAbstractItemView::item:selected,
+QComboBox QAbstractItemView::item:selected:active,
+QComboBox QAbstractItemView::item:selected:!active { color: palette(highlighted-text); background: palette(highlight); }
+QComboBox QAbstractItemView::item:hover:!selected { background: palette(alternate-base); }
+QMenuBar { background: palette(window); color: palette(text); }
+QMenu { background: palette(base); color: palette(text); border: 1px solid palette(mid); }
+QMenu::item:selected, QMenuBar::item:selected { color: palette(highlighted-text); background: palette(highlight); }
+QMenu::item:disabled { color: palette(placeholder-text); }
+QMenu::separator { height: 1px; background: palette(mid); margin: 4px 8px; }
+QHeaderView::section { background: palette(button); color: palette(button-text); border: 1px solid palette(mid); padding: 6px; }
+QTabWidget::pane { border: 1px solid palette(mid); }
+QTabBar::tab { background: palette(button); color: palette(text); padding: 8px 12px; }
+QTabBar::tab:selected { background: palette(base); border-bottom: 2px solid palette(highlight); }
+QGraphicsView { background: palette(midlight); border: 0; }
+QSlider::groove:horizontal { height: 5px; background: palette(mid); border-radius: 2px; }
+QSlider::sub-page:horizontal { background: palette(highlight); border-radius: 2px; }
+QSlider::handle:horizontal { background: palette(highlight); width: 13px; margin: -5px 0; border-radius: 6px; }
+QStatusBar { background: palette(alternate-base); color: palette(placeholder-text); }
+QToolTip { background: palette(tooltip-base); color: palette(tooltip-text); border: 1px solid palette(mid); padding: 4px; }
+QWidget#cloudTaskBanner { background: palette(alternate-base); border-radius: 6px; }
+QPushButton[modeSwitch="true"]:checked { background: palette(highlight); color: palette(highlighted-text); border-color: palette(highlight); }

@@ -1,0 +1,6 @@
+BasedOnStyle: Microsoft
+ColumnLimit: 115
+IndentWidth: 4
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+BreakBeforeBraces: Allman

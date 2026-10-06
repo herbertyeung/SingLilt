@@ -1,0 +1,153 @@
+{
+  "schema": 1,
+  "id": 4,
+  "title": {
+    "zh_CN": "第四课 · 节拍与起唱",
+    "en_US": "Lesson 4 · Pulse and entries"
+  },
+  "goal": {
+    "zh_CN": "在正确拍点起唱，区分长短音与休止。",
+    "en_US": "Enter on the beat and distinguish note lengths and rests."
+  },
+  "steps": {
+    "zh_CN": "1. 开节拍器，先数拍，不唱。\n2. 观察首拍休止，第二拍才开始。\n3. 听辨八分音符与附点节奏，再跟谱唱。\n4. 录音检查起唱和句尾，不只看音准。",
+    "en_US": "1. Count with the metronome before singing.\n2. Observe the opening rest and enter on beat two.\n3. Hear eighth notes and dotted rhythms, then sing them.\n4. Review entry and release timing as well as pitch."
+  },
+  "selfCheck": {
+    "zh_CN": "起唱是否晚了？短音是否拖长了？休止是否留出来？",
+    "en_US": "Was the entry late? Did short notes become too long? Did you leave the rests?"
+  },
+  "score": {
+    "tonic": 0,
+    "bpm": 80,
+    "beatsPerBar": 4,
+    "beatUnit": 4,
+    "versePrograms": [
+      0
+    ],
+    "notes": [
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 1,
+        "durationTicks": 240,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 1,
+        "durationTicks": 240,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 2,
+        "durationTicks": 960,
+        "lyric": "re",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "re",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 3,
+        "durationTicks": 720,
+        "lyric": "mi",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 2,
+        "durationTicks": 240,
+        "lyric": "re",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 1,
+        "durationTicks": 960,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 0,
+        "durationTicks": 960,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      }
+    ],
+    "repeats": [],
+    "accentBeats": false
+  },
+  "practice": {
+    "centsTolerance": 50,
+    "timingToleranceMs": 180,
+    "earExercises": [
+      "rhythm",
+      "same"
+    ]
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "schema": 1,
+  "id": 1,
+  "title": {
+    "zh_CN": "第一课 · 音阶与节奏",
+    "en_US": "Lesson 1 · Scales and rhythm"
+  },
+  "goal": {
+    "zh_CN": "听出音阶方向，唱准相邻音，并保持每音一拍。",
+    "en_US": "Hear scale direction, match adjacent notes, and keep one beat per note."
+  },
+  "steps": {
+    "zh_CN": "1. 先听完整音阶，留意高音 do。\n2. 用 do re mi 跟唱，上行与下行分别循环。\n3. 关闭旋律提示，按准备拍自己唱。\n4. 用麦克风练唱，查看偏高、偏低与八度提示。",
+    "en_US": "1. Listen to the scale, including the upper do.\n2. Sing solfege; loop the ascending and descending phrases separately.\n3. Sing after the count-in without the melody.\n4. Record and review pitch direction and octave feedback."
+  },
+  "selfCheck": {
+    "zh_CN": "每个音都唱到了吗？高音 do 是否高了一个八度？节拍是否均匀？",
+    "en_US": "Did you sing every note? Is the upper do one octave higher? Is the pulse steady?"
+  },
+  "score": {
+    "tonic": 0,
+    "bpm": 80,
+    "beatsPerBar": 4,
+    "beatUnit": 4,
+    "versePrograms": [
+      0
+    ],
+    "notes": [
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "re",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "mi",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 4,
+        "durationTicks": 480,
+        "lyric": "fa",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 5,
+        "durationTicks": 480,
+        "lyric": "sol",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 6,
+        "durationTicks": 480,
+        "lyric": "la",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 7,
+        "durationTicks": 480,
+        "lyric": "si",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 1,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 1,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 7,
+        "durationTicks": 480,
+        "lyric": "si",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 6,
+        "durationTicks": 480,
+        "lyric": "la",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 5,
+        "durationTicks": 480,
+        "lyric": "sol",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 4,
+        "durationTicks": 480,
+        "lyric": "fa",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "mi",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "re",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      }
+    ],
+    "repeats": [],
+    "accentBeats": false
+  },
+  "practice": {
+    "centsTolerance": 50,
+    "timingToleranceMs": 180,
+    "earExercises": [
+      "direction",
+      "degree",
+      "single_echo"
+    ]
+  }
+}

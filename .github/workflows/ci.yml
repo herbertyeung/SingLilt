@@ -1,0 +1,61 @@
+# Core and desktop checks for pushes and pull requests.
+# Copyright (c) 2026 Herbert Yeung
+# Author: Herbert Yeung
+# SPDX-License-Identifier: MIT
+
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  core:
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and test core
+        shell: pwsh
+        env:
+          CONFIGURATION: ${{ matrix.configuration }}
+        run: pwsh -NoProfile -File scripts/build.ps1 -CoreOnly -Configuration $env:CONFIGURATION
+  desktop:
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Prepare desktop dependencies
+        shell: pwsh
+        run: pwsh -NoProfile -File scripts/setup.ps1 -SkipBuild
+      - name: Build and test desktop Debug
+        shell: pwsh
+        run: pwsh -NoProfile -File scripts/build.ps1 -Configuration Debug -CiTests
+      - name: Build and test desktop Release
+        shell: pwsh
+        run: pwsh -NoProfile -File scripts/build.ps1 -Configuration Release -CiTests
+      - name: Save failure reports
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-test-reports
+          path: |
+            build/Testing/Temporary
+            build/**/*report.json
+          if-no-files-found: ignore
+          retention-days: 7

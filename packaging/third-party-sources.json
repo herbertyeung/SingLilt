@@ -1,0 +1,17 @@
+[
+  {
+    "name": "qtbase-everywhere-src-6.8.3.tar.xz",
+    "url": "https://download.qt.io/archive/qt/6.8/6.8.3/submodules/qtbase-everywhere-src-6.8.3.tar.xz",
+    "sha256": "56001b905601bb9023d399f3ba780d7fa940f3e4861e496a7c490331f49e0b80"
+  },
+  {
+    "name": "fluidsynth-2.6.1.tar.gz",
+    "url": "https://codeload.github.com/FluidSynth/fluidsynth/tar.gz/71e85b2ca6bf48641ba7e2261d8f2640ae473773",
+    "sha256": "74145ce9ee6e4d393ffba657e2be203b1e6be216f8d79c5f4106dc01a2fa39c4"
+  },
+  {
+    "name": "libsndfile-1.2.2.tar.gz",
+    "url": "https://codeload.github.com/libsndfile/libsndfile/tar.gz/72f6af15e8f85157bd622ed45b979025828b7001",
+    "sha256": "188839b1bedccdf213034fcc74cc2773b170cfa3b2d7a462ac04fb982fcef7b3"
+  }
+]

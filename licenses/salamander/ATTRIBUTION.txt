@@ -1,0 +1,29 @@
+Salamander Grand Piano — FreePats SF2 edition V3+20200602
+
+Original sound bank: Alexander Holm (axeldenstore at gmail dot com).
+SF2 adaptation/assembly: Roberto (roberto at zenvoid dot org), FreePats project.
+License: Creative Commons Attribution 3.0 Unported (CC BY 3.0).
+License text and terms: https://creativecommons.org/licenses/by/3.0/
+Original project and download listing:
+https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html
+Pinned archive:
+https://freepats.zenvoid.org/Piano/SalamanderGrandPiano/SalamanderGrandPiano-SF2-V3%2B20200602.tar.xz
+
+Original filename: SalamanderGrandPiano-V3+20200602.sf2
+Runtime filename: Salamander.sf2
+JianpuPlayer does not modify the SoundFont content; the runtime copy is renamed.
+Archive SHA256:
+15EDB061D7BA60D58332F72DBA8F8CE40988048CC703F935E6320F37D650E213
+SoundFont SHA256:
+712D0E681EFBE5203A8014E9B3E84168F1908C82F2F6FB13BD2C77D6D72C70B7
+
+The downloaded SF2 is 1,266,462,334 bytes (the compressed archive is 310,397,984
+bytes). Its parsed preset is bank 0, program 0, named "Instrument". It has 16
+velocity ranges and 960 stereo-linked sample records at 48,000 Hz.
+
+This is the upstream simplified SF2 adaptation, not the complete SFZ edition.
+Per the upstream README, it omits amp_veltrack and pedal, hammer and string
+resonance noises on key release. UPSTREAM-README.txt is retained verbatim and
+contains the original author's notice and the adapter's description.
+
+No endorsement by Alexander Holm or FreePats is implied.

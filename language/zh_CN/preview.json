@@ -1,0 +1,23 @@
+{
+  "ui.preview.window_title": "识谱结果预览",
+  "ui.preview.source": "来源乐谱：%1",
+  "ui.preview.title": "识别歌名：%1",
+  "ui.preview.summary": "调号 1=%1 · ♩=%2 BPM · 拍号 %3/%4 · %5 个音符 · %6 组反复",
+  "ui.preview.fit_width": "原谱适合宽度",
+  "ui.preview.warnings": "识别提示",
+  "ui.preview.no_warnings": "没有额外识别提示。请仍然对照原谱核对音高、节奏与歌词。",
+  "ui.preview.not_applied": "结果尚未应用。确认替换会替换当前乐谱，包括等待识谱期间所作的修改。关闭此预览不会丢弃待确认的识谱结果。",
+  "ui.preview.close": "关闭预览",
+  "ui.preview.apply": "确认替换当前乐谱",
+  "ui.preview.column_number": "序号",
+  "ui.preview.column_degree": "音级",
+  "ui.preview.column_octave": "八度点",
+  "ui.preview.column_duration": "时值（♩=1）",
+  "ui.preview.column_verse_a": "A 段歌词",
+  "ui.preview.column_verse_b": "B 段歌词",
+  "ui.preview.column_key": "转调",
+  "ui.preview.column_tie": "延音至下一音",
+  "ui.preview.rest": "0 · 休止",
+  "ui.preview.octave_up": "↑ %1",
+  "ui.preview.octave_down": "↓ %1"
+}

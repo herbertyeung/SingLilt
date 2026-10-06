@@ -1,0 +1,23 @@
+{
+  "ui.preview.window_title": "Recognition preview",
+  "ui.preview.source": "Source score: %1",
+  "ui.preview.title": "Recognized title: %1",
+  "ui.preview.summary": "Key 1=%1 · ♩=%2 BPM · Meter %3/%4 · Notes: %5 · Repeats: %6",
+  "ui.preview.fit_width": "Fit score width",
+  "ui.preview.warnings": "Recognition notes",
+  "ui.preview.no_warnings": "No additional recognition notes. Please still compare pitches, rhythms, and lyrics with the source.",
+  "ui.preview.not_applied": "This result has not been applied. Confirming will replace the current score, including changes made while recognition was running. Closing this preview keeps the result available for later confirmation.",
+  "ui.preview.close": "Close preview",
+  "ui.preview.apply": "Confirm and replace current score",
+  "ui.preview.column_number": "No.",
+  "ui.preview.column_degree": "Degree",
+  "ui.preview.column_octave": "Octave dots",
+  "ui.preview.column_duration": "Length (♩=1)",
+  "ui.preview.column_verse_a": "Verse A lyrics",
+  "ui.preview.column_verse_b": "Verse B lyrics",
+  "ui.preview.column_key": "Key change",
+  "ui.preview.column_tie": "Tie to next",
+  "ui.preview.rest": "0 · Rest",
+  "ui.preview.octave_up": "↑ %1",
+  "ui.preview.octave_down": "↓ %1"
+}

@@ -1,0 +1,9 @@
+{
+  "ui.history.unsaved_title": "Practice history is not saved",
+  "ui.history.close_pending": "%1 practice results are waiting to be saved. Cancel closing to retry; closing now discards these pending records. Saved history and scores are not affected.",
+  "ui.history.pending": "History not saved (%1 attempts pending). Feedback remains available; fix the problem and retry. %2",
+  "ui.history.retry": "Retry saving history",
+  "ui.history.saved": "Pending practice history has been saved.",
+  "ui.history.result_unsaved": "Assessment complete, but practice history has not been saved.",
+  "cli.history_recovery_check": "Verify practice history save failure and recovery"
+}

@@ -1,0 +1,16 @@
+{
+  "messages.staff_recognition.invalid_result": "The staff recognition result has invalid or missing notation fields. Your current score was not changed.",
+  "messages.staff_recognition.incomplete_performance": "The polyphonic recognition result is missing the full staff performance events. Your current score was not changed.",
+  "messages.staff_recognition.unsupported_notation": "This image contains clef, key, meter or tempo changes, or timing that cannot be preserved exactly in this recognition result. Your current score was not changed.",
+  "messages.staff_recognition.pitch_mismatch": "The written staff pitch does not match its playback pitch. Your current score was not changed.",
+  "messages.staff_recognition.review": "Review every staff, voice, chord, accidental, duration and repeat against the original image before applying this candidate. Model accuracy has not been verified for this image.",
+  "ui.preview.performance.summary": "Full performance: %1 staves · %2 voices · %3 notes, including the lead line",
+  "ui.preview.performance.column_staff": "Staff",
+  "ui.preview.performance.column_voice": "Voice",
+  "ui.preview.performance.column_onset": "Start (♩=1)",
+  "ui.preview.performance.column_pitch": "MIDI pitch",
+  "ui.preview.performance.column_velocity": "Velocity",
+  "ui.preview.performance.column_ties": "Ties",
+  "ui.preview.performance.tie_start": "Start",
+  "ui.preview.performance.tie_stop": "Stop"
+}

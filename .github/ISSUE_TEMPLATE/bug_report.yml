@@ -1,0 +1,25 @@
+# Issue form for reproducible application failures.
+# Copyright (c) 2026 Herbert Yeung
+# Author: Herbert Yeung
+# SPDX-License-Identifier: MIT
+
+name: Bug report
+description: Report a reproducible problem.
+body:
+  - type: input
+    id: version
+    attributes:
+      label: SingLilt version
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include expected and actual behavior. Keep personal scores, recordings and API keys out of the report.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Windows version and relevant device details

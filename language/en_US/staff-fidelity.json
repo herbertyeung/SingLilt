@@ -1,0 +1,18 @@
+{
+  "ui.fidelity.recognized": "Recognized score - review",
+  "ui.fidelity.original": "Original score",
+  "ui.fidelity.original_help": "Original pixels are preserved. Playback uses the recognition candidate; note markers belong to the recognized score, not the scan.",
+  "ui.fidelity.tempo_unknown": "unconfirmed",
+  "ui.fidelity.tempo_review": "No numeric tempo was imported. Compare the printed quarter-note tempo and confirm it before applying.",
+  "ui.fidelity.tempo_confirm": "I checked the printed tempo",
+  "ui.fidelity.tempo_unit": " BPM",
+  "ui.fidelity.tempo_required": "Confirm the original quarter-note tempo before applying this candidate.",
+  "cli.fidelity.check": "Verify source preservation, beam notation and explicit tempo review",
+  "cli.fidelity.tempo": "Explicitly confirmed quarter-note BPM for a staff candidate",
+  "messages.local_staff.tempo_needs_confirmation": "No numeric tempo was imported. Compare the original and confirm its quarter-note BPM before applying or rendering.",
+  "ui.fidelity.corrected": "Manual staff corrections applied to the actual performance; compare the remaining candidate against the original.",
+  "ui.fidelity.confirm_tempo": "Confirm original quarter-note tempo…",
+  "cli.fidelity.reference": "Explicit human-transcribed MusicXML reference for diagnostic comparison",
+  "cli.fidelity.original": "Original page for the explicit diagnostic reference",
+  "ui.fidelity.manual_reference": "Only the first three bars are human-transcribed for comparison. This is not automatic recognition of the complete song."
+}

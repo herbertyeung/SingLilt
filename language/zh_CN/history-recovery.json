@@ -1,0 +1,9 @@
+{
+  "ui.history.unsaved_title": "学习记录尚未保存",
+  "ui.history.close_pending": "还有 %1 次练习结果尚未写入学习记录。取消关闭后可重试；直接关闭将丢弃这些待保存记录。已保存记录和曲谱不受影响。",
+  "ui.history.pending": "学习记录未保存（%1 次待重试）。本次反馈仍可查看，请修复后重试。%2",
+  "ui.history.retry": "重试保存记录",
+  "ui.history.saved": "待保存的学习记录已写入。",
+  "ui.history.result_unsaved": "本次判读完成，但学习记录尚未保存。",
+  "cli.history_recovery_check": "验证学习历史保存失败与恢复"
+}

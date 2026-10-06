@@ -1,0 +1,38 @@
+FluidSynth 2.6.1 — official Windows x64 C++11 binary distribution
+
+Copyright (C) 2000-2026 Peter Hanappe and other FluidSynth contributors.
+License: GNU Lesser General Public License, version 2.1 or later.
+See LICENSE.txt and AUTHORS.txt, copied verbatim from the v2.6.1 source tag.
+Project: https://www.fluidsynth.org/
+Release: https://github.com/FluidSynth/fluidsynth/releases/tag/v2.6.1
+Source: https://github.com/FluidSynth/fluidsynth/tree/v2.6.1
+Source archive: https://github.com/FluidSynth/fluidsynth/archive/refs/tags/v2.6.1.tar.gz
+Binary archive:
+https://github.com/FluidSynth/fluidsynth/releases/download/v2.6.1/fluidsynth-v2.6.1-win10-x64-cpp11.zip
+Archive SHA256:
+FAB7A2E4B85675B66970F97A39BBC239729C5E0F237198B5922A6A73CBC8677C
+
+JianpuPlayer uses the unmodified shared library libfluidsynth-3.dll; users may
+replace it with an ABI-compatible library. No FluidSynth source is incorporated
+into the application's source. The upstream Windows build recipe is retained
+as UPSTREAM-WINDOWS-BUILD.yml.
+
+The official binary archive also contains:
+
+SDL3.dll — SDL 3.2.10, zlib license.
+Copyright (C) 1997-2025 Sam Lantinga.
+License: SDL3-LICENSE.txt.
+Source: https://github.com/libsdl-org/SDL/tree/release-3.2.10
+Source archive: https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.2.10.tar.gz
+
+sndfile.dll — libsndfile 1.2.2, LGPL 2.1 or later.
+License: libsndfile-LICENSE.txt.
+Source: https://github.com/libsndfile/libsndfile/tree/1.2.2
+Source archive: https://github.com/libsndfile/libsndfile/archive/refs/tags/1.2.2.tar.gz
+Official binary origin:
+https://github.com/libsndfile/libsndfile/releases/download/1.2.2/libsndfile-1.2.2-win64.zip
+
+The upstream workflow pins these exact SDL and libsndfile releases. This notice
+records the distribution's provenance; retain the supplied license notices when
+redistributing these libraries. Windows' system gm.dls is not part of this
+distribution and is neither downloaded nor packaged by setup-soundfonts.ps1.

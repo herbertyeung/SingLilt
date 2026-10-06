@@ -1,0 +1,80 @@
+# Application and core-test targets for the single build directory.
+# Copyright (c) 2026 Herbert Yeung
+# Author: Herbert Yeung
+# SPDX-License-Identifier: MIT
+
+cmake_minimum_required(VERSION 3.30)
+project(SingLilt VERSION 0.26.0 LANGUAGES CXX)
+
+# All generated material, including downloaded dependencies, stays in build/.
+file(REAL_PATH "${CMAKE_SOURCE_DIR}/build" allowed_build)
+file(REAL_PATH "${CMAKE_BINARY_DIR}" actual_build)
+if(NOT actual_build STREQUAL allowed_build)
+    message(FATAL_ERROR "Use the single build directory: cmake --preset vs2026")
+endif()
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+set(CMAKE_SUPPRESS_REGENERATION ON)
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Configurations" FORCE)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake")
+set(CMAKE_VS_GLOBALS "UseMultiToolTask=true")
+
+option(SINGLILT_BUILD_APP "Build the Windows desktop application" ON)
+include(cmake/Sources.cmake)
+enable_testing()
+
+add_executable(SingLiltCoreTests tests/CoreTests.cpp tests/SingingTests.h tests/SingingTests.cpp ${CORE_FILES})
+target_include_directories(SingLiltCoreTests PRIVATE src)
+set_target_properties(SingLiltCoreTests PROPERTIES FOLDER "Tests")
+if(MSVC)
+    target_compile_options(SingLiltCoreTests PRIVATE /W4 /permissive- /utf-8 /Zc:__cplusplus)
+endif()
+add_test(NAME SingLiltCore COMMAND SingLiltCoreTests)
+set_tests_properties(SingLiltCore PROPERTIES LABELS "core;ci")
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" PREFIX "Source" FILES ${CORE_FILES})
+source_group("Tests" FILES tests/CoreTests.cpp tests/SingingTests.h tests/SingingTests.cpp)
+
+if(NOT SINGLILT_BUILD_APP)
+    return()
+endif()
+if(NOT WIN32)
+    message(FATAL_ERROR "The desktop application requires Windows. Use -DSINGLILT_BUILD_APP=OFF for core tests.")
+endif()
+enable_language(RC)
+include(cmake/Dependencies.cmake)
+
+add_executable(SingLilt WIN32 ${APP_FILES} ${CORE_FILES})
+configure_file(resources/branding/Version.h.in "${CMAKE_BINARY_DIR}/generated/Version.h" @ONLY)
+target_sources(SingLilt PRIVATE resources/branding/SingLilt.rc resources/branding/singlilt.ico resources/branding/Version.h.in)
+set_source_files_properties(resources/branding/Version.h.in PROPERTIES HEADER_FILE_ONLY TRUE)
+target_sources(SingLilt PRIVATE ${RESOURCE_FILES})
+set_source_files_properties(${RESOURCE_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
+qt_add_resources(SingLilt ui_resources
+    PREFIX "/" BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources" FILES ${RESOURCE_FILES})
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/resources" PREFIX "Resources" FILES ${RESOURCE_FILES})
+file(GLOB_RECURSE LANGUAGE_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/language/*.json")
+target_sources(SingLilt PRIVATE ${LANGUAGE_FILES})
+set_source_files_properties(${LANGUAGE_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
+source_group(TREE "${CMAKE_SOURCE_DIR}/language" PREFIX "Languages" FILES ${LANGUAGE_FILES})
+target_include_directories(SingLilt PRIVATE src resources/branding "${CMAKE_BINARY_DIR}/generated")
+target_link_libraries(SingLilt PRIVATE Qt6::Widgets Qt6::Network Qt6::Concurrent Qt6::CorePrivate FluidSynthRuntime
+    winmm windowsapp mfplat mfreadwrite mfuuid ole32)
+target_compile_definitions(SingLilt PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN QT_NO_KEYWORDS
+    SINGLILT_VERSION="${PROJECT_VERSION}")
+set_target_properties(SingLilt PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/bin/Release"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_BINARY_DIR}/bin/Debug"
+    VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:SingLilt>")
+set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT SingLilt)
+
+set_target_properties(SingLilt PROPERTIES FOLDER "App")
+if(MSVC)
+    target_compile_options(SingLilt PRIVATE /W4 /permissive- /utf-8 /Zc:__cplusplus)
+endif()
+source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" PREFIX "Source" FILES ${APP_FILES})
+include(cmake/DeployRuntime.cmake)
+include(cmake/Tests.cmake)

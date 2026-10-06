@@ -1,0 +1,8 @@
+/build/
+/.codegraph/
+/.planning/
+/.vs/
+__pycache__/
+*.py[cod]
+*.user
+*.jpp

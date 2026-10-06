@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "id": 6,
+  "title": {
+    "zh_CN": "第六课 · 连贯与乐句",
+    "en_US": "Lesson 6 · Legato and phrasing"
+  },
+  "goal": {
+    "zh_CN": "让一组音成为连贯乐句，在指定休止处结束。",
+    "en_US": "Connect notes into a phrase and release before the rest."
+  },
+  "steps": {
+    "zh_CN": "1. 用 a 唱前半句，保持元音连贯。\n2. 延音弧连接的两个 3 只起唱一次。\n3. 在休止处停止，再用 u 唱下一句。\n4. 回放录音，自查是否逐音断开。",
+    "en_US": "1. Sing the first phrase on a with a connected vowel.\n2. Attack the tied pair of 3s only once.\n3. Stop in the rest, then sing the next phrase on u.\n4. Replay your recording and listen for unwanted breaks."
+  },
+  "selfCheck": {
+    "zh_CN": "延音是否被重新起唱？句尾是否拖进休止？连贯度请结合录音自查。",
+    "en_US": "Did you re-attack a tie? Did the release extend into the rest? Judge legato by listening to your recording."
+  },
+  "score": {
+    "tonic": 0,
+    "bpm": 72,
+    "beatsPerBar": 4,
+    "beatUnit": 4,
+    "versePrograms": [
+      0
+    ],
+    "notes": [
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "a",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "a",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 3,
+        "durationTicks": 960,
+        "lyric": "a",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 3,
+        "durationTicks": 960,
+        "lyric": "a",
+        "octave": 0,
+        "tieToNext": true,
+        "measure": 1
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "a",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "u",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "u",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 1,
+        "durationTicks": 960,
+        "lyric": "u",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 0,
+        "durationTicks": 1920,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      }
+    ],
+    "repeats": [],
+    "accentBeats": false
+  },
+  "practice": {
+    "centsTolerance": 50,
+    "timingToleranceMs": 180,
+    "earExercises": [
+      "same",
+      "phrase_echo"
+    ]
+  }
+}

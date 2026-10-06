@@ -1,0 +1,169 @@
+{
+  "schema": 1,
+  "id": 5,
+  "title": {
+    "zh_CN": "第五课 · 跳音与音程",
+    "en_US": "Lesson 5 · Leaps and intervals"
+  },
+  "goal": {
+    "zh_CN": "听清三度、五度距离，唱准跳进后回到起音。",
+    "en_US": "Hear thirds and fifths and return accurately after a leap."
+  },
+  "steps": {
+    "zh_CN": "1. 先听 1–3–1，再听 1–5–1。\n2. 不靠喊响去唱高音，保持舒适音量。\n3. 循环三音一组，再练 2–4–2、3–5–3。\n4. 到听力页练音程辨别和短句模唱。",
+    "en_US": "1. Hear 1–3–1, then 1–5–1.\n2. Keep a comfortable volume on higher notes.\n3. Loop each group, then practise 2–4–2 and 3–5–3.\n4. Use interval questions and phrase echo."
+  },
+  "selfCheck": {
+    "zh_CN": "回到起音时是否仍唱准？跳进是否唱成相邻音？",
+    "en_US": "Is the returning note accurate? Did a leap become a step?"
+  },
+  "score": {
+    "tonic": 0,
+    "bpm": 72,
+    "beatsPerBar": 4,
+    "beatUnit": 4,
+    "versePrograms": [
+      0
+    ],
+    "notes": [
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "mi",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 5,
+        "durationTicks": 480,
+        "lyric": "sol",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "do",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "re",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 4,
+        "durationTicks": 480,
+        "lyric": "fa",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "re",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "mi",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 5,
+        "durationTicks": 480,
+        "lyric": "sol",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "mi",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 0,
+        "durationTicks": 480,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      }
+    ],
+    "repeats": [],
+    "accentBeats": false
+  },
+  "practice": {
+    "centsTolerance": 50,
+    "timingToleranceMs": 180,
+    "earExercises": [
+      "interval",
+      "phrase_echo"
+    ]
+  }
+}

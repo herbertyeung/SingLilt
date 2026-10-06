@@ -1,0 +1,234 @@
+{
+  "schema": 1,
+  "id": 8,
+  "title": {
+    "zh_CN": "第八课 · 完整练习歌",
+    "en_US": "Lesson 8 · A complete practice song"
+  },
+  "goal": {
+    "zh_CN": "把分句练习串成完整歌曲，逐步撤掉旋律提示。",
+    "en_US": "Combine phrases into a song and gradually remove the melody guide."
+  },
+  "steps": {
+    "zh_CN": "1. 这首「晨风练习歌」是本课程新编练习旋律。\n2. 按休止分句，难句先循环两至三遍。\n3. 完整跟唱一次，再仅听伴奏独立唱。\n4. 用麦克风唱完整首，点击反馈中的薄弱句重练。",
+    "en_US": "1. Morning Breeze is an original practice melody for this course.\n2. Divide at rests and loop difficult phrases two or three times.\n3. Sing with the guide, then with accompaniment only.\n4. Record the whole song and retry weak phrases from the results."
+  },
+  "selfCheck": {
+    "zh_CN": "是否完整唱完？哪些句子反复偏音？撤掉提示后是否仍稳？",
+    "en_US": "Did you finish? Which phrases repeatedly drift? Are you steady without the guide?"
+  },
+  "score": {
+    "tonic": 0,
+    "bpm": 80,
+    "beatsPerBar": 4,
+    "beatUnit": 4,
+    "versePrograms": [
+      0
+    ],
+    "notes": [
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "晨",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "风",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "轻",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 5,
+        "durationTicks": 480,
+        "lyric": "轻",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 0
+      },
+      {
+        "degree": 3,
+        "durationTicks": 960,
+        "lyric": "吹",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 0,
+        "durationTicks": 960,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 1
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "我",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "们",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "一",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "起",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 2
+      },
+      {
+        "degree": 3,
+        "durationTicks": 960,
+        "lyric": "唱",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 0,
+        "durationTicks": 960,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 3
+      },
+      {
+        "degree": 5,
+        "durationTicks": 480,
+        "lyric": "听",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 4
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "见",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 4
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "心",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 4
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "中",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 4
+      },
+      {
+        "degree": 2,
+        "durationTicks": 960,
+        "lyric": "歌",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 5
+      },
+      {
+        "degree": 0,
+        "durationTicks": 960,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 5
+      },
+      {
+        "degree": 3,
+        "durationTicks": 480,
+        "lyric": "把",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 6
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "它",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 6
+      },
+      {
+        "degree": 1,
+        "durationTicks": 480,
+        "lyric": "唱",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 6
+      },
+      {
+        "degree": 2,
+        "durationTicks": 480,
+        "lyric": "出",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 6
+      },
+      {
+        "degree": 1,
+        "durationTicks": 960,
+        "lyric": "来",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 7
+      },
+      {
+        "degree": 0,
+        "durationTicks": 960,
+        "lyric": "",
+        "octave": 0,
+        "tieToNext": false,
+        "measure": 7
+      }
+    ],
+    "repeats": [],
+    "accentBeats": false
+  },
+  "practice": {
+    "centsTolerance": 50,
+    "timingToleranceMs": 180,
+    "earExercises": [
+      "phrase_echo",
+      "interval",
+      "rhythm"
+    ]
+  }
+}

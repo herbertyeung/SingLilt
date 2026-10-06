@@ -1,0 +1,14 @@
+{
+  "ui.capabilities.piano": "Sampled piano files",
+  "ui.capabilities.gm": "GM instrument bank",
+  "ui.capabilities.whisper": "Local lyric recognition files",
+  "ui.capabilities.separation": "Local vocal separation files",
+  "ui.capabilities.files_present": "Local files found. Runtime loading / inference has not been tested.",
+  "ui.capabilities.missing_files": "Missing, empty or unreadable files:\n%1",
+  "ui.capabilities.no_system_gm": "System GM bank",
+  "ui.capabilities.local_check_help": "This checks local files only, without downloading or running models. Missing optional components do not block unrelated changes. Enable only the capabilities installed on this computer.",
+  "messages.capabilities.separation_metadata": "The vocal separation model metadata does not match the installed worker version.",
+  "messages.capabilities.audio_missing": "Sampled playback needs the bundled piano and a GM bank. Check the file statuses on this page.",
+  "messages.capabilities.unavailable": "%1 cannot start with the current files.\n%2\nInstall the missing local components or turn off this capability in Options.",
+  "cli.settings_product_check": "Verify product settings and local component file checks"
+}

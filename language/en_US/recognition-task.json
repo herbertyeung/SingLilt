@@ -1,0 +1,5 @@
+{
+  "messages.recognition_task.cancelled": "AI recognition was cancelled.",
+  "messages.recognition_task.failed": "AI recognition failed. Your current score was not changed.",
+  "messages.recognition_task.empty_result": "AI recognition returned no notes. Your current score was not changed."
+}

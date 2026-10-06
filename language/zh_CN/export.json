@@ -1,0 +1,21 @@
+{
+  "cli.wave_export_check": "检查有界 WAV 导出、练习速度与区间选择",
+  "messages.export.invalid_range": "请选择练习时间轴内的非空区间，长度不得超过导出上限。",
+  "messages.export.failed": "WAV 导出未完成。",
+  "ui.export.title": "导出合成练习 WAV",
+  "ui.export.on": "开启",
+  "ui.export.off": "关闭",
+  "ui.export.confirmed": "已确认编配",
+  "ui.export.none": "没有已确认编配（伴奏静音）",
+  "ui.export.settings": "练习速度：%1× · 移调：%2 半音\nA / B 音色：GM %3 / %4 · 节拍器：%5",
+  "ui.export.mix": "旋律：%1（%2%）· 伴奏：%3（%4%）\n编配：%5。试听候选和原音录音不参与导出。",
+  "ui.export.help": "完整练习时间轴为 %1 秒，已计入反复和当前速度。请选择该时间轴上的起止时间；每次最多导出 600 秒音乐。",
+  "ui.export.start": "起点（练习秒数）",
+  "ui.export.end": "终点（练习秒数）",
+  "ui.export.full": "完整乐谱",
+  "ui.export.fragment": "所选片段",
+  "ui.export.range": "%1 · %2–%3 秒 · 音乐 %4 秒",
+  "ui.export.tail": "音乐结束后附加 1.5 秒释放尾音。区间起点处正在延续的音立即发声，节拍器保持原节拍位置。原乐谱不变。",
+  "ui.export.choose_file": "选择 WAV 文件…",
+  "ui.export.finished": "%1已导出：%2–%3 秒（音乐 %4 秒 + 1.5 秒释放尾音）· %5"
+}
