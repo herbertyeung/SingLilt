@@ -4,6 +4,11 @@ const appearanceButtons = document.querySelectorAll("[data-appearance]");
 const image = document.querySelector("#app-image");
 const copyStatus = document.querySelector("#copy-status");
 let language = "en";
+let appearance = "dark";
+
+function updateScreenshot() {
+  image.src = `assets/app-${language}-${appearance}.png`;
+}
 
 function setLanguage(selected) {
   language = selected === "zh" ? "zh" : "en";
@@ -18,6 +23,7 @@ function setLanguage(selected) {
   image.alt = language === "zh"
     ? "SingLilt 的内置音阶与节奏练习，包含速度、移调和乐句循环控制。"
     : "SingLilt's built-in scales and rhythm exercise, with tempo, transposition and phrase-loop controls.";
+  updateScreenshot();
   document.title = language === "zh" ? "SingLilt — 听谱、改谱、练唱" : "SingLilt — Score playback and singing practice";
   document.querySelector('meta[name="description"]').content = language === "zh"
     ? "SingLilt 是开源 Windows 桌面程序，用于乐谱播放、音符校正和唱歌练习。"
@@ -31,8 +37,8 @@ function setLanguage(selected) {
 
 languageButtons.forEach(button => button.addEventListener("click", () => setLanguage(button.dataset.language)));
 appearanceButtons.forEach(button => button.addEventListener("click", () => {
-  const selected = button.dataset.appearance;
-  image.src = selected === "dark" ? "assets/app-dark.png" : "assets/app-light.png";
+  appearance = button.dataset.appearance;
+  updateScreenshot();
   appearanceButtons.forEach(choice => choice.setAttribute("aria-pressed", String(choice === button)));
 }));
 
