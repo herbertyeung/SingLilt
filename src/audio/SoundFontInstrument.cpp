@@ -15,6 +15,9 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#ifdef Q_OS_LINUX
+#include "platform/LinuxRuntime.h"
+#endif
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -28,6 +31,11 @@ namespace {
 QString defaultPianoPath()
 {
     const QString configured = qEnvironmentVariable("JIANPU_SOUNDFONT");
+#ifdef Q_OS_LINUX
+    const QString bundled = QCoreApplication::applicationDirPath() + "/assets/soundfonts/Salamander.sf2";
+    if (configured.isEmpty() && !QFileInfo(bundled).isFile())
+        return linuxGmSoundFontPath();
+#endif
     return configured.isEmpty() ? QCoreApplication::applicationDirPath() + "/assets/soundfonts/Salamander.sf2"
                                 : QFileInfo(configured).absoluteFilePath();
 }
@@ -39,6 +47,8 @@ QString systemGmPath()
     const auto count = GetSystemDirectoryW(path, MAX_PATH);
     if (count > 0 && count < MAX_PATH)
         return QDir::fromNativeSeparators(QString::fromWCharArray(path)) + "/drivers/gm.dls";
+#elif defined(Q_OS_LINUX)
+    return linuxGmSoundFontPath();
 #endif
     return {};
 }
@@ -151,8 +161,14 @@ bool SoundFontInstrument::open(bool realtime)
     if (realtime) {
         QStringList available;
         fluid_settings_foreach_option(settings, "audio.driver", &available, collectDriver);
-        for (const auto& candidate : {QStringLiteral("wasapi"), QStringLiteral("dsound"),
-                                     QStringLiteral("waveout"), QStringLiteral("sdl3")}) {
+#ifdef Q_OS_LINUX
+        const QStringList candidates{QStringLiteral("pulseaudio"), QStringLiteral("alsa")};
+#else
+        const QStringList candidates{QStringLiteral("wasapi"), QStringLiteral("dsound"), QStringLiteral("waveout"),
+                                     QStringLiteral("sdl3")};
+#endif
+        for (const auto &candidate : candidates)
+        {
             if (available.contains(candidate)) {
                 audioDriver = candidate;
                 break;

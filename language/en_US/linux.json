@@ -1,0 +1,3 @@
+{
+  "messages.audio.linux_midi_destination": "No ALSA MIDI destination is available. Start a MIDI synthesizer or select SoundFont playback."
+}

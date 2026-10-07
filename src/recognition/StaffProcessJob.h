@@ -11,6 +11,9 @@
 #include <vector>
 #ifdef Q_OS_WIN
 #include <qt_windows.h>
+#elif defined(Q_OS_LINUX)
+#include <signal.h>
+#include <unistd.h>
 #endif
 
 namespace singlilt
@@ -93,6 +96,52 @@ class StaffProcessJob
     STARTUPINFOEXW startup_{};
     std::vector<unsigned char> attributeStorage_;
     bool attributesInitialized_ = false;
+};
+#elif defined(Q_OS_LINUX)
+class StaffProcessJob
+{
+  public:
+    StaffProcessJob() = default;
+    StaffProcessJob(const StaffProcessJob &) = delete;
+    StaffProcessJob &operator=(const StaffProcessJob &) = delete;
+    ~StaffProcessJob()
+    {
+        QObject::disconnect(started_);
+        terminate();
+    }
+
+    bool configure(QProcess &process)
+    {
+        started_ = QObject::connect(&process, &QProcess::started, &process,
+                                    [this, &process] { group_ = static_cast<pid_t>(process.processId()); });
+        process.setChildProcessModifier(
+            []
+            {
+                if (setsid() < 0)
+                    _exit(127);
+            });
+        return true;
+    }
+
+    void terminate()
+    {
+        // The engine owns a new session, so cancellation also reaches its workers.
+        if (group_ > 0)
+            kill(-group_, SIGKILL);
+    }
+
+    bool waitForEmpty(int milliseconds)
+    {
+        QElapsedTimer elapsed;
+        elapsed.start();
+        while (group_ > 0 && kill(-group_, 0) == 0 && elapsed.elapsed() < milliseconds)
+            QThread::msleep(10);
+        return group_ <= 0 || kill(-group_, 0) != 0;
+    }
+
+  private:
+    QMetaObject::Connection started_;
+    pid_t group_ = 0;
 };
 #endif
 } // namespace singlilt

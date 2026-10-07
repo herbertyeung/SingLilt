@@ -110,6 +110,8 @@ pwsh -NoProfile -File scripts/build.ps1 -CoreOnly -Configuration Release
 
 构建始终复用 `build`。可选音频分析组件用 `scripts/setup.ps1 -WithAnalysis` 安装。更多信息见 [构建说明](docs/BUILD.md)。
 
+Linux 开发、后端差异与安装说明见 [Linux 构建说明](docs/LINUX.md)。
+
 ### 开发与发布
 
 [架构](docs/ARCHITECTURE.md) · [贡献指南](CONTRIBUTING.md) · [工程格式](docs/PROJECT_FORMAT.md) · [发布流程](docs/RELEASING.md) · [版本记录](CHANGELOG.md)

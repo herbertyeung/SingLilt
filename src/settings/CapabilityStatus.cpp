@@ -6,6 +6,7 @@
 #include "CapabilityStatus.h"
 #include "AppSettings.h"
 #include "i18n/LanguageManager.h"
+#include "platform/RuntimePaths.h"
 #include "recognition/AudioTranscriber.h"
 #include <QCoreApplication>
 #include <QDir>
@@ -13,6 +14,9 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#ifdef Q_OS_LINUX
+#include "platform/LinuxRuntime.h"
+#endif
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -49,6 +53,8 @@ QString systemGmPath()
     const auto count = GetSystemDirectoryW(path, MAX_PATH);
     if (count > 0 && count < MAX_PATH)
         return QDir::fromNativeSeparators(QString::fromWCharArray(path)) + "/drivers/gm.dls";
+#elif defined(Q_OS_LINUX)
+    return linuxGmSoundFontPath();
 #endif
     return {};
 }
@@ -56,7 +62,8 @@ QString systemGmPath()
 CapabilityFileStatus whisperStatus(const QString &directory, const QString &executable, const QString &model)
 {
     CapabilityFileStatus status;
-    checkFile(status, executable.isEmpty() ? directory + "/tools/whisper/whisper-cli.exe" : executable);
+    checkFile(status, executable.isEmpty() ? directory + "/tools/whisper/whisper-cli" + NativeExecutableSuffix
+                                           : executable);
     checkFile(status, model.isEmpty() ? directory + "/models/ggml-base.bin" : model);
     return status;
 }
@@ -68,7 +75,7 @@ CapabilityFileStatus separationStatus(const QString &directory, QString python, 
     if (python.isEmpty())
         python = qEnvironmentVariable("JIANPU_SEPARATOR_PYTHON");
     if (python.isEmpty())
-        python = directory + "/tools/separation/python/python.exe";
+        python = directory + SeparatorPythonPath;
     const auto models = modelDirectory.isEmpty() ? directory + "/tools/separation/models" : modelDirectory;
     checkFile(status, python);
     checkFile(status, script.isEmpty() ? directory + "/tools/separation/separate_vocals.py" : script);
@@ -105,7 +112,12 @@ CapabilityStatus inspectCapabilities(const AppSettings &settings, const QString 
     const QString directory = applicationDirectory(appDirectory);
     CapabilityStatus status;
     const QString piano = qEnvironmentVariable("JIANPU_SOUNDFONT");
-    checkFile(status.piano, piano.isEmpty() ? directory + "/assets/soundfonts/Salamander.sf2" : piano);
+    QString pianoPath = piano.isEmpty() ? directory + "/assets/soundfonts/Salamander.sf2" : piano;
+#ifdef Q_OS_LINUX
+    if (piano.isEmpty() && !QFileInfo(pianoPath).isFile())
+        pianoPath = linuxGmSoundFontPath();
+#endif
+    checkFile(status.piano, pianoPath);
     QString gm = settings.gmSoundFontPath;
     if (gm.isEmpty())
         gm = qEnvironmentVariable("JIANPU_GM_SOUNDFONT");

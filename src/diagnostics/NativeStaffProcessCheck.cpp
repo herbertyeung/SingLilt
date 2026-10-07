@@ -6,10 +6,12 @@
 #include "NativeStaffProcessCheck.h"
 #include "recognition/LocalStaffRecognizer.h"
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QStandardPaths>
 #include <QTemporaryDir>
 #include <chrono>
 #include <stdexcept>
@@ -43,6 +45,21 @@ bool processEnded(int processId)
     const bool ended = WaitForSingleObject(handle, 3000) == WAIT_OBJECT_0;
     CloseHandle(handle);
     return ended;
+#elif defined(Q_OS_LINUX)
+    QElapsedTimer elapsed;
+    elapsed.start();
+    while (elapsed.elapsed() < 3000)
+    {
+        QFile status(QString("/proc/%1/stat").arg(processId));
+        if (!status.open(QIODevice::ReadOnly))
+            return processId > 0;
+        const QByteArray contents = status.readAll();
+        const auto endName = contents.lastIndexOf(')');
+        if (endName >= 0 && contents.mid(endName + 2, 1) == "Z")
+            return true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    return false;
 #else
     Q_UNUSED(processId);
     return true;
@@ -72,6 +89,34 @@ QJsonObject checkNativeStaffProcess()
         const auto options = [&](const QString &mode)
         {
             LocalStaffRecognitionOptions options;
+#ifdef Q_OS_LINUX
+            options.engineExecutable = QStandardPaths::findExecutable("python3");
+            options.modelPath = root + "/model.gguf";
+            options.timeoutSeconds = mode == "timeout" ? 5 : 15;
+            const auto scriptPath = root + '/' + mode + ".py";
+            QString script = "import sys,time,subprocess,pathlib\n";
+            if (mode == "cancel" || mode == "timeout")
+            {
+                const auto pidPath = QString::fromUtf8(
+                    QJsonDocument(QJsonArray{root + '/' + mode + ".pid"}).toJson(QJsonDocument::Compact));
+                script += "child=subprocess.Popen([sys.executable,'-c','import time;time.sleep(60)'])\n"
+                          "target=pathlib.Path(" +
+                          pidPath +
+                          "[0])\n"
+                          "temporary=target.with_suffix('.tmp')\n"
+                          "temporary.write_text(str(child.pid))\ntemporary.replace(target)\ntime.sleep(60)\n";
+            }
+            else if (mode == "nonzero")
+                script += "sys.stderr.write('native fixture error')\nsys.exit(9)\n";
+            else if (mode == "invalid")
+                script += "print('invalid notation')\n";
+            else if (mode != "empty")
+                script += "sys.stdout.write(" +
+                          QString::fromUtf8(QJsonDocument(QJsonArray{notation}).toJson(QJsonDocument::Compact)) +
+                          "[0])\n";
+            writeFixture(scriptPath, script.toUtf8());
+            options.engineArgumentsPrefix = {scriptPath};
+#else
             options.engineExecutable =
                 qEnvironmentVariable("SystemRoot") + "/System32/WindowsPowerShell/v1.0/powershell.exe";
             options.modelPath = root + "/model.gguf";
@@ -99,6 +144,7 @@ QJsonObject checkNativeStaffProcess()
             writeFixture(scriptPath, script.toUtf8());
             options.engineArgumentsPrefix = {"-NoProfile", "-NonInteractive", "-ExecutionPolicy",
                                              "Bypass",     "-File",           scriptPath};
+#endif
             return options;
         };
         auto result = recognizeLocalStaff(image, "fixture.png", options("success"));

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=SingLilt
+Comment=Music score playback and singing practice
+Exec=singlilt %f
+Icon=singlilt
+Terminal=false
+Categories=AudioVideo;Audio;Education;

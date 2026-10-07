@@ -17,6 +17,7 @@ set(CORE_FILES
 )
 
 set(APP_FILES
+    src/platform/RuntimePaths.h
     src/diagnostics/ThemeCheck.h src/diagnostics/ThemeCheck.cpp
     src/ui/ThemeManager.h src/ui/ThemeManager.cpp
     src/diagnostics/NativeStaffProcessCheck.h src/diagnostics/NativeStaffProcessCheck.cpp
@@ -138,3 +139,15 @@ set(RESOURCE_FILES
     resources/fonts/Bravura.otf
     resources/branding/singlilt-icon.png
     resources/styles/app.qss)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    list(REMOVE_ITEM APP_FILES src/audio/MicrophoneCapture.cpp src/audio/OriginalAudioPlayer.cpp
+        src/audio/MidiInstrument.cpp src/recognition/WindowsOcr.cpp)
+    list(APPEND APP_FILES
+        src/audio/linux/MicrophoneCapture.cpp
+        src/audio/linux/OriginalAudioPlayer.cpp
+        src/audio/linux/MidiInstrument.cpp
+        src/recognition/linux/TextOcr.cpp
+        src/recognition/linux/AudioDecoder.h src/recognition/linux/AudioDecoder.cpp
+        src/platform/LinuxRuntime.h)
+endif()
