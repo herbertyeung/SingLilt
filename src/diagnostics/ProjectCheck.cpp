@@ -480,11 +480,14 @@ class ProjectProbe final : public QObject
             auto *source = window_.findChild<QComboBox *>("playbackSource");
             if (!source)
                 throw std::runtime_error("Playback source selector missing");
-            for (int type : {1, 2, 3})
+            if (!args_.isSet("diagnostic-no-audio"))
             {
-                source->setCurrentIndex(source->findData(type));
-                check(QString("Packaged audio source%1 opens through native player").arg(type),
-                      window_.originalAudioPlayer().isOpen());
+                for (int type : {1, 2, 3})
+                {
+                    source->setCurrentIndex(source->findData(type));
+                    check(QString("Packaged audio source%1 opens through native player").arg(type),
+                          window_.originalAudioPlayer().isOpen());
+                }
             }
             source->setCurrentIndex(source->findData(0));
             window_.grab().save(folder_ + "/project-ui.png");
@@ -515,6 +518,7 @@ class ProjectProbe final : public QObject
                            {"passedCount", passed},
                            {"checkCount", checks_.size()},
                            {"version", QApplication::applicationVersion()},
+                           {"audioOutputTested", !args_.isSet("diagnostic-no-audio")},
                            {"fixtureFolder", folder_},
                            {"audioFixtures", "original MP3/WAV plus generated PCM WAV stems"}};
         writeBytes(args_.value("report"), QJsonDocument(report).toJson());

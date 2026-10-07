@@ -14,7 +14,12 @@ $root = Split-Path -Parent $PSScriptRoot
 $cmake = (Get-Command cmake -ErrorAction Stop).Source
 $configurePreset = if ($CoreOnly) { 'core' } else { 'vs2026' }
 $buildPreset = if ($CoreOnly) { "core-$($Configuration.ToLowerInvariant())" } else { $Configuration.ToLowerInvariant() }
-Invoke-NativeCommand $cmake @('--preset', $configurePreset)
+$configureArguments = @('--preset', $configurePreset)
+if (-not $CoreOnly) {
+    $audioOutput = if ($CiTests) { 'OFF' } else { 'ON' }
+    $configureArguments += "-DSINGLILT_TEST_AUDIO_OUTPUT=$audioOutput"
+}
+Invoke-NativeCommand $cmake $configureArguments
 Invoke-NativeCommand $cmake @('--build', '--preset', $buildPreset, '--parallel', '6')
 if ($CoreOnly) {
     Invoke-NativeCommand (Get-Command ctest -ErrorAction Stop).Source @('--test-dir', "$root/build", '-C', $Configuration, '--output-on-failure')

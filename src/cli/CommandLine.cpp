@@ -85,6 +85,7 @@ void addCommandLineOptions(QCommandLineParser &args)
     args.addOption({"screenshot", trText("cli.screenshot"), "file"});
     args.addOption({"language", trText("cli.language"), "locale"});
     args.addOption({"ui-localization-check", trText("cli.ui_check")});
+    args.addOption({"diagnostic-no-audio", "Run localization and project-package checks without audio output"});
     args.addOption({"async-recognition-check", trText("cli.async_check"), "scenario"});
     args.addOption({"catalog-check", trText("cli.catalog_check")});
     args.addOption({"language-pack-check", "Check external locale selection and settings integration."});

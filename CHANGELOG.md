@@ -2,6 +2,7 @@
 
 ## 0.26.0
 
+- Keep CI language and project-package checks independent of audio hardware while retaining local playback checks.
 - Add saved Light/Dark/Follow system appearance without changing score images or exports.
 - Load additional interface language packs from the external language directory.
 - Deploy the matching Qt runtime after direct Visual Studio Debug/Release builds.

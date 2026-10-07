@@ -41,7 +41,9 @@ ctest --test-dir build -C Release -L ci --output-on-failure
 ctest --test-dir build -C Release -R SingLiltMusicXml --output-on-failure
 ```
 
-The `ci` label selects checks that do not require an audio device. Local checks also cover transport, rendering, persistence, recognition workflow and editing. Diagnostics store their settings and reports under `build`, separate from normal preferences.
+Use `scripts/build.ps1 -Configuration Release -CiTests` on machines without audio hardware. It sets `SINGLILT_TEST_AUDIO_OUTPUT=OFF` while retaining the language-switching and project-package UI/storage checks. Reports explicitly record `audioOutputTested=false`. The `ci` label alone does not change this setting.
+
+Normal `scripts/build.ps1` builds set `SINGLILT_TEST_AUDIO_OUTPUT=ON` and also verify playback across language switches and opening packaged audio sources. For direct CMake use, select the setting explicitly with `cmake --preset vs2026 -DSINGLILT_TEST_AUDIO_OUTPUT=ON`. Local checks also cover transport, rendering, persistence, recognition workflow and editing. Diagnostics store their settings and reports under `build`, separate from normal preferences.
 
 Two legacy recognition regressions use a private score image. They are registered only when `build/private-fixtures/buxia.png` is present; `SINGLILT_PRIVATE_FIXTURES` can point to another local fixture directory. These files are not distributed. Keep this coverage distinction in test reports.
 

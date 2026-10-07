@@ -4,16 +4,24 @@
 # SPDX-License-Identifier: MIT
 
 find_program(POWERSHELL_EXECUTABLE NAMES pwsh REQUIRED)
+option(SINGLILT_TEST_AUDIO_OUTPUT "Exercise real audio output in desktop diagnostics" ON)
+set(diagnostic_audio_arguments)
+set(localization_audio_arguments)
+if(NOT SINGLILT_TEST_AUDIO_OUTPUT)
+    list(APPEND diagnostic_audio_arguments --diagnostic-no-audio)
+    list(APPEND localization_audio_arguments -NoAudio)
+endif()
 add_test(NAME SingLiltVersion COMMAND SingLilt --version --language en_US)
 add_test(NAME SingLiltThemes COMMAND SingLilt --theme-check --audio-backend system --language en_US
     --report "${CMAKE_BINARY_DIR}/theme-tests/$<CONFIG>/report.json")
 set_tests_properties(SingLiltThemes PROPERTIES LABELS "ci" TIMEOUT 60 RUN_SERIAL TRUE)
 add_test(NAME SingLiltLocalization COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -File
     "${CMAKE_SOURCE_DIR}/scripts/verify-localization.ps1" -Executable "$<TARGET_FILE:SingLilt>"
-    -OutputDirectory "${CMAKE_BINARY_DIR}/localization-tests/$<CONFIG>")
+    -OutputDirectory "${CMAKE_BINARY_DIR}/localization-tests/$<CONFIG>" ${localization_audio_arguments})
 set_tests_properties(SingLiltLocalization PROPERTIES LABELS "ci" TIMEOUT 90 RUN_SERIAL TRUE)
 set_tests_properties(SingLiltVersion PROPERTIES TIMEOUT 15 PASS_REGULAR_EXPRESSION "SingLilt ${PROJECT_VERSION}")
-add_test(NAME SingLiltProjectPackage COMMAND SingLilt --project-package-check --audio-backend system --report "${CMAKE_BINARY_DIR}/project-package/ctest/$<CONFIG>/report.json")
+add_test(NAME SingLiltProjectPackage COMMAND SingLilt --project-package-check --audio-backend system
+    ${diagnostic_audio_arguments} --report "${CMAKE_BINARY_DIR}/project-package/ctest/$<CONFIG>/report.json")
 set_tests_properties(SingLiltProjectPackage PROPERTIES TIMEOUT 45)
 set(SINGLILT_PRIVATE_FIXTURES "${CMAKE_SOURCE_DIR}/build/private-fixtures" CACHE PATH "Private recognition regression data")
 if(EXISTS "${SINGLILT_PRIVATE_FIXTURES}/buxia.png")

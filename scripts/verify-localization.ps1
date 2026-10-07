@@ -3,7 +3,7 @@
 # Author: Herbert Yeung
 # SPDX-License-Identifier: MIT
 
-param([ValidateSet('Debug','Release')][string]$Configuration='Release',[string]$Executable='', [string]$OutputDirectory='')
+param([ValidateSet('Debug','Release')][string]$Configuration='Release',[string]$Executable='', [string]$OutputDirectory='', [switch]$NoAudio)
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 Set-Location $root
@@ -52,9 +52,13 @@ foreach($language in 'zh_CN','en_US') {
     Write-Output "EXTERNAL_CATALOG $language PASS exit=0"
 }
 $report="$OutputDirectory/ui.json"
-$p=Start-Process -FilePath $Executable -ArgumentList "--ui-localization-check --language zh_CN --report `"$report`"" -WindowStyle Hidden -PassThru -Wait
+if(Test-Path -LiteralPath $report){Remove-Item -LiteralPath $report}
+$audioArgument=if($NoAudio){' --diagnostic-no-audio'}else{''}
+$p=Start-Process -FilePath $Executable -ArgumentList "--ui-localization-check --language zh_CN$audioArgument --report `"$report`"" -WindowStyle Hidden -PassThru -Wait
+if($p.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $report)){throw "UI localization check failed: exit=$($p.ExitCode); report=$report"}
 $r=Get-Content $report -Raw|ConvertFrom-Json
 if($p.ExitCode -ne 0 -or -not $r.passed){throw "UI localization/contrast check failed: $($p.ExitCode); see $report"}
+if($r.audioOutputTested -ne (-not $NoAudio)){throw "UI localization audio mode disagrees with the requested check; see $report"}
 Write-Output "GUI_SWITCH_AND_POPUP_CONTRAST PASS exit=0"
 Write-Output "English popup: blue=$($r.englishPopup.selectedBluePixels), whiteText=$($r.englishPopup.selectedWhiteTextPixels)"
 Write-Output "Chinese popup: blue=$($r.chinesePopup.selectedBluePixels), whiteText=$($r.chinesePopup.selectedWhiteTextPixels)"

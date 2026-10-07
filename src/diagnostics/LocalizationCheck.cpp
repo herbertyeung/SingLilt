@@ -199,11 +199,17 @@ QJsonObject checkCloudDialog(MainWindow &window, LanguageManager &languages, con
 bool localizationPassed(const QJsonObject &report)
 {
     bool passed = report["catalogErrors"].toArray().isEmpty();
-    for (const auto *key :
-         {"playingBeforeSwitch", "englishSwitch", "playingAfterSwitch", "positionPreserved", "captionChanged",
-          "scoreUnchanged", "userTitleUnchanged", "draftsPreserved", "dirtyPreserved", "controlsPreserved",
-          "chineseRestored", "draftsStillPreserved", "unsupportedLanguagePreserved"})
+    for (const auto *key : {"englishSwitch", "captionChanged", "scoreUnchanged", "userTitleUnchanged",
+                            "draftsPreserved", "dirtyPreserved", "controlsPreserved", "chineseRestored",
+                            "draftsStillPreserved", "unsupportedLanguagePreserved"})
         passed &= report[key].toBool();
+    if (report["audioOutputTested"].toBool())
+    {
+        for (const auto *key : {"playingBeforeSwitch", "playingAfterSwitch", "positionPreserved"})
+            passed &= report[key].toBool();
+    }
+    else
+        passed &= report["stoppedBeforeSwitch"].toBool() && report["stoppedAfterSwitch"].toBool();
     for (const auto *key : {"englishPopup", "chinesePopup", "englishCloudDialog", "chineseCloudDialog"})
         passed &= report[key].toObject()["passed"].toBool();
     return passed;
@@ -214,6 +220,7 @@ void runLocalizationCheck(MainWindow &window, LanguageManager &languages, const 
                           QApplication &app)
 {
     auto state = std::make_shared<State>();
+    state->report["audioOutputTested"] = !args.isSet("diagnostic-no-audio");
     auto *gate = new QTimer(&window);
     auto *deadline = new QTimer(&window);
     deadline->setSingleShot(true);
@@ -278,16 +285,20 @@ void runLocalizationCheck(MainWindow &window, LanguageManager &languages, const 
                                  QSignalBlocker blocker(backend);
                                  backend->setCurrentIndex(1);
                              }
-                             auto *play = window.findChild<QPushButton *>("play");
-                             if (play)
-                                 play->click();
                              state->stage = 1;
+                             if (state->report["audioOutputTested"].toBool())
+                             {
+                                 auto *play = window.findChild<QPushButton *>("play");
+                                 if (play)
+                                     play->click();
+                             }
                              return;
                          }
                          if (state->stage == 1)
                          {
                              state->tick = window.player().positionTicks();
                              state->report["playingBeforeSwitch"] = window.player().isPlaying();
+                             state->report["stoppedBeforeSwitch"] = !window.player().isPlaying();
                              state->report["englishSwitch"] = languages.setLanguage("en_US");
                              state->stage = 2;
                              return;
@@ -295,6 +306,7 @@ void runLocalizationCheck(MainWindow &window, LanguageManager &languages, const 
                          if (state->stage == 2)
                          {
                              state->report["playingAfterSwitch"] = window.player().isPlaying();
+                             state->report["stoppedAfterSwitch"] = !window.player().isPlaying();
                              state->report["positionPreserved"] = window.player().positionTicks() > state->tick;
                              window.player().pause();
                              state->report["translatedImport"] = import->text();
