@@ -236,8 +236,10 @@ class WaveExportProbe final : public QObject
         auto *action = window_.findChild<QAction *>("menuExportWave");
         if (!action)
             throw std::runtime_error("WAV export menu action is missing");
+        dispatchComplete_ = false;
         timer_.start();
         action->trigger();
+        dispatchComplete_ = true;
         if (!optionsSeen_)
             throw std::runtime_error("WAV export range dialog did not open");
     }
@@ -354,7 +356,8 @@ class WaveExportProbe final : public QObject
                 return;
             }
             auto *action = window_.findChild<QAction *>("menuExportWave");
-            if (!optionsSeen_ || !action || action->property("waveExportRunning").toBool())
+            if (!dispatchComplete_ || !optionsSeen_ || (!cancel_ && !fileSeen_) || !action ||
+                action->property("waveExportRunning").toBool())
                 return;
             timer_.stop();
             if (stage_ == 0)
@@ -460,6 +463,7 @@ class WaveExportProbe final : public QObject
     double expectedSeconds_ = 0;
     int stage_ = 0;
     bool cancel_ = false;
+    bool dispatchComplete_ = false;
     bool optionsSeen_ = false;
     bool fileSeen_ = false;
     bool previousNativeDialogs_ = false;

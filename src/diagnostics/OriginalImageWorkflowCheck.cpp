@@ -1,3 +1,4 @@
+#include "DiagnosticAudio.h"
 // Original-page playback, cursor, and editing regressions.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -350,9 +351,9 @@ void runOriginalImageWorkflowCheck(MainWindow &window, const QCommandLineParser 
                           planRows(window.project()) == initialPlan &&
                           window.project().staffPerformance->primaryProgram == 40 &&
                           window.project().staffPerformance->otherProgram == 35);
-                backend->setCurrentIndex(1);
-                check("Windows MIDI backend selected through the production UI",
-                      window.player().audioBackend() == AudioBackend::WindowsMidi);
+                backend->setCurrentIndex(backend->findData(diagnosticAudioBackend() == AudioBackend::WindowsMidi ? 1 : 0));
+                check("Platform audio backend selected through the production UI",
+                      window.player().audioBackend() == diagnosticAudioBackend());
                 window.player().setMetronome(false);
                 view->ensureVisible(QRectF(350, 145, 45, 40), 20, 20);
                 const auto previewCount = window.player().voiceState().previewNoteOns;
@@ -660,7 +661,7 @@ void runOriginalImageWorkflowCheck(MainWindow &window, const QCommandLineParser 
                     check("Native original workflow uses real source pixels after production rebuild",
                           scenePixels(*view, sourceImage));
                     check("Native Windows MIDI backend starts explicitly",
-                          window.player().setAudioBackend(AudioBackend::WindowsMidi));
+                          window.player().setAudioBackend(diagnosticAudioBackend()));
                     const auto firstAnchored =
                         std::find_if(native.staffPerformance->notes.begin(), native.staffPerformance->notes.end(),
                                      [](const auto &note) { return note.hasImageAnchor; });

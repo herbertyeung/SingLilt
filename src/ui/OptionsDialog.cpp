@@ -201,6 +201,10 @@ OptionsDialog::OptionsDialog(const AppSettings &s, const OptionsContext &c, QWid
     auto *audio = page(tabs_);
     backend_ = choices(audio, "ui.transport.source", "optionsAudioBackend",
                        {trText("ui.transport.source_piano"), trText("ui.transport.source_midi")}, s.audioBackend);
+#ifdef Q_OS_MACOS
+    backend_->removeItem(1);
+    backend_->setCurrentIndex(0);
+#endif
     gm_ = pathRow(audio, "ui.accompaniment.gm_label", "optionsGmPath", s.gmSoundFontPath, false);
     audio->addRow(caption("ui.options.gm_help"));
     pianoStatus_ = capabilityRow(audio, "ui.capabilities.piano", "optionsPianoStatus");

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 find_package(Python3 3.12 REQUIRED COMPONENTS Interpreter)
-add_executable(SingLiltLanguageTests tests/LanguageTests.cpp src/i18n/LanguageManager.cpp src/i18n/LanguageManager.h)
+add_executable(SingLiltLanguageTests tests/LanguageTests.cpp src/i18n/LanguageManager.cpp src/i18n/LanguageManager.h src/platform/RuntimePaths.cpp)
 target_include_directories(SingLiltLanguageTests PRIVATE src)
 target_link_libraries(SingLiltLanguageTests PRIVATE Qt6::Core)
 add_executable(SingLiltMigrationTests tests/MigrationTests.cpp src/settings/LegacyMigration.cpp src/settings/LegacyMigration.h)
@@ -11,9 +11,9 @@ target_include_directories(SingLiltMigrationTests PRIVATE src)
 target_link_libraries(SingLiltMigrationTests PRIVATE Qt6::Core)
 add_executable(SingLiltLinuxMediaTests tests/LinuxMediaTests.cpp
     src/recognition/linux/AudioDecoder.h src/recognition/linux/AudioDecoder.cpp
-    src/recognition/linux/TextOcr.cpp src/audio/linux/OriginalAudioPlayer.cpp
+    src/recognition/linux/TextOcr.cpp src/audio/QtOriginalAudioPlayer.cpp
     src/audio/linux/MicrophoneCapture.cpp src/audio/linux/MidiInstrument.cpp
-    src/audio/SoundFontInstrument.cpp src/i18n/LanguageManager.cpp)
+    src/audio/SoundFontInstrument.cpp src/i18n/LanguageManager.cpp src/platform/RuntimePaths.cpp)
 target_include_directories(SingLiltLinuxMediaTests PRIVATE src)
 target_link_libraries(SingLiltLinuxMediaTests PRIVATE Qt6::Widgets Qt6::Multimedia ALSA::ALSA
     PkgConfig::Tesseract FluidSynthRuntime)

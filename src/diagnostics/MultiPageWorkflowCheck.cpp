@@ -1,3 +1,4 @@
+#include "DiagnosticAudio.h"
 // Multi-page import, navigation, and playback checks.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -506,7 +507,7 @@ class MultiPageWorkflowProbe final : public QObject
         auto &player = window_.player();
         player.pause();
         check("System MIDI is selected without another audio backend fallback",
-              player.setAudioBackend(AudioBackend::WindowsMidi));
+              player.setAudioBackend(diagnosticAudioBackend()));
         auto *autoPage = window_.findChild<QCheckBox *>("staffAutoPage");
         check("Automatic page turning is available", autoPage != nullptr);
         autoPage->setChecked(true);

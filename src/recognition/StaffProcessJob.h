@@ -11,7 +11,7 @@
 #include <vector>
 #ifdef Q_OS_WIN
 #include <qt_windows.h>
-#elif defined(Q_OS_LINUX)
+#elif defined(Q_OS_UNIX)
 #include <cerrno>
 #include <signal.h>
 #include <unistd.h>
@@ -98,7 +98,7 @@ class StaffProcessJob
     std::vector<unsigned char> attributeStorage_;
     bool attributesInitialized_ = false;
 };
-#elif defined(Q_OS_LINUX)
+#elif defined(Q_OS_UNIX)
 class StaffProcessJob
 {
   public:

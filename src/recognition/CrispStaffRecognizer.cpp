@@ -1,3 +1,4 @@
+#include "platform/RuntimePaths.h"
 // Native CrispEmbed invocation and notation result extraction.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -62,10 +63,12 @@ QByteArray recognizePage(const QString &executable, const QString &model, const 
                          const std::atomic_bool *cancellation)
 {
     QProcess process;
-#if defined(Q_OS_WIN) || defined(Q_OS_LINUX)
+#if defined(Q_OS_WIN) || defined(Q_OS_UNIX)
     StaffProcessJob job;
     if (!job.configure(process))
         fail("messages.local_staff.process_guard_failed");
+#ifdef Q_OS_UNIX
+#endif
 #endif
     process.setProgram(executable);
     auto arguments = options.engineArgumentsPrefix;
@@ -93,7 +96,7 @@ QByteArray recognizePage(const QString &executable, const QString &model, const 
     };
     const auto stop = [&]
     {
-#if defined(Q_OS_WIN) || defined(Q_OS_LINUX)
+#if defined(Q_OS_WIN) || defined(Q_OS_UNIX)
         job.terminate();
 #endif
         if (process.state() != QProcess::NotRunning)
@@ -101,7 +104,7 @@ QByteArray recognizePage(const QString &executable, const QString &model, const 
             process.kill();
             process.waitForFinished(5000);
         }
-#if defined(Q_OS_WIN) || defined(Q_OS_LINUX)
+#if defined(Q_OS_WIN) || defined(Q_OS_UNIX)
         job.waitForEmpty(5000);
 #endif
         drain();
@@ -110,6 +113,7 @@ QByteArray recognizePage(const QString &executable, const QString &model, const 
     {
         checkCancellation(cancellation);
         process.start();
+
         while (process.state() != QProcess::NotRunning)
         {
             if (process.state() == QProcess::Starting)
@@ -255,10 +259,9 @@ LocalStaffRecognitionResult recognizeCrispStaffPages(const std::vector<StaffPage
             if (pixels > 400000000)
                 fail("messages.local_staff.page_pixel_limit");
         }
-        const QString runtime = QCoreApplication::applicationDirPath() + "/tools/omr-native";
-        const QString executable = options.engineExecutable.isEmpty()
-                                       ? runtime + "/crispembed" + NativeExecutableSuffix
-                                       : options.engineExecutable;
+        const QString runtime = runtimeResourceDirectory() + "/tools/omr-native";
+        const QString executable =
+            options.engineExecutable.isEmpty() ? runtime + "/" + helperExecutableName("crispembed") : options.engineExecutable;
         const QString model = options.modelPath.isEmpty() ? runtime + "/models/staff.gguf" : options.modelPath;
         if (!QFileInfo(executable).isFile())
             fail("messages.local_staff.native_missing");

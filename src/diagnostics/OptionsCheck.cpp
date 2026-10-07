@@ -1,3 +1,4 @@
+#include "platform/RuntimePaths.h"
 // Settings validation and current-score option checks.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -115,7 +116,7 @@ void runOptionsRangeCheck(MainWindow &window, const QCommandLineParser &args, QA
                 dialog.reject();
 
                 QTemporaryDir lessonDirectory;
-                QFile lessonAsset(QApplication::applicationDirPath() + "/assets/lessons/01-scales.json");
+                QFile lessonAsset(runtimeResourceDirectory() + "/assets/lessons/01-scales.json");
                 if (!lessonDirectory.isValid() || !lessonAsset.open(QIODevice::ReadOnly))
                     throw std::runtime_error("Cannot read lesson range fixture source");
                 auto lesson = QJsonDocument::fromJson(lessonAsset.readAll()).object();
@@ -299,7 +300,7 @@ class OptionsProbe final : public QObject
             check("Audio import has one menu entry", window_.findChild<QAction *>("menuImportAudio") &&
                                                          !window_.findChild<QAction *>("menuAudioAnalysis"));
             check("Stable release entry name",
-                  QFileInfo(QApplication::applicationFilePath()).fileName() == "SingLilt.exe");
+                  QFileInfo(QApplication::applicationFilePath()).fileName() == helperExecutableName("SingLilt"));
             for (const char *name :
                  {"fileMenu", "editMenu", "practiceMenuBar", "aiMenu", "optionsMenu", "helpMenu"})
                 check(QString("Visible menu %1").arg(name), window_.findChild<QMenu *>(name) != nullptr);

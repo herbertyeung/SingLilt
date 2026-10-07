@@ -1,3 +1,4 @@
+#include "DiagnosticAudio.h"
 // Language switching and widget-state preservation checks.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -279,7 +280,7 @@ void runLocalizationCheck(MainWindow &window, LanguageManager &languages, const 
                              state->verse = verse->currentIndex();
                              state->programA = programA->currentData().toInt();
                              state->programB = programB->currentData().toInt();
-                             window.player().setAudioBackend(AudioBackend::WindowsMidi);
+                             window.player().setAudioBackend(diagnosticAudioBackend());
                              if (auto *backend = window.findChild<QComboBox *>("audioBackend"))
                              {
                                  QSignalBlocker blocker(backend);

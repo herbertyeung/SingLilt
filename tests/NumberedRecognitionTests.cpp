@@ -27,15 +27,15 @@
 // Supply deterministic digit OCR boxes; grouping still reads the actual raster.
 namespace singlilt
 {
-OcrText recognizeWindowsText(const QImage &image, const QString &)
+OcrText recognizeText(const QImage &image, const QString &)
 {
     OcrText result;
     for (const int baseline : {130, 240, 400, 510})
         for (int i = 0; i < 8; ++i)
         {
             int left = image.width(), right = -1, top = image.height(), bottom = -1;
-            for (int y = baseline - 29; y <= baseline; ++y)
-                for (int x = 110 + i * 65; x < 138 + i * 65; ++x)
+            for (int y = baseline - 29; y <= baseline && y < image.height(); ++y)
+                for (int x = 110 + i * 65; x < 138 + i * 65 && x < image.width(); ++x)
                     if (qGray(image.pixel(x, y)) < 128)
                     {
                         left = std::min(left, x);
@@ -158,7 +158,14 @@ singlilt::Project cliResult(const QString &executable, const QImage &image, cons
     QProcess process;
     auto environment = QProcessEnvironment::systemEnvironment();
     environment.insert("OPENAI_API_KEY", "fixture");
+#ifdef Q_OS_MACOS
+    // The child uses deployed Qt; inheriting this test's Homebrew plugins loads two Qt copies.
+    environment.remove("QT_PLUGIN_PATH");
+    environment.remove("QT_QPA_PLATFORM_PLUGIN_PATH");
+    environment.insert("QT_QPA_PLATFORM", "cocoa");
+#else
     environment.insert("QT_PLUGIN_PATH", QCoreApplication::libraryPaths().join(QDir::listSeparator()));
+#endif
     process.setProcessEnvironment(environment);
     QEventLoop loop;
     QObject::connect(&process, &QProcess::finished, &loop, &QEventLoop::quit);

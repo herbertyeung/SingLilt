@@ -1,3 +1,4 @@
+#include "DiagnosticAudio.h"
 // Menu icon visibility and action-state checks.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -62,7 +63,7 @@ void runMenuIconsCheck(MainWindow &window, LanguageManager &languages, const QCo
                 const QString fixture = folder + "/run-" + QUuid::createUuid().toString(QUuid::WithoutBraces);
                 if (!QDir().mkpath(fixture))
                     throw std::runtime_error("Menu icon fixture directory could not be created");
-                auto classroom = std::make_unique<ClassroomDialog>(languages, AudioBackend::WindowsMidi,
+                auto classroom = std::make_unique<ClassroomDialog>(languages, diagnosticAudioBackend(),
                                                                    defaultLessonDirectory(),
                                                                    fixture + "/history.json", &window);
                 classroom->setAttribute(Qt::WA_DeleteOnClose, false);

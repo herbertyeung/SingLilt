@@ -1,3 +1,4 @@
+#include "PlatformFonts.h"
 // Staff notation layout, glyphs, and note positions.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -413,9 +414,9 @@ QImage renderStaffScore(Score &score, const StaffRenderOptions &options)
         options.keyFifths < -7 || options.keyFifths > 7)
         fail("messages.audio_import.notation_invalid_score");
     const QFont notationFont = musicFont();
-    QFont lyricFont("Microsoft YaHei UI");
+    QFont lyricFont(notationTextFontFamily());
     lyricFont.setPixelSize(19);
-    QFont smallFont("Microsoft YaHei UI");
+    QFont smallFont(notationTextFontFamily());
     smallFont.setPixelSize(16);
     const QFontMetricsF lyrics(lyricFont);
     const QFontMetricsF small(smallFont);
@@ -610,7 +611,7 @@ QImage renderStaffScore(Score &score, const StaffRenderOptions &options)
         fail("messages.audio_import.notation_layout_failed");
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setRenderHint(QPainter::TextAntialiasing);
-    QFont titleFont("Microsoft YaHei UI");
+    QFont titleFont(notationTextFontFamily());
     titleFont.setPixelSize(32);
     titleFont.setWeight(QFont::DemiBold);
     painter.setFont(titleFont);
@@ -761,9 +762,9 @@ QImage renderGrandStaffScore(Score &score, StaffPerformance &performance, const 
         performance.primaryStaff > performance.staffCount || performance.notes.size() > 100000)
         fail("messages.audio_import.notation_invalid_score");
     const QFont notationFont = musicFont();
-    QFont lyricFont("Microsoft YaHei UI");
+    QFont lyricFont(notationTextFontFamily());
     lyricFont.setPixelSize(19);
-    QFont smallFont("Microsoft YaHei UI");
+    QFont smallFont(notationTextFontFamily());
     smallFont.setPixelSize(16);
     const QFontMetricsF lyricMetrics(lyricFont);
     const int barTicks = ticksPerBar(score);
@@ -1284,7 +1285,7 @@ QImage renderGrandStaffScore(Score &score, StaffPerformance &performance, const 
         fail("messages.audio_import.notation_layout_failed");
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setRenderHint(QPainter::TextAntialiasing);
-    QFont titleFont("Microsoft YaHei UI");
+    QFont titleFont(notationTextFontFamily());
     titleFont.setPixelSize(32);
     titleFont.setWeight(QFont::DemiBold);
     painter.setFont(titleFont);

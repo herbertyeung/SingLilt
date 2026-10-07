@@ -1,3 +1,5 @@
+#include "DiagnosticAudio.h"
+#include "platform/RuntimePaths.h"
 // Full-voice staff playback and instrument-routing checks.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -221,7 +223,7 @@ class StaffPlaybackProbe final : public QObject
     {
         WaveRenderOptions options;
         options.maxSeconds = 600;
-        options.gmSoundFontPath = QApplication::applicationDirPath() + "/assets/soundfonts/GeneralUser-GS.sf2";
+        options.gmSoundFontPath = runtimeResourceDirectory() + "/assets/soundfonts/GeneralUser-GS.sf2";
         if (!QFileInfo(options.gmSoundFontPath).isFile())
             throw std::runtime_error("The explicit GM SoundFont for staff-instrument PCM validation is missing");
         options.startSeconds = 0.5;
@@ -321,9 +323,9 @@ class StaffPlaybackProbe final : public QObject
                 makeFixture();
                 checkWaves();
                 require(player_.setAudioBackend(args_.value("audio-backend") == "system"
-                                                    ? AudioBackend::WindowsMidi
+                                                    ? diagnosticAudioBackend()
                                                     : AudioBackend::SampledPiano));
-                require(player_.setGmSoundFontPath(QApplication::applicationDirPath() +
+                require(player_.setGmSoundFontPath(runtimeResourceDirectory() +
                                                    "/assets/soundfonts/GeneralUser-GS.sf2"));
                 player_.setSpeed(0.25);
                 require(player_.load(score_, timeline_, plan_, settings_));

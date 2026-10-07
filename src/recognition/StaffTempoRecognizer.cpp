@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "StaffTempoRecognizer.h"
-#include "WindowsOcr.h"
+#include "PlatformOcr.h"
 #include <QPainter>
 #include <QRegularExpression>
 #include <algorithm>
@@ -144,7 +144,7 @@ StaffTempoSuggestion recognizeStaffTempo(const QImage &image)
     // The bounded header stays above the first staff; credit/page numbers are never bare tempo candidates.
     if (header.width() < 2000)
         header = header.scaledToWidth(2000, Qt::SmoothTransformation);
-    const auto ocr = recognizeWindowsText(header, QStringLiteral("en-US"));
+    const auto ocr = recognizeText(header, QStringLiteral("en-US"));
     const auto rectangle = result.sourceRect;
     result = parseQuarterTempoText(ocr.text);
     result.sourceRect = rectangle;

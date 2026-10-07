@@ -11,7 +11,7 @@ set(CMAKE_SYSTEM_NAME Linux)
 include("${SINGLILT_SOURCE_ROOT}/cmake/Sources.cmake")
 set(windows_sources src/audio/MicrophoneCapture.cpp src/audio/OriginalAudioPlayer.cpp
     src/audio/MidiInstrument.cpp src/recognition/WindowsOcr.cpp)
-set(linux_sources src/audio/linux/MicrophoneCapture.cpp src/audio/linux/OriginalAudioPlayer.cpp
+set(linux_sources src/audio/linux/MicrophoneCapture.cpp src/audio/QtOriginalAudioPlayer.cpp
     src/audio/linux/MidiInstrument.cpp src/audio/linux/MidiRouting.h src/recognition/linux/TextOcr.cpp
     src/recognition/linux/AudioDecoder.cpp src/recognition/linux/AudioDecoder.h src/platform/LinuxRuntime.h)
 foreach(source IN LISTS linux_sources)
@@ -39,3 +39,20 @@ endforeach()
 list(LENGTH linux_sources linux_count)
 list(LENGTH windows_sources windows_count)
 message(STATUS "Platform source selection: PASS Linux=${linux_count} Windows=${windows_count}; mutually exclusive")
+
+set(CMAKE_SYSTEM_NAME Darwin)
+set(APPLE TRUE)
+include("${SINGLILT_SOURCE_ROOT}/cmake/Sources.cmake")
+foreach(source src/audio/QtOriginalAudioPlayer.cpp src/audio/QtMicrophoneCapture.cpp
+        src/audio/QtAudioDecode.cpp src/recognition/MacOcr.mm)
+    if(NOT source IN_LIST APP_FILES OR NOT EXISTS "${SINGLILT_SOURCE_ROOT}/${source}")
+        message(FATAL_ERROR "macOS source selection: FAIL missing ${source}")
+    endif()
+endforeach()
+foreach(source src/audio/OriginalAudioPlayer.cpp src/audio/MicrophoneCapture.cpp
+        src/recognition/WindowsOcr.cpp src/audio/linux/MidiInstrument.cpp src/recognition/linux/TextOcr.cpp)
+    if(source IN_LIST APP_FILES)
+        message(FATAL_ERROR "macOS source selection: FAIL selected foreign backend ${source}")
+    endif()
+endforeach()
+message(STATUS "macOS source selection: PASS shared Qt player and native audio/Vision backends")

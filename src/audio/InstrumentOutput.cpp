@@ -10,6 +10,12 @@ namespace singlilt {
 
 bool InstrumentOutput::setBackend(AudioBackend backend)
 {
+#ifdef Q_OS_MACOS
+    if (backend == AudioBackend::WindowsMidi) {
+        selectionError_ = trText("messages.audio.windows_required");
+        return false;
+    }
+#endif
     if (backend != AudioBackend::SampledPiano && backend != AudioBackend::WindowsMidi) {
         selectionError_ = trText("messages.audio.unknown_backend");
         return false;

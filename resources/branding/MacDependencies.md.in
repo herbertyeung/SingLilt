@@ -1,0 +1,13 @@
+# Native macOS dependencies
+
+This build uses dynamically linked Qt @Qt6_VERSION@, FluidSynth @FLUIDSYNTH_VERSION@ and their runtime dependencies. Qt Core, GUI, Widgets, Network, Concurrent and Multimedia are used. Their library versions must match the deployed plugin versions.
+
+Qt is Copyright The Qt Company Ltd. and contributors. LGPLv3 and GPLv3 texts are under `licenses/`. Corresponding Qt source modules, including their bundled third-party notices, are available at https://download.qt.io/archive/qt/@Qt6_VERSION_MAJOR@.@Qt6_VERSION_MINOR@/@Qt6_VERSION@/submodules/ . Native Qt build provenance and component information are recorded in the included SBOM files. Homebrew formula/build scripts are at https://github.com/Homebrew/homebrew-core . See https://doc.qt.io/qt-@Qt6_VERSION_MAJOR@.@Qt6_VERSION_MINOR@/licenses-used-in-qt.html for bundled-component notices.
+
+FluidSynth is LGPL; its notices are under `licenses/fluidsynth/`. Corresponding source is https://github.com/FluidSynth/fluidsynth/releases/tag/v@FLUIDSYNTH_VERSION@ . Native FluidSynth is obtained from Homebrew rather than the Windows runtime referred to by older notices. libsndfile is LGPL; its notices are under `licenses/fluidsynth/`, source https://github.com/libsndfile/libsndfile/releases . Additional copied Homebrew dependencies and their receipt/SBOM data are in `licenses/macos-runtime/`; use the versions and source locations from those receipts when obtaining corresponding source.
+
+Salamander Grand Piano v3: Alexander Holm, SF2 adaptation Roberto/FreePats, CC-BY-3.0. GeneralUser GS 2.0.3: S. Christian Collins. Bravura: Steinberg, SIL OFL 1.1. Their complete tracked notices accompany this application. Original Windows system GM samples are not included.
+
+CrispEmbed v0.17.12 macOS arm64 and ggml: MIT; Transcoda-59M-Q8: CC-BY-4.0, original model by btrkeks, GGUF conversion by CrispStrobe/cstr. Details, source links, model card and licenses are under `tools/omr-native/licenses` when the optional engine is bundled. Optional Whisper and vocal separation components are not included in this Mac baseline.
+
+Recipients may modify and relink LGPL libraries. This app is ad hoc signed and has no private-key installation lock: replace ABI-compatible dylibs/frameworks under `Contents/Frameworks`, preserve their install names, and sign modified nested code and the app with `codesign --force --sign -`. A full rebuild with a different ABI needs this MIT application source from its distributor. See `MACOS.md` for build and signing instructions. Keep all license notices and do not restrict recipients' LGPL rights.

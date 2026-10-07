@@ -4,7 +4,7 @@
 
 ## English
 
-SingLilt is a desktop app for Windows and Ubuntu that helps you play scores and practise singing. It is written in C++20 with Qt 6. Import a score, check the notes against the original, and save it as a JPP project. You can slow down playback, transpose the score, or repeat a difficult phrase.
+SingLilt is a desktop app for Windows, Ubuntu and macOS that helps you play scores and practise singing. It is written in C++20 with Qt 6. Import a score, check the notes against the original, and save it as a JPP project. You can slow down playback, transpose the score, or repeat a difficult phrase.
 
 [Project website](https://herbertyeung.github.io/SingLilt/)
 
@@ -28,6 +28,10 @@ The Windows core packages include the piano sound bank and native staff-recognit
 Start with a built-in exercise, or import your own material, check it, and save it as a `.jpp` project.
 
 [Quick start](docs/QUICK_START.md) · [Options](docs/OPTIONS.md) · [Staff notation](docs/STAFF_NOTATION.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
+
+### macOS development
+
+The local macOS implementation uses C++20 and Qt 6. See [macOS build instructions](docs/MACOS.md). The current desktop preset is Apple Silicon / macOS 26; Intel and older macOS compatibility have not been verified. Mac packages are not published yet.
 
 ### Build from source on Windows
 
@@ -89,6 +93,10 @@ Windows core 包含钢琴音源与本地五线谱识别组件，不依赖外部 
 第一次打开可直接播放内置练习；使用自己的材料时，先导入，再核对，最后保存为 `.jpp`。
 
 [快速入门](docs/QUICK_START.md) · [选项](docs/OPTIONS.md) · [五线谱](docs/STAFF_NOTATION.md) · [排障](docs/TROUBLESHOOTING.md)
+
+### macOS 本地开发
+
+Mac 版本与 Windows 共用 C++20 和 Qt 6 代码，见 [macOS 构建说明](docs/MACOS.md)。当前桌面构建配置面向 Apple Silicon / macOS 26；Intel 和旧系统兼容性尚未验证。Mac 安装包尚未发布。
 
 ### 从源码构建
 

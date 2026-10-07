@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "LocalRecognizer.h"
-#include "WindowsOcr.h"
+#include "PlatformOcr.h"
 #include "domain/NumberedPerformance.h"
 #include "i18n/LanguageManager.h"
 
@@ -463,7 +463,7 @@ void metadata(const QImage &image, const Raster &raster, const OcrText &full, co
     const int headerWidth = std::max(1, image.width() / 3);
     const QRect headerBox =
         tightBox(raster, QRect(0, 0, headerWidth, headerEnd)).adjusted(-8, -8, 8, 8).intersected(image.rect());
-    const auto header = recognizeWindowsText(
+    const auto header = recognizeText(
         image.copy(headerBox).scaledToHeight(headerBox.height() * 4, Qt::SmoothTransformation),
         QStringLiteral("en-US"));
     result.debugText += QStringLiteral("\n--- Enlarged header ---\n") + header.text + header.error;
@@ -729,7 +729,7 @@ RecognitionResult LocalRecognizer::recognize(const QImage &input, const QString 
     // Normalize large portrait pages while keeping original-image anchors.
     if (image.width() > 1100 && image.height() > image.width() * 1.1)
         image = image.scaledToWidth(900, Qt::FastTransformation);
-    auto ocr = recognizeWindowsText(image);
+    auto ocr = recognizeText(image);
     auto rows = musicRows(ocr);
     // Normalize glyph size, not page dimensions: low-resolution OCR often drops
     // entire notation rows. Enlargement helps detection but cannot recover lost strokes.
@@ -745,7 +745,7 @@ RecognitionResult LocalRecognizer::recognize(const QImage &input, const QString 
             const double factor = std::min({14.5 / median, 2200.0 / image.width(), 3200.0 / image.height()});
             image = image.scaledToWidth(std::max(1, int(std::lround(image.width() * factor))),
                                         Qt::SmoothTransformation);
-            ocr = recognizeWindowsText(image);
+            ocr = recognizeText(image);
             rows = musicRows(ocr);
             if (median < 12)
                 result.warnings << trText("messages.recognition.small_notes");
@@ -753,7 +753,7 @@ RecognitionResult LocalRecognizer::recognize(const QImage &input, const QString 
     }
     const double sourceScale = double(input.width()) / image.width();
     const auto raster = makeRaster(image);
-    result.debugText = QStringLiteral("Windows OCR language: %1\n%2").arg(ocr.language, ocr.text);
+    result.debugText = QStringLiteral("OCR language: %1\n%2").arg(ocr.language, ocr.text);
     if (!ocr.error.isEmpty())
         result.warnings << ocr.error;
     auto templates = fontTemplates();

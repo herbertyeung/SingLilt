@@ -1,3 +1,5 @@
+#include "DiagnosticAudio.h"
+#include "platform/RuntimePaths.h"
 // Staff import, correction, persistence, and playback checks.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -59,7 +61,7 @@ void runStaffWorkflowCheck(MainWindow &window, LanguageManager &languages, const
                 if (!QDir().mkpath(fixture))
                     throw std::runtime_error("Staff workflow output could not be created");
                 const QString xml =
-                    QApplication::applicationDirPath() + "/assets/staff-samples/singlilt-grand-staff.musicxml";
+                    runtimeResourceDirectory() + "/assets/staff-samples/singlilt-grand-staff.musicxml";
                 window.importMusicXml(xml, 0);
                 check("Complete MusicXML import creates grand staff and performance",
                       window.project().staffPerformance && window.project().staffPerformance->notes.size() == 14 &&
@@ -199,7 +201,7 @@ void runStaffWorkflowCheck(MainWindow &window, LanguageManager &languages, const
                 check("Written ties are merged into 11 simultaneous sounding events",
                       plan.valid() && plan.events.size() == 11);
                 window.setProject(reopened);
-                window.player().setAudioBackend(AudioBackend::WindowsMidi);
+                window.player().setAudioBackend(diagnosticAudioBackend());
                 window.player().seek(0);
                 check("Real transport starts full-staff playback", window.player().play());
                 QElapsedTimer elapsed;

@@ -1,3 +1,4 @@
+#include "DiagnosticAudio.h"
 // Staff-note source-anchor correction regressions.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -500,7 +501,7 @@ void runStaffAnchorCorrectionCheck(MainWindow &window, const QCommandLineParser 
                 check("Production anchor correction screenshot saves", window.grab().save(screenshot));
                 artifacts.append(screenshot);
                 check("Production playback backend selects Windows MIDI explicitly",
-                      window.player().setAudioBackend(AudioBackend::WindowsMidi));
+                      window.player().setAudioBackend(diagnosticAudioBackend()));
                 play->click();
                 check("Starting production playback returns to practice mode",
                       waitUntil(

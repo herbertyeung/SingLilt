@@ -18,6 +18,7 @@ set(CORE_FILES
 )
 
 set(NUMBERED_RECOGNITION_FILES
+    src/platform/RuntimePaths.h src/platform/RuntimePaths.cpp
     src/recognition/LocalRecognizer.h src/recognition/LocalRecognizer.cpp
     src/recognition/CloudRecognizer.h src/recognition/CloudRecognizer.cpp
     src/i18n/LanguageManager.h src/i18n/LanguageManager.cpp
@@ -29,7 +30,7 @@ set(NUMBERED_RECOGNITION_FILES
 
 set(APP_FILES
     ${NUMBERED_RECOGNITION_FILES}
-    src/platform/RuntimePaths.h
+    src/recognition/PlatformOcr.cpp
     src/diagnostics/ThemeCheck.h src/diagnostics/ThemeCheck.cpp
     src/ui/ThemeManager.h src/ui/ThemeManager.cpp
     src/diagnostics/NativeStaffProcessCheck.h src/diagnostics/NativeStaffProcessCheck.cpp
@@ -152,10 +153,17 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         src/audio/MidiInstrument.cpp src/recognition/WindowsOcr.cpp)
     list(APPEND APP_FILES
         src/audio/linux/MicrophoneCapture.cpp
-        src/audio/linux/OriginalAudioPlayer.cpp
+        src/audio/QtOriginalAudioPlayer.cpp
         src/audio/linux/MidiInstrument.cpp
         src/audio/linux/MidiRouting.h
         src/recognition/linux/TextOcr.cpp
         src/recognition/linux/AudioDecoder.h src/recognition/linux/AudioDecoder.cpp
         src/platform/LinuxRuntime.h)
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    list(REMOVE_ITEM APP_FILES src/audio/OriginalAudioPlayer.cpp src/audio/MicrophoneCapture.cpp
+        src/recognition/WindowsOcr.cpp)
+    list(APPEND APP_FILES src/audio/QtOriginalAudioPlayer.cpp src/audio/QtMicrophoneCapture.cpp
+        src/audio/QtAudioDecode.cpp src/recognition/MacOcr.mm)
 endif()

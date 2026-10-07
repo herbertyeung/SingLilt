@@ -1,3 +1,4 @@
+#include "platform/RuntimePaths.h"
 // FluidSynth sound-bank loading and sampled note rendering.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -35,7 +36,7 @@ QString defaultPianoPath()
     if (configured.isEmpty())
         return linuxPianoSoundFontPath(QCoreApplication::applicationDirPath());
 #endif
-    return configured.isEmpty() ? QCoreApplication::applicationDirPath() + "/assets/soundfonts/Salamander.sf2"
+    return configured.isEmpty() ? runtimeResourceDirectory() + "/assets/soundfonts/Salamander.sf2"
                                 : QFileInfo(configured).absoluteFilePath();
 }
 
@@ -54,7 +55,7 @@ QString systemGmPath()
 
 QString defaultGmPath()
 {
-    const QString bundled = QCoreApplication::applicationDirPath() + "/assets/soundfonts/GeneralUser-GS.sf2";
+    const QString bundled = runtimeResourceDirectory() + "/assets/soundfonts/GeneralUser-GS.sf2";
     return QFileInfo(bundled).isFile() ? bundled : systemGmPath();
 }
 
@@ -162,6 +163,8 @@ bool SoundFontInstrument::open(bool realtime)
         fluid_settings_foreach_option(settings, "audio.driver", &available, collectDriver);
 #ifdef Q_OS_LINUX
         const QStringList candidates{QStringLiteral("pulseaudio"), QStringLiteral("alsa")};
+#elif defined(Q_OS_MACOS)
+        const QStringList candidates{QStringLiteral("coreaudio")};
 #else
         const QStringList candidates{QStringLiteral("wasapi"), QStringLiteral("dsound"), QStringLiteral("waveout"),
                                      QStringLiteral("sdl3")};

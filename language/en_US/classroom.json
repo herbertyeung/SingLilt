@@ -122,5 +122,6 @@
   "ui.classroom.feedback_ready": "Feedback ready",
   "cli.classroom": "Open the singing classroom",
   "ui.classroom.note_preview": "Short note preview · equal attack strength; full playback remains stopped",
-  "cli.note_preview_check": "Verify clicked-note preview"
+  "cli.note_preview_check": "Verify clicked-note preview",
+  "messages.mic.permission_denied": "Microphone access is denied. Allow SingLilt in System Settings > Privacy & Security > Microphone."
 }

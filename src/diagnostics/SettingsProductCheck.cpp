@@ -1,10 +1,10 @@
+#include "platform/RuntimePaths.h"
 // Settings changes and optional-component validation checks.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
 // SPDX-License-Identifier: MIT
 
 #include "SettingsProductCheck.h"
-#include "platform/RuntimePaths.h"
 #include "recognition/AudioTranscriber.h"
 #include "settings/AppSettings.h"
 #include "settings/CapabilityStatus.h"

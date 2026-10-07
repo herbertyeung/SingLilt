@@ -1,3 +1,4 @@
+#include "DiagnosticAudio.h"
 // Appearance selection, persistence, system changes, and display-only regressions.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -117,7 +118,7 @@ void runThemeCheck(MainWindow &window, LanguageManager &languages, ThemeManager 
                 check(curve.grab().toImage().pixelColor(5, 5).lightness() < 128,
                       "custom pitch chart uses dark background");
                 check(curve.grab().save(folder + "/curve-dark.png"), "dark chart screenshot");
-                ClassroomDialog classroom(languages, AudioBackend::WindowsMidi, defaultLessonDirectory(),
+                ClassroomDialog classroom(languages, diagnosticAudioBackend(), defaultLessonDirectory(),
                                           folder + "/history.json", &window);
                 classroom.show();
                 pump();

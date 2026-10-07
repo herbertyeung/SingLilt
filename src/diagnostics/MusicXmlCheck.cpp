@@ -1,3 +1,4 @@
+#include "platform/RuntimePaths.h"
 // MusicXML import, timing, and voice-preservation regressions.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -35,7 +36,7 @@ QByteArray readBytes(const QString &path)
 
 QString sampleDirectory()
 {
-    const auto deployed = QApplication::applicationDirPath() + "/assets/staff-samples";
+    const auto deployed = runtimeResourceDirectory() + "/assets/staff-samples";
     return QFileInfo::exists(deployed) ? deployed : QDir("assets/staff-samples").absolutePath();
 }
 

@@ -1,3 +1,7 @@
+#ifdef __APPLE__
+#include "audio/QtAudioDecode.h"
+#endif
+#include "platform/RuntimePaths.h"
 // Audio decoding, melody analysis, and local lyric transcription.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -6,7 +10,6 @@
 #include "AudioTranscriber.h"
 #include "VocalSeparator.h"
 #include "i18n/LanguageManager.h"
-#include "platform/RuntimePaths.h"
 
 #include <QCoreApplication>
 #include <QDataStream>
@@ -265,6 +268,20 @@ DecodedAudio decodeAudio(const QString &path, const AudioTranscriptionOptions &o
     {
         throw Cancelled{};
     }
+#elif defined(Q_OS_MACOS)
+    DecodedAudio audio;
+    audio.start = options.startSeconds;
+    try {
+        audio.samples = decodeMonoAudio(path, DecodeRate, options.startSeconds, options.endSeconds,
+                                        audio.duration, cancellation);
+    } catch (...) {
+        checkCancellation(cancellation);
+        throw;
+    }
+    audio.end = std::min(options.endSeconds, audio.duration);
+    if (durationMetadata) *durationMetadata = audio.duration;
+    report(progress, 25, "messages.audio_transcription.progress_decode");
+    return audio;
 #else
     Q_UNUSED(path);
     Q_UNUSED(options);
@@ -771,12 +788,11 @@ void recognizeLyrics(AudioTranscriptionResult &result, const DecodedAudio &audio
                      const std::shared_ptr<std::atomic_bool> &cancellation,
                      const AudioTranscriptionProgress &progress)
 {
-    const QString executable =
-        options.whisperExecutable.isEmpty()
-            ? QCoreApplication::applicationDirPath() + "/tools/whisper/whisper-cli" + NativeExecutableSuffix
-            : options.whisperExecutable;
+    const QString executable = options.whisperExecutable.isEmpty()
+                                   ? runtimeResourceDirectory() + "/tools/whisper/" + helperExecutableName("whisper-cli")
+                                   : options.whisperExecutable;
     const QString model = options.whisperModel.isEmpty()
-                              ? QCoreApplication::applicationDirPath() + "/models/ggml-base.bin"
+                              ? runtimeResourceDirectory() + "/models/ggml-base.bin"
                               : options.whisperModel;
     if (!QFileInfo(executable).isFile() || !QFileInfo(model).isFile())
         fail("messages.audio_transcription.missing_whisper");

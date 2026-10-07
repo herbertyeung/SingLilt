@@ -1,4 +1,4 @@
-// UI-thread-owned Linux original audio playback through Qt Multimedia.
+// UI-thread-owned cross-platform original audio playback through Qt Multimedia.
 // Copyright (c) 2026 Herbert Yeung
 // SPDX-License-Identifier: MIT
 
