@@ -2,6 +2,8 @@
 # Copyright (c) 2026 Herbert Yeung
 # SPDX-License-Identifier: MIT
 
+cmake_minimum_required(VERSION 3.30)
+
 if(NOT DEFINED SINGLILT_SOURCE_ROOT)
     get_filename_component(SINGLILT_SOURCE_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 endif()

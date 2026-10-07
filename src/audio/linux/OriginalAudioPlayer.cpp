@@ -55,6 +55,11 @@ bool OriginalAudioPlayer::open(const QString &path)
     if (isOpen() && impl_->path == file.absoluteFilePath())
         return true;
     auto candidate = std::make_unique<Impl>();
+    if (!candidate->player.isAvailable())
+    {
+        impl_->error = trText("messages.audio_source.media_backend_missing");
+        return false;
+    }
     candidate->volume = impl_->volume;
     candidate->output.setVolume(static_cast<float>(candidate->volume));
     QEventLoop loop;

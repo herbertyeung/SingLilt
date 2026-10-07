@@ -1,3 +1,4 @@
 {
-  "messages.audio.linux_midi_destination": "未发现可用的 ALSA MIDI 接收端。请启动 MIDI 合成器，或选择 SoundFont 播放。"
+  "messages.audio.linux_midi_destination": "未发现可用的 ALSA MIDI 接收端。请启动 MIDI 合成器，或选择 SoundFont 播放。",
+  "messages.audio_source.media_backend_missing": "Qt Multimedia 后端未加载。请检查 Qt 媒体插件及其 FFmpeg 依赖库。"
 }

@@ -1,3 +1,4 @@
 {
-  "messages.audio.linux_midi_destination": "No ALSA MIDI destination is available. Start a MIDI synthesizer or select SoundFont playback."
+  "messages.audio.linux_midi_destination": "No ALSA MIDI destination is available. Start a MIDI synthesizer or select SoundFont playback.",
+  "messages.audio_source.media_backend_missing": "Qt Multimedia is unavailable. Check the Qt media plugin and its FFmpeg libraries."
 }

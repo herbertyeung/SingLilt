@@ -18,7 +18,10 @@ bash scripts/build-linux.sh Release
 build/bin/Release/SingLilt
 ```
 
-Qt 6.8.3 is downloaded into `build/_deps/Qt`; distro Qt versions older than 6.8 do
+Qt 6.8.3 (including ICU, Qt Declarative and Multimedia) is downloaded into
+`build/_deps/Qt`. The supplied FFmpeg media plugin also links Qt Quick/QML libraries,
+even though the application uses Widgets. Setup checks the actual plugin dependencies
+with `ldd` before building. Distro Qt versions older than 6.8 do
 not satisfy the existing theme APIs. You can instead supply your own Qt >= 6.8
 (including Multimedia and Core private headers) via `CMAKE_PREFIX_PATH`. Development
 libraries are discovered through pkg-config and CMake's ALSA package.
