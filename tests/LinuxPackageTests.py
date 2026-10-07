@@ -37,8 +37,12 @@ def main():
     dependencies = run(["ldd", str(executable)])
     for line in dependencies.splitlines():
         match = re.search(r"(libQt6\S+|libicu\S+|libav(?:codec|format|util)\S+|libsw(?:resample|scale)\S+) => (.*?) \(", line)
-        if match and not Path(match.group(2)).resolve().is_relative_to(qt_libraries.resolve()):
-            raise AssertionError(f"Runtime escaped the package: {line}")
+        if match:
+            library, resolved = match.groups()
+            # Distribution libraries may independently need another ICU/codec ABI.
+            bundled = library.startswith("libQt6") or (qt_libraries / library).is_file()
+            if bundled and not Path(resolved).resolve().is_relative_to(qt_libraries.resolve()):
+                raise AssertionError(f"Runtime escaped the package: {line}")
     if "not found" in dependencies:
         raise AssertionError(dependencies)
     if not run([str(launcher), "--version", "--language", "en_US"]).strip().startswith("SingLilt "):
