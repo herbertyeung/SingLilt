@@ -176,6 +176,12 @@ bool OriginalAudioPlayer::isLoading() const
     return bool(impl_->pending);
 }
 
+void OriginalAudioPlayer::cancelOpen()
+{
+    impl_->pending.reset();
+    impl_->completion = {};
+}
+
 void OriginalAudioPlayer::close()
 {
     impl_->pending.reset();

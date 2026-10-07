@@ -25,6 +25,9 @@ inline QString linuxPianoSoundFontPath(const QString &directory)
 {
     const QString bundled = directory + "/assets/soundfonts/Salamander.sf2";
     const QFileInfo bank(bundled);
-    return bank.isFile() && bank.isReadable() && bank.size() > 0 ? bundled : linuxGmSoundFontPath();
+    if (bank.isFile() && bank.isReadable() && bank.size() > 0)
+        return bundled;
+    const QString system = linuxGmSoundFontPath();
+    return system.isEmpty() ? bundled : system;
 }
 } // namespace singlilt

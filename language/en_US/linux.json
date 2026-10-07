@@ -1,5 +1,6 @@
 {
   "messages.audio.linux_midi_destination": "No ALSA MIDI destination is available. Start a MIDI synthesizer or select SoundFont playback.",
   "messages.audio_source.media_backend_missing": "Qt Multimedia is unavailable. Check the Qt media plugin and its FFmpeg libraries.",
-  "messages.recognition.ocr_failed": "Tesseract OCR failed."
+  "messages.recognition.ocr_failed": "Tesseract OCR failed.",
+  "ui.status.loading_audio": "Audio is loading. Press Play again when loading finishes."
 }

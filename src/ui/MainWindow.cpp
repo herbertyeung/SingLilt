@@ -774,6 +774,11 @@ void MainWindow::updateNote()
 }
 void MainWindow::updatePlayback()
 {
+    if (originalAudio_.isLoading())
+    {
+        setStatus("ui.status.loading_audio");
+        return;
+    }
     if (player_.isPreviewLoading())
         return;
     if (notePreviewLoading_)
@@ -866,7 +871,7 @@ void MainWindow::togglePlayback()
 {
     if (originalAudio_.isLoading())
     {
-        setStatus("ui.audio_import.finish_pending");
+        setStatus("ui.status.loading_audio");
         return;
     }
     if (busy_ || audioLoading_)

@@ -13,7 +13,10 @@ import tempfile
 def main():
     prefix = Path(sys.argv[1]).resolve()
     launcher = prefix / "bin/singlilt"
-    executable = next(prefix.rglob("SingLilt"))
+    candidates = [path for path in prefix.rglob("SingLilt") if path.is_file()]
+    if len(candidates) != 1:
+        raise AssertionError(f"Expected one SingLilt executable, found {len(candidates)}")
+    executable = candidates[0]
     qt_libraries = executable.parent / "qt/lib"
     environment = dict(os.environ)
     for key in ("LD_LIBRARY_PATH", "QT_PLUGIN_PATH", "QT_QPA_PLATFORM_PLUGIN_PATH", "QTDIR", "QML2_IMPORT_PATH"):

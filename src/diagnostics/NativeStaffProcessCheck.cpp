@@ -63,7 +63,12 @@ bool processEnded(int processId, const QString &procRoot = "/proc")
             return kill(processId, 0) < 0 && errno == ESRCH;
         const QByteArray contents = status.readAll();
         if (status.error() != QFileDevice::NoError || contents.isEmpty())
-            return false;
+        {
+            if (kill(processId, 0) < 0 && errno == ESRCH)
+                return true;
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            continue;
+        }
         const auto endName = contents.lastIndexOf(')');
         if (endName >= 0 && contents.mid(endName + 2, 1) == "Z")
             return true;

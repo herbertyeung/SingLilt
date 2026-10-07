@@ -152,6 +152,14 @@ int main(int argc, char **argv)
         check(!player.open(longWave) &&
                   player.errorString() == trText("messages.audio_transcription.duration_limit"),
               "oversized media has the duration diagnostic");
+        const QString nextWave = temporary.filePath("next.wav");
+        check(QFile::copy(wave, nextWave), "replacement source fixture");
+        bool cancelledReplacement = false;
+        player.openAsync(nextWave, &app, [&](bool) { cancelledReplacement = true; });
+        player.cancelOpen();
+        QCoreApplication::processEvents();
+        check(!cancelledReplacement && !player.isLoading() && player.sourcePath() == wave && player.isOpen(),
+              "cancel pending replacement preserves accepted source");
         check(player.stop() && player.positionSeconds() == 0, "stop resets original clock");
         player.close();
         player.close();

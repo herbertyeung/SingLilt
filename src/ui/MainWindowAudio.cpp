@@ -112,24 +112,28 @@ class PreviewAudioSession final : public QObject
     {
         return error_;
     }
-    bool play(const QString &path, double startSeconds)
+    bool requestPlay(const QString &path, double startSeconds)
     {
         error_.clear();
         if (!audio_.isOpen() ||
             QFileInfo(audio_.sourcePath()).absoluteFilePath() != QFileInfo(path).absoluteFilePath())
         {
+            setProperty("auditionLoading", true);
+            setProperty("auditionPlaying", false);
             const auto fingerprint = audioTimingFingerprint(window_.project().score);
             const auto image = window_.project().image.cacheKey();
             audio_.openAsync(path, this,
                              [this, path, startSeconds, fingerprint, image](bool opened)
                              {
+                                 setProperty("auditionLoading", false);
                                  if (fingerprint != audioTimingFingerprint(window_.project().score) ||
                                      image != window_.project().image.cacheKey())
                                  {
                                      audio_.close();
+                                     setProperty("auditionLoading", false);
                                      return;
                                  }
-                                 if (!opened || !play(path, startSeconds))
+                                 if (!opened || !requestPlay(path, startSeconds))
                                      reportError_(audio_.errorString().isEmpty() ? error_ : audio_.errorString());
                              });
             return true;
@@ -176,6 +180,7 @@ class PreviewAudioSession final : public QObject
     {
         stateTimer_.stop();
         audio_.close();
+        setProperty("auditionLoading", false);
         setProperty("auditionPlaying", false);
         setProperty("auditionPositionSeconds", 0.0);
         if (active_ && acceptedTransportUnchanged())
@@ -200,6 +205,7 @@ class PreviewAudioSession final : public QObject
     {
         stateTimer_.stop();
         audio_.close();
+        setProperty("auditionLoading", false);
         setProperty("auditionPlaying", false);
         setProperty("auditionPositionSeconds", 0.0);
         active_ = false;
@@ -537,7 +543,7 @@ void MainWindow::populateAudioImportDialog(const QString &path, QDialog *dialog,
     connect(listen, &QPushButton::clicked, dialog,
             [this, path, start, audition]
             {
-                if (!audition->play(path, start->value()))
+                if (!audition->requestPlay(path, start->value()))
                     setStatusMessage(audition->errorString());
                 else
                     setStatus("ui.vocal_separation.import_audition");
@@ -649,7 +655,7 @@ void MainWindow::previewAudioResult()
         instrumental->setEnabled(separated && !instrumentalPath.isEmpty());
         auto listen = [this, audition, startSeconds](const QString &path)
         {
-            if (!audition->play(path, startSeconds))
+            if (!audition->requestPlay(path, startSeconds))
                 setStatusMessage(audition->errorString());
             else
                 setStatus("ui.vocal_separation.preview_audition");
@@ -746,12 +752,14 @@ void MainWindow::changePlaybackSource()
         const QString path = project_.audioSource ? inputPath(*project_.audioSource, requested) : QString();
         if (path.isEmpty())
         {
+            originalAudio_.cancelOpen();
             setStatus(requested == 1 ? "ui.audio_import.no_original" : "ui.vocal_separation.no_stems");
             restoreSelection();
             return;
         }
         if (!QFileInfo(path).isFile())
         {
+            originalAudio_.cancelOpen();
             setStatus("messages.vocal_separation.missing_playback_file", {path});
             restoreSelection();
             return;
@@ -801,6 +809,11 @@ void MainWindow::changePlaybackSource()
             path, this,
             [this, requested, previous, previousSeconds, previousTick, restorePlayback](bool opened)
             {
+                if (playbackSource_->currentData().toInt() != requested)
+                {
+                    restorePlayback(trText("ui.status.loading_audio"));
+                    return;
+                }
                 if (opened)
                     if (auto *speed = findChild<QDoubleSpinBox *>("originalSpeed"))
                         opened = originalAudio_.setSpeed(speed->value());

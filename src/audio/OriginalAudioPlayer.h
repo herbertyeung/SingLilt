@@ -29,6 +29,7 @@ class OriginalAudioPlayer final
     // UI callers use the completion path; replacement/cancellation suppresses stale callbacks.
     void openAsync(const QString &path, QObject *context, std::function<void(bool)> completion);
     bool isLoading() const;
+    void cancelOpen();
     void close();
     bool isOpen() const;
     bool play();
