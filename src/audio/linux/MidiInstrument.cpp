@@ -3,10 +3,13 @@
 // SPDX-License-Identifier: MIT
 
 #include "audio/MidiInstrument.h"
+#include "MidiRouting.h"
 #include "i18n/LanguageManager.h"
 #include <algorithm>
 #include <alsa/asoundlib.h>
 #include <cmath>
+#include <poll.h>
+#include <vector>
 
 namespace singlilt
 {
@@ -69,7 +72,19 @@ struct MidiInstrument::Impl
             error = trText("messages.audio.invalid_midi_data");
             return false;
         }
-        return check(snd_seq_event_output_direct(handle.get(), &event));
+        int statusCode = snd_seq_event_output_direct(handle.get(), &event);
+        if (statusCode == -EAGAIN)
+        {
+            const int count = snd_seq_poll_descriptors_count(handle.get(), POLLOUT);
+            if (count > 0)
+            {
+                std::vector<pollfd> descriptors(static_cast<std::size_t>(count));
+                if (snd_seq_poll_descriptors(handle.get(), descriptors.data(), count, POLLOUT) == count &&
+                    poll(descriptors.data(), descriptors.size(), 20) > 0)
+                    statusCode = snd_seq_event_output_direct(handle.get(), &event);
+            }
+        }
+        return check(statusCode);
     }
 };
 
@@ -105,6 +120,14 @@ bool MidiInstrument::open()
     snd_seq_client_info_alloca(&client);
     snd_seq_port_info_alloca(&port);
     snd_seq_client_info_set_client(client, -1);
+    struct Destination
+    {
+        int client;
+        int port;
+        int priority;
+        QString name;
+    };
+    std::vector<Destination> destinations;
     while (snd_seq_query_next_client(rawHandle, client) >= 0)
     {
         const int destination = snd_seq_client_info_get_client(client);
@@ -115,15 +138,24 @@ bool MidiInstrument::open()
         while (snd_seq_query_next_port(rawHandle, port) >= 0)
         {
             const unsigned int capabilities = snd_seq_port_info_get_capability(port);
-            constexpr unsigned int Required = SND_SEQ_PORT_CAP_WRITE | SND_SEQ_PORT_CAP_SUBS_WRITE;
             const unsigned int type = snd_seq_port_info_get_type(port);
-            if ((capabilities & Required) != Required ||
-                !(type & (SND_SEQ_PORT_TYPE_MIDI_GENERIC | SND_SEQ_PORT_TYPE_SYNTHESIZER)))
+            const QString clientName = QString::fromUtf8(snd_seq_client_info_get_name(client));
+            const QString portName = QString::fromUtf8(snd_seq_port_info_get_name(port));
+            const int priority = midiDestinationPriority(capabilities, type, clientName, portName);
+            if (priority == 0)
                 continue;
-            if (snd_seq_connect_to(rawHandle, impl_->port, destination, snd_seq_port_info_get_port(port)) < 0)
-                continue;
-            impl_->device = QString::fromUtf8(snd_seq_client_info_get_name(client)) + " / " +
-                            QString::fromUtf8(snd_seq_port_info_get_name(port));
+            destinations.push_back(
+                {destination, snd_seq_port_info_get_port(port), priority, clientName + " / " + portName});
+        }
+    }
+    std::stable_sort(destinations.begin(), destinations.end(),
+                     [](const Destination &first, const Destination &second)
+                     { return first.priority > second.priority; });
+    for (const auto &destination : destinations)
+    {
+        if (snd_seq_connect_to(rawHandle, impl_->port, destination.client, destination.port) >= 0)
+        {
+            impl_->device = destination.name;
             return true;
         }
     }
@@ -171,7 +203,9 @@ bool MidiInstrument::setProgram(int channel, int program)
 }
 bool MidiInstrument::setChannelVolume(int channel, double volume)
 {
-    if (!std::isfinite(volume) || !impl_->validChannel(channel))
+    if (!impl_->validChannel(channel))
+        return false;
+    if (!std::isfinite(volume))
     {
         impl_->error = trText("messages.audio.invalid_channel_volume");
         return false;

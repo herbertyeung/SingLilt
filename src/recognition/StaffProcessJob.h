@@ -12,6 +12,7 @@
 #ifdef Q_OS_WIN
 #include <qt_windows.h>
 #elif defined(Q_OS_LINUX)
+#include <cerrno>
 #include <signal.h>
 #include <unistd.h>
 #endif
@@ -112,6 +113,7 @@ class StaffProcessJob
 
     bool configure(QProcess &process)
     {
+        process_ = &process;
         started_ = QObject::connect(&process, &QProcess::started, &process,
                                     [this, &process] { group_ = static_cast<pid_t>(process.processId()); });
         process.setChildProcessModifier(
@@ -126,8 +128,20 @@ class StaffProcessJob
     void terminate()
     {
         // The engine owns a new session, so cancellation also reaches its workers.
+        if (terminated_)
+            return;
+        if (group_ <= 0 && process_)
+            group_ = static_cast<pid_t>(process_->processId());
         if (group_ > 0)
-            kill(-group_, SIGKILL);
+        {
+            if (kill(-group_, SIGKILL) == 0)
+                terminated_ = true;
+            else if (errno == ESRCH)
+            {
+                group_ = 0;
+                terminated_ = true;
+            }
+        }
     }
 
     bool waitForEmpty(int milliseconds)
@@ -136,12 +150,19 @@ class StaffProcessJob
         elapsed.start();
         while (group_ > 0 && kill(-group_, 0) == 0 && elapsed.elapsed() < milliseconds)
             QThread::msleep(10);
-        return group_ <= 0 || kill(-group_, 0) != 0;
+        if (group_ <= 0 || (kill(-group_, 0) < 0 && errno == ESRCH))
+        {
+            group_ = 0;
+            return true;
+        }
+        return false;
     }
 
   private:
     QMetaObject::Connection started_;
+    QProcess *process_ = nullptr;
     pid_t group_ = 0;
+    bool terminated_ = false;
 };
 #endif
 } // namespace singlilt

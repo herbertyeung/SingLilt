@@ -33,12 +33,17 @@ add_test(NAME SingLiltExternalLanguage COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_BINARY_DIR}/external-language-tests/$<CONFIG>")
 add_test(NAME SingLiltNativeStaffProcess COMMAND SingLilt --native-staff-process-check
     --report "${CMAKE_BINARY_DIR}/native-staff-process/$<CONFIG>/report.json")
-foreach(diagnostic project-package musicxml staff-renderer)
+set(linux_tests SingLiltLanguages SingLiltMigration SingLiltLinuxMedia SingLiltVersion
+    SingLiltCli SingLiltExternalLanguage SingLiltNativeStaffProcess SingLiltCatalog)
+foreach(diagnostic project-package musicxml staff-renderer settings-product)
     add_test(NAME "SingLiltLinux-${diagnostic}" COMMAND SingLilt "--${diagnostic}-check"
         --audio-backend sampled --diagnostic-no-audio --language en_US
         --report "${CMAKE_BINARY_DIR}/linux-diagnostics/$<CONFIG>/${diagnostic}.json")
+    list(APPEND linux_tests "SingLiltLinux-${diagnostic}")
 endforeach()
 # The catalog command is headless and does not initialize an audio endpoint.
 add_test(NAME SingLiltCatalog COMMAND SingLilt --catalog-check --language en_US)
-get_property(linux_tests DIRECTORY PROPERTY TESTS)
 set_tests_properties(${linux_tests} PROPERTIES LABELS "ci" TIMEOUT 120 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+set_tests_properties(SingLiltVersion SingLiltCli SingLiltExternalLanguage SingLiltCatalog
+    SingLiltNativeStaffProcess SingLiltLinux-project-package SingLiltLinux-musicxml
+    SingLiltLinux-staff-renderer SingLiltLinux-settings-product PROPERTIES RUN_SERIAL TRUE)

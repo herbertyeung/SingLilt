@@ -12,7 +12,8 @@ include("${SINGLILT_SOURCE_ROOT}/cmake/Sources.cmake")
 set(windows_sources src/audio/MicrophoneCapture.cpp src/audio/OriginalAudioPlayer.cpp
     src/audio/MidiInstrument.cpp src/recognition/WindowsOcr.cpp)
 set(linux_sources src/audio/linux/MicrophoneCapture.cpp src/audio/linux/OriginalAudioPlayer.cpp
-    src/audio/linux/MidiInstrument.cpp src/recognition/linux/TextOcr.cpp src/recognition/linux/AudioDecoder.cpp)
+    src/audio/linux/MidiInstrument.cpp src/audio/linux/MidiRouting.h src/recognition/linux/TextOcr.cpp
+    src/recognition/linux/AudioDecoder.cpp src/recognition/linux/AudioDecoder.h src/platform/LinuxRuntime.h)
 foreach(source IN LISTS linux_sources)
     if(NOT source IN_LIST APP_FILES OR NOT EXISTS "${SINGLILT_SOURCE_ROOT}/${source}")
         message(FATAL_ERROR "Linux source selection: FAIL missing ${source}")
@@ -35,4 +36,6 @@ foreach(source IN LISTS linux_sources)
         message(FATAL_ERROR "Windows source selection: FAIL selected Linux backend ${source}")
     endif()
 endforeach()
-message(STATUS "Platform source selection: PASS Linux=5 Windows=4; mutually exclusive")
+list(LENGTH linux_sources linux_count)
+list(LENGTH windows_sources windows_count)
+message(STATUS "Platform source selection: PASS Linux=${linux_count} Windows=${windows_count}; mutually exclusive")

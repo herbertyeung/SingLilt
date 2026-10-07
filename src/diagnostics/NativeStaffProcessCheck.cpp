@@ -5,6 +5,7 @@
 
 #include "NativeStaffProcessCheck.h"
 #include "recognition/LocalStaffRecognizer.h"
+#include <QCoreApplication>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
@@ -16,6 +17,10 @@
 #include <chrono>
 #include <stdexcept>
 #include <thread>
+#ifdef Q_OS_LINUX
+#include <cerrno>
+#include <signal.h>
+#endif
 #ifdef Q_OS_WIN
 #include <qt_windows.h>
 #endif
@@ -36,9 +41,10 @@ QString literal(QString text)
     return "'" + text.replace("'", "''") + "'";
 }
 
-bool processEnded(int processId)
+bool processEnded(int processId, const QString &procRoot = "/proc")
 {
 #ifdef Q_OS_WIN
+    Q_UNUSED(procRoot);
     const HANDLE handle = OpenProcess(SYNCHRONIZE, FALSE, DWORD(processId));
     if (!handle)
         return processId > 0 && GetLastError() == ERROR_INVALID_PARAMETER;
@@ -50,10 +56,14 @@ bool processEnded(int processId)
     elapsed.start();
     while (elapsed.elapsed() < 3000)
     {
-        QFile status(QString("/proc/%1/stat").arg(processId));
+        if (processId <= 0)
+            return false;
+        QFile status(QString("%1/%2/stat").arg(procRoot).arg(processId));
         if (!status.open(QIODevice::ReadOnly))
-            return processId > 0;
+            return kill(processId, 0) < 0 && errno == ESRCH;
         const QByteArray contents = status.readAll();
+        if (status.error() != QFileDevice::NoError || contents.isEmpty())
+            return false;
         const auto endName = contents.lastIndexOf(')');
         if (endName >= 0 && contents.mid(endName + 2, 1) == "Z")
             return true;
@@ -81,6 +91,11 @@ QJsonObject checkNativeStaffProcess()
         QTemporaryDir temporary;
         check(temporary.isValid(), "temporary native fixtures");
         const auto root = temporary.path();
+#ifdef Q_OS_LINUX
+        check(!processEnded(static_cast<int>(QCoreApplication::applicationPid()), root),
+              "missing proc filesystem does not prove a live process ended");
+        check(!processEnded(0), "invalid process identity is rejected");
+#endif
         const QString notation = "**kern\t**kern\n*clefF4\t*clefG2\n*k[]\t*k[]\n*M4/4\t*M4/4\n"
                                  "=1\t=1\n1C\t1c\n==\t==\n*-\t*-\n";
         writeFixture(root + "/model.gguf", "fixture model, not inference weights");

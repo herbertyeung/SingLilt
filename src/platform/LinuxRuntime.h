@@ -12,12 +12,19 @@ namespace singlilt
 inline QString linuxGmSoundFontPath()
 {
     for (const auto *path : {"/usr/share/sounds/sf2/FluidR3_GM.sf2", "/usr/share/sounds/sf2/default-GM.sf2",
-                             "/usr/share/soundfonts/default.sf2"})
+                             "/usr/share/soundfonts/FluidR3_GM.sf2", "/usr/share/soundfonts/default.sf2"})
     {
         const QFileInfo bank(QString::fromLatin1(path));
         if (bank.isFile() && bank.isReadable() && bank.size() > 0)
             return QString::fromLatin1(path);
     }
     return {};
+}
+
+inline QString linuxPianoSoundFontPath(const QString &directory)
+{
+    const QString bundled = directory + "/assets/soundfonts/Salamander.sf2";
+    const QFileInfo bank(bundled);
+    return bank.isFile() && bank.isReadable() && bank.size() > 0 ? bundled : linuxGmSoundFontPath();
 }
 } // namespace singlilt

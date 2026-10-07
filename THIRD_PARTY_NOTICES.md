@@ -56,3 +56,19 @@ The reference model project's code is not included in this runtime.
 ## Windows installer
 
 The installer uses Inno Setup 6.7.3 by Jordan Russell and Martijn Laan. Its license is retained in `licenses/inno-setup/LICENSE.txt`; corresponding compiler/engine source is available at https://github.com/jrsoftware/issrc/tree/is-6_7_3 . The build tool is not installed on the user's machine.
+
+## Linux desktop runtime
+
+Linux packages include dynamically linked, replaceable Qt 6.8.3 libraries and the media
+plugin's Qt/ICU/FFmpeg dependencies selected by Qt's deployment tooling. Loader paths may
+be adjusted for relocation; application runtime data stay separate from these libraries.
+Qt LGPL/GPL terms are retained under the package's Qt license directory; corresponding
+module sources and Qt third-party notices are linked above.
+
+ALSA and Tesseract are distribution-managed libraries, not copied into the TGZ.
+- ALSA source: https://github.com/alsa-project/alsa-lib ; terms: https://github.com/alsa-project/alsa-lib/blob/master/COPYING .
+- Tesseract source: https://github.com/tesseract-ocr/tesseract ; terms: https://github.com/tesseract-ocr/tesseract/blob/main/LICENSE .
+- FFmpeg source/licensing: https://ffmpeg.org/download.html and https://ffmpeg.org/legal.html .
+
+Distribution GM banks remain at their installed system paths and are not redistributed
+in the Linux TGZ. Optional recognition tools/models retain their own existing terms.

@@ -5,6 +5,7 @@
 #include "i18n/LanguageManager.h"
 #include "recognition/WindowsOcr.h"
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <tesseract/baseapi.h>
 #include <tesseract/resultiterator.h>
@@ -29,11 +30,12 @@ OcrText recognizeWindowsText(const QImage &original, const QString &language)
     }
     const QImage image = original.convertToFormat(QImage::Format_RGB888);
     engine.SetImage(image.constBits(), image.width(), image.height(), 3, static_cast<int>(image.bytesPerLine()));
-    engine.SetSourceResolution(300);
+    const int dpi = static_cast<int>(std::lround(original.dotsPerMeterX() * 0.0254));
+    engine.SetSourceResolution(dpi >= 70 && dpi <= 2400 ? dpi : 300);
     engine.SetPageSegMode(tesseract::PSM_AUTO);
     if (engine.Recognize(nullptr) != 0)
     {
-        output.error = QStringLiteral("Tesseract OCR failed.");
+        output.error = trText("messages.recognition.ocr_failed");
         return output;
     }
     std::unique_ptr<char[]> text(engine.GetUTF8Text());

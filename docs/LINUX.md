@@ -72,15 +72,18 @@ build/tools/linux-env/bin/cpack --config build/CPackConfig.cmake -C Release -B b
 
 The wrapper in `bin` launches the executable/data in `lib/singlilt` (or the configured
 GNUInstallDirs lib directory). The `.desktop` entry and icon are installed under `share`.
-The TGZ is an installation-layout archive, not a self-contained AppImage: Qt, ALSA,
-FluidSynth, Tesseract, codecs and sound banks remain runtime dependencies. Qt must remain
-at the configured library path or be provided by the system. An installed development
-Qt's absolute library paths are retained in the install RPATH.
+The TGZ includes replaceable Qt libraries, ICU/media dependencies and plugins under
+`lib/singlilt/qt`, selected by Qt's deployment API. The executable uses an `$ORIGIN`-relative
+RPATH and `qt.conf`, so the development checkout can be moved or removed after installation.
+This is not an AppImage: ALSA, FluidSynth, Tesseract, desktop system libraries and sound banks
+remain distribution-managed runtime dependencies. The launcher resolves symlinks before
+locating the installed executable.
 
 ## Validation
 
 The Linux workflow builds Debug and Release, runs headless CLI/storage/renderer/process
-checks and Linux media regressions, and tests the installed wrapper/catalog. Media tests
+checks and Linux media regressions, and tests the installed wrapper/catalog, symlink invocation, dependency origins and an
+extracted archive after the development Qt directory has been hidden. Media tests
 exercise real FFmpeg decode, offline FluidSynth rendering and Tesseract extraction without
 requiring speakers or a microphone. Test physical output, device switching, microphone
 latency and desktop interaction on a real Linux desktop before publishing a release.

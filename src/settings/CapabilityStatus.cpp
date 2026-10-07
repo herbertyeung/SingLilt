@@ -114,8 +114,8 @@ CapabilityStatus inspectCapabilities(const AppSettings &settings, const QString 
     const QString piano = qEnvironmentVariable("JIANPU_SOUNDFONT");
     QString pianoPath = piano.isEmpty() ? directory + "/assets/soundfonts/Salamander.sf2" : piano;
 #ifdef Q_OS_LINUX
-    if (piano.isEmpty() && !QFileInfo(pianoPath).isFile())
-        pianoPath = linuxGmSoundFontPath();
+    if (piano.isEmpty())
+        pianoPath = linuxPianoSoundFontPath(directory);
 #endif
     checkFile(status.piano, pianoPath);
     QString gm = settings.gmSoundFontPath;

@@ -63,6 +63,8 @@ bool mappingMatchesInput(const Project &project, const OriginalAudioPlayer &audi
            QFileInfo(audio.sourcePath()).absoluteFilePath() == QFileInfo(expected).absoluteFilePath() &&
            project.audioSource->timingFingerprint == audioTimingFingerprint(project.score);
 }
+} // namespace
+
 // Dialog-owned playback never replaces the accepted project's original-audio device.
 class PreviewAudioSession final : public QObject
 {
@@ -113,10 +115,24 @@ class PreviewAudioSession final : public QObject
     bool play(const QString &path, double startSeconds)
     {
         error_.clear();
-        if (!audio_.open(path))
+        if (!audio_.isOpen() ||
+            QFileInfo(audio_.sourcePath()).absoluteFilePath() != QFileInfo(path).absoluteFilePath())
         {
-            error_ = audio_.errorString();
-            return false;
+            const auto fingerprint = audioTimingFingerprint(window_.project().score);
+            const auto image = window_.project().image.cacheKey();
+            audio_.openAsync(path, this,
+                             [this, path, startSeconds, fingerprint, image](bool opened)
+                             {
+                                 if (fingerprint != audioTimingFingerprint(window_.project().score) ||
+                                     image != window_.project().image.cacheKey())
+                                 {
+                                     audio_.close();
+                                     return;
+                                 }
+                                 if (!opened || !play(path, startSeconds))
+                                     reportError_(audio_.errorString().isEmpty() ? error_ : audio_.errorString());
+                             });
+            return true;
         }
         if (!active_ || !acceptedTransportUnchanged())
         {
@@ -220,6 +236,8 @@ class PreviewAudioSession final : public QObject
     bool active_ = false, wasMelodyPlaying_ = false, wasOriginalPlaying_ = false, previousIntent_ = false;
 };
 
+namespace
+{
 double sourceSecondsAtTick(const AudioSourceInfo &source, std::int64_t tick)
 {
     for (const auto &timing : source.timings)
@@ -381,13 +399,25 @@ void MainWindow::openAudioImport(const QString &path)
         *this, [this] { return playIntent_; }, [this](bool playing) { playIntent_ = playing; },
         [this](const QString &error) { setStatusMessage(error); }, dialog);
     audition->setObjectName("audioImportAudition");
-    if (!audition->audio().open(path))
-    {
-        setStatusMessage(audition->audio().errorString());
-        dialog->deleteLater();
-        return;
-    }
     audioImportDialog_ = dialog;
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    audition->audio().openAsync(path, dialog,
+                                [this, path, dialog, audition](bool opened)
+                                {
+                                    if (!opened)
+                                    {
+                                        setStatusMessage(audition->audio().errorString());
+                                        if (audioImportDialog_ == dialog)
+                                            audioImportDialog_.clear();
+                                        dialog->deleteLater();
+                                        return;
+                                    }
+                                    populateAudioImportDialog(path, dialog, audition);
+                                });
+}
+
+void MainWindow::populateAudioImportDialog(const QString &path, QDialog *dialog, PreviewAudioSession *audition)
+{
     dialog->setObjectName("audioImportDialog");
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->setModal(false);
@@ -735,56 +765,72 @@ void MainWindow::changePlaybackSource()
             originalAudio_.pause();
         const double previousSeconds = originalAudio_.positionSeconds();
         const auto previousTick = player_.positionTicks();
-        auto restorePlayback = [&](QString error)
+        const auto restorePlayback = [this, previousPath, previousSpeed, previousSeconds, wasOriginalPlaying,
+                                      wasMelodyPlaying, previousIntent, restoreSelection](QString error)
         {
-            bool restored = true;
-            if (previousPath.isEmpty())
-                originalAudio_.close();
-            else
+            auto finish = [this, previousSpeed, previousSeconds, wasOriginalPlaying, wasMelodyPlaying,
+                           previousIntent, restoreSelection, error](bool restored) mutable
             {
-                restored = originalAudio_.open(previousPath) && originalAudio_.setSpeed(previousSpeed) &&
-                           originalAudio_.seek(previousSeconds) && (!wasOriginalPlaying || originalAudio_.play());
+                if (restored && originalAudio_.isOpen())
+                    restored = originalAudio_.setSpeed(previousSpeed) && originalAudio_.seek(previousSeconds) &&
+                               (!wasOriginalPlaying || originalAudio_.play());
                 if (!restored)
                 {
                     error += '\n' + originalAudio_.errorString();
                     originalAudio_.close();
                 }
-            }
-            if (wasMelodyPlaying && !player_.play())
+                if (wasMelodyPlaying && !player_.play())
+                {
+                    restored = false;
+                    error += '\n' + player_.errorString();
+                }
+                playIntent_ = restored && previousIntent;
+                restoreSelection();
+                setStatusMessage(error);
+                updatePlayback();
+            };
+            if (previousPath.isEmpty())
             {
-                restored = false;
-                error += '\n' + player_.errorString();
+                originalAudio_.close();
+                finish(true);
             }
-            playIntent_ = restored && previousIntent;
-            restoreSelection();
-            setStatusMessage(error);
+            else
+                originalAudio_.openAsync(previousPath, this, finish);
         };
-        bool opened = originalAudio_.open(path);
-        if (opened)
-            if (auto *speed = findChild<QDoubleSpinBox *>("originalSpeed"))
-                opened = originalAudio_.setSpeed(speed->value());
-        if (!opened)
-        {
-            restorePlayback(originalAudio_.errorString());
-            return;
-        }
-        originalAudio_.pause();
-        playIntent_ = false;
-        previousOriginalSource_ = requested;
-        if (originalMappingCurrent())
-        {
-            const auto mappedTick =
-                previous > 0 ? sourceTickAtSeconds(*project_.audioSource, previousSeconds) : previousTick;
-            if (!originalAudio_.seek(sourceSecondsAtTick(*project_.audioSource, mappedTick)))
+        originalAudio_.openAsync(
+            path, this,
+            [this, requested, previous, previousSeconds, previousTick, restorePlayback](bool opened)
             {
-                restorePlayback(originalAudio_.errorString());
-                return;
-            }
-        }
-        setStatus(requested == 1 ? "ui.audio_import.original_mode_help" : "ui.vocal_separation.stem_mode_help");
+                if (opened)
+                    if (auto *speed = findChild<QDoubleSpinBox *>("originalSpeed"))
+                        opened = originalAudio_.setSpeed(speed->value());
+                if (!opened)
+                {
+                    restorePlayback(originalAudio_.errorString());
+                    return;
+                }
+                originalAudio_.pause();
+                playIntent_ = false;
+                previousOriginalSource_ = requested;
+                if (originalMappingCurrent())
+                {
+                    const auto mappedTick =
+                        previous > 0 ? sourceTickAtSeconds(*project_.audioSource, previousSeconds) : previousTick;
+                    if (!originalAudio_.seek(sourceSecondsAtTick(*project_.audioSource, mappedTick)))
+                    {
+                        restorePlayback(originalAudio_.errorString());
+                        return;
+                    }
+                }
+                setStatus(requested == 1 ? "ui.audio_import.original_mode_help"
+                                         : "ui.vocal_separation.stem_mode_help");
+                updatePlayback();
+            });
     }
     else
     {
+        if (originalAudio_.isLoading())
+            originalAudio_.close();
         player_.pause();
         if (originalAudio_.isOpen())
             originalAudio_.pause();

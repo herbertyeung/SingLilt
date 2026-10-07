@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "SettingsProductCheck.h"
+#include "platform/RuntimePaths.h"
 #include "recognition/AudioTranscriber.h"
 #include "settings/AppSettings.h"
 #include "settings/CapabilityStatus.h"
@@ -69,6 +70,9 @@ class SettingsProductProbe final : public QObject
 
     void checkCapabilities(const QString &folder)
     {
+        const QByteArray oldPiano = qgetenv("JIANPU_SOUNDFONT");
+        const auto restorePiano = qScopeGuard([oldPiano] { qputenv("JIANPU_SOUNDFONT", oldPiano); });
+        qputenv("JIANPU_SOUNDFONT", (folder + "/assets/soundfonts/Salamander.sf2").toUtf8());
         AppSettings settings;
         settings.gmSoundFontPath = folder + "/gm.sf2";
         const auto missing = inspectCapabilities(settings, folder);
@@ -77,9 +81,9 @@ class SettingsProductProbe final : public QObject
                   !missing.separation.filesPresent);
         writeFixture(folder + "/gm.sf2");
         writeFixture(folder + "/assets/soundfonts/Salamander.sf2");
-        writeFixture(folder + "/tools/whisper/whisper-cli.exe");
+        writeFixture(folder + "/tools/whisper/whisper-cli" + NativeExecutableSuffix);
         writeFixture(folder + "/models/ggml-base.bin");
-        writeFixture(folder + "/tools/separation/python/python.exe");
+        writeFixture(folder + SeparatorPythonPath);
         writeFixture(folder + "/tools/separation/separate_vocals.py");
         writeFixture(folder + "/tools/separation/models/955717e8-8726e21a.th");
         const QJsonObject metadata{{"schema", 1},
@@ -114,7 +118,7 @@ class SettingsProductProbe final : public QObject
               !audioImportCapabilityError(options, emptyFolder).isEmpty());
         options.separateVocals = false;
         options.lyricsText.clear();
-        options.whisperExecutable = folder + "/tools/whisper/whisper-cli.exe";
+        options.whisperExecutable = folder + "/tools/whisper/whisper-cli" + NativeExecutableSuffix;
         options.whisperModel = folder + "/models/ggml-base.bin";
         check("Per-task custom Whisper paths are used by the preflight",
               audioImportCapabilityError(options, emptyFolder).isEmpty());

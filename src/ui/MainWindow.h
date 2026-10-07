@@ -39,6 +39,7 @@ class QTabWidget;
 class QStackedWidget;
 namespace singlilt
 {
+class PreviewAudioSession;
 class ScoreView;
 class RecognitionPreviewDialog;
 class LanguageManager;
@@ -179,6 +180,7 @@ class MainWindow : public QMainWindow
     void changeAccompanimentPattern();
     void chooseGmSoundFont();
     void createAudioControls(QVBoxLayout *layout);
+    void populateAudioImportDialog(const QString &path, QDialog *dialog, PreviewAudioSession *audition);
     void refreshAudioTaskUi();
     void previewAudioResult();
     void applyAudioResult();

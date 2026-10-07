@@ -864,6 +864,11 @@ void MainWindow::updatePlayback()
 }
 void MainWindow::togglePlayback()
 {
+    if (originalAudio_.isLoading())
+    {
+        setStatus("ui.audio_import.finish_pending");
+        return;
+    }
     if (busy_ || audioLoading_)
         return;
     if (correctionMode_ && project_.staffImagePlayback)

@@ -70,6 +70,24 @@ struct MicrophoneCapture::Impl
                     discontinuity = true;
                     continue;
                 }
+                if (frames == -ESTRPIPE)
+                {
+                    int resumed = snd_pcm_resume(device.get());
+                    while (resumed == -EAGAIN && !stop.stop_requested())
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                        resumed = snd_pcm_resume(device.get());
+                    }
+                    if (stop.stop_requested())
+                        break;
+                    if (resumed < 0)
+                    {
+                        checkAlsa(snd_pcm_prepare(device.get()));
+                        checkAlsa(snd_pcm_start(device.get()));
+                    }
+                    discontinuity = true;
+                    continue;
+                }
                 if (frames == -EAGAIN || frames == 0)
                     continue;
                 checkAlsa(static_cast<int>(frames));

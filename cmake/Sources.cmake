@@ -147,6 +147,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         src/audio/linux/MicrophoneCapture.cpp
         src/audio/linux/OriginalAudioPlayer.cpp
         src/audio/linux/MidiInstrument.cpp
+        src/audio/linux/MidiRouting.h
         src/recognition/linux/TextOcr.cpp
         src/recognition/linux/AudioDecoder.h src/recognition/linux/AudioDecoder.cpp
         src/platform/LinuxRuntime.h)

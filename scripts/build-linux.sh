@@ -8,7 +8,7 @@ mode=${2:-desktop}
 case "$configuration" in Debug|Release) ;; *) printf 'Expected Debug or Release\n' >&2; exit 2 ;; esac
 case "$mode" in desktop|core) ;; *) printf 'Expected desktop or core\n' >&2; exit 2 ;; esac
 if [[ -f build/CMakeCache.txt ]] && ! grep -q '^CMAKE_GENERATOR:INTERNAL=Ninja Multi-Config$' build/CMakeCache.txt; then
-    printf 'build/ uses another generator. Use a separate Linux checkout, not the Windows build tree.\n' >&2
+    printf 'build/ uses an unsupported generator; this preset requires Ninja Multi-Config. Keep incompatible generators in separate checkouts.\n' >&2
     exit 2
 fi
 if [[ -x build/tools/linux-env/bin/cmake ]]; then

@@ -32,9 +32,8 @@ QString defaultPianoPath()
 {
     const QString configured = qEnvironmentVariable("JIANPU_SOUNDFONT");
 #ifdef Q_OS_LINUX
-    const QString bundled = QCoreApplication::applicationDirPath() + "/assets/soundfonts/Salamander.sf2";
-    if (configured.isEmpty() && !QFileInfo(bundled).isFile())
-        return linuxGmSoundFontPath();
+    if (configured.isEmpty())
+        return linuxPianoSoundFontPath(QCoreApplication::applicationDirPath());
 #endif
     return configured.isEmpty() ? QCoreApplication::applicationDirPath() + "/assets/soundfonts/Salamander.sf2"
                                 : QFileInfo(configured).absoluteFilePath();
