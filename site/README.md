@@ -22,4 +22,4 @@ Open `http://127.0.0.1:4173`. English is the default; `?lang=zh` opens Chinese. 
 
 The screenshots show the project's authored scale exercise. All four English/Chinese and light/dark variants come from the isolated `--theme-check` diagnostic, with `ui/language` set to the matching locale before launch. Website language and screenshot appearance are independent choices. The existing project icon is reused. Project-owned site assets follow the MIT license; see `../LICENSE` and `../docs/BRAND.md` for asset provenance.
 
-The page links to source while no installer is published. Change that copy only when a real public release is available. Keep download targets, required tools and supported features aligned with the root README.
+The hero and get-started section link to the latest public GitHub Release for the Windows installer and portable ZIP. Button labels use the existing English/Chinese language switch, and source downloads and build instructions remain available. Keep download targets, required tools and supported features aligned with the root README.
