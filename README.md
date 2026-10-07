@@ -6,6 +6,8 @@
 
 SingLilt is a Windows desktop app for score playback and singing practice, written in C++20 with Qt 6. Import a score, check the notes against the original, and save it as a JPP project. You can slow down playback, transpose the score, or repeat a difficult phrase.
 
+[Project website](https://herbertyeung.github.io/SingLilt/)
+
 ### Features
 
 - Read numbered notation and staff notation from images, or import MusicXML. Compare the result with the source image, browse multiple pages, and correct notes.
@@ -62,6 +64,8 @@ Project code is licensed under [MIT](LICENSE). Qt, sound banks, fonts, and model
 ## 简体中文
 
 SingLilt 把简谱、五线谱图片、MusicXML 和音频整理成可反复练习的材料。你可以听示范、慢速练习、循环难句，也可以校正识谱结果并保存工程，下次接着练。
+
+[项目网站](https://herbertyeung.github.io/SingLilt/)
 
 ### 功能
 

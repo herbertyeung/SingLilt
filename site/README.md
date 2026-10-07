@@ -2,6 +2,16 @@
 
 The site is plain HTML, CSS and JavaScript. There is no package installation or build step.
 
+Live site: [herbertyeung.github.io/SingLilt](https://herbertyeung.github.io/SingLilt/).
+
+## Publishing
+
+GitHub Pages serves this directory. `.github/workflows/pages.yml` checks JavaScript, uploads `site/` and deploys it when site files are pushed to `main`. It can also be run manually from GitHub Actions. The `github-pages` environment accepts deployments from `main` only.
+
+CSS, JavaScript and image URLs stay relative so the page works under the `/SingLilt/` project path. No external hosting configuration or account is needed.
+
+## Local preview
+
 From this directory, start a local preview:
 
 ```powershell
