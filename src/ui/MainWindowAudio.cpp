@@ -118,6 +118,9 @@ class PreviewAudioSession final : public QObject
         if (!audio_.isOpen() ||
             QFileInfo(audio_.sourcePath()).absoluteFilePath() != QFileInfo(path).absoluteFilePath())
         {
+            if (audio_.isOpen())
+                audio_.pause();
+            stateTimer_.stop();
             setProperty("auditionLoading", true);
             setProperty("auditionPlaying", false);
             const auto fingerprint = audioTimingFingerprint(window_.project().score);
@@ -407,8 +410,25 @@ void MainWindow::openAudioImport(const QString &path)
     audition->setObjectName("audioImportAudition");
     audioImportDialog_ = dialog;
     dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setObjectName("audioImportDialog");
+    dialog->setModal(false);
+    bindText(dialog, "ui.audio_import.title", "windowTitle");
+    auto *loadingLayout = new QVBoxLayout(dialog);
+    auto *loadingLabel = label("ui.status.loading_audio");
+    loadingLayout->addWidget(loadingLabel);
+    auto *cancel = new QDialogButtonBox(QDialogButtonBox::Cancel, dialog);
+    loadingLayout->addWidget(cancel);
+    connect(cancel, &QDialogButtonBox::rejected, dialog,
+            [this, dialog, audition]
+            {
+                audition->audio().cancelOpen();
+                if (audioImportDialog_ == dialog)
+                    audioImportDialog_.clear();
+                dialog->reject();
+            });
+    dialog->show();
     audition->audio().openAsync(path, dialog,
-                                [this, path, dialog, audition](bool opened)
+                                [this, path, dialog, audition, loadingLabel, cancel](bool opened)
                                 {
                                     if (!opened)
                                     {
@@ -418,6 +438,9 @@ void MainWindow::openAudioImport(const QString &path)
                                         dialog->deleteLater();
                                         return;
                                     }
+                                    delete loadingLabel;
+                                    delete cancel;
+                                    delete dialog->layout();
                                     populateAudioImportDialog(path, dialog, audition);
                                 });
 }
@@ -752,14 +775,28 @@ void MainWindow::changePlaybackSource()
         const QString path = project_.audioSource ? inputPath(*project_.audioSource, requested) : QString();
         if (path.isEmpty())
         {
-            originalAudio_.cancelOpen();
+            if (originalAudio_.isLoading() && restorePendingOriginalSource_)
+            {
+                auto restore = std::move(restorePendingOriginalSource_);
+                originalAudio_.cancelOpen();
+                restore({});
+            }
+            else
+                originalAudio_.cancelOpen();
             setStatus(requested == 1 ? "ui.audio_import.no_original" : "ui.vocal_separation.no_stems");
             restoreSelection();
             return;
         }
         if (!QFileInfo(path).isFile())
         {
-            originalAudio_.cancelOpen();
+            if (originalAudio_.isLoading() && restorePendingOriginalSource_)
+            {
+                auto restore = std::move(restorePendingOriginalSource_);
+                originalAudio_.cancelOpen();
+                restore({});
+            }
+            else
+                originalAudio_.cancelOpen();
             setStatus("messages.vocal_separation.missing_playback_file", {path});
             restoreSelection();
             return;
@@ -773,8 +810,9 @@ void MainWindow::changePlaybackSource()
             originalAudio_.pause();
         const double previousSeconds = originalAudio_.positionSeconds();
         const auto previousTick = player_.positionTicks();
-        const auto restorePlayback = [this, previousPath, previousSpeed, previousSeconds, wasOriginalPlaying,
-                                      wasMelodyPlaying, previousIntent, restoreSelection](QString error)
+        std::function<void(QString)> restorePlayback = [this, previousPath, previousSpeed, previousSeconds,
+                                                        wasOriginalPlaying, wasMelodyPlaying, previousIntent,
+                                                        restoreSelection](QString error)
         {
             auto finish = [this, previousSpeed, previousSeconds, wasOriginalPlaying, wasMelodyPlaying,
                            previousIntent, restoreSelection, error](bool restored) mutable
@@ -805,10 +843,14 @@ void MainWindow::changePlaybackSource()
             else
                 originalAudio_.openAsync(previousPath, this, finish);
         };
+        if (originalAudio_.isLoading() && restorePendingOriginalSource_)
+            restorePlayback = restorePendingOriginalSource_;
+        restorePendingOriginalSource_ = restorePlayback;
         originalAudio_.openAsync(
             path, this,
             [this, requested, previous, previousSeconds, previousTick, restorePlayback](bool opened)
             {
+                restorePendingOriginalSource_ = {};
                 if (playbackSource_->currentData().toInt() != requested)
                 {
                     restorePlayback(trText("ui.status.loading_audio"));
@@ -842,6 +884,7 @@ void MainWindow::changePlaybackSource()
     }
     else
     {
+        restorePendingOriginalSource_ = {};
         if (originalAudio_.isLoading())
             originalAudio_.close();
         player_.pause();

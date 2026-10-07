@@ -456,6 +456,7 @@ MainWindow::~MainWindow()
     audioTask_.stateChanged = {};
     audioTask_.progress = {};
     audioTask_.cancel();
+    restorePendingOriginalSource_ = {};
     originalAudio_.close();
     if (accompanimentPanel_)
         accompanimentPanel_->reject();
@@ -521,6 +522,7 @@ void MainWindow::setProject(Project project, bool modified)
     preAuditionPlaybackSource_.reset();
     playIntent_ = false;
     player_.stop();
+    restorePendingOriginalSource_ = {};
     originalAudio_.close();
     if (playbackSource_)
     {
@@ -775,10 +777,7 @@ void MainWindow::updateNote()
 void MainWindow::updatePlayback()
 {
     if (originalAudio_.isLoading())
-    {
-        setStatus("ui.status.loading_audio");
         return;
-    }
     if (player_.isPreviewLoading())
         return;
     if (notePreviewLoading_)
@@ -1250,6 +1249,7 @@ void MainWindow::closeEvent(QCloseEvent *e)
         cloudTask_.cancel();
         localStaffTask_.cancel();
         audioTask_.cancel();
+        restorePendingOriginalSource_ = {};
         originalAudio_.close();
         player_.stop();
         e->accept();

@@ -18,6 +18,7 @@
 #include <QPointer>
 #include <QStringList>
 #include <QUndoStack>
+#include <functional>
 class QBoxLayout;
 class QLabel;
 class QPushButton;
@@ -186,6 +187,7 @@ class MainWindow : public QMainWindow
     void applyAudioResult();
     void discardAudioResult();
     void changePlaybackSource();
+    std::function<void(QString)> restorePendingOriginalSource_;
     bool originalAudioMode() const;
     bool originalMappingCurrent() const;
     void updateOriginalPlayback();

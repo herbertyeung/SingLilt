@@ -11,11 +11,13 @@
 #include <QCommandLineParser>
 #include <QDialog>
 #include <QElapsedTimer>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QMessageBox>
+#include <QPointer>
 #include <QPushButton>
 #include <QSlider>
 #include <QThread>
@@ -50,9 +52,9 @@ class AudioProbe final : public QObject
         timer_.stop();
         QElapsedTimer elapsed;
         elapsed.start();
-        while (!ready() && elapsed.elapsed() < 5000)
+        while (!ready() && elapsed.elapsed() < 3000)
         {
-            QApplication::processEvents();
+            QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
             QThread::msleep(5);
         }
         timer_.start();
@@ -139,7 +141,7 @@ class AudioProbe final : public QObject
                 check("real-stem-paths-returned", QFileInfo::exists(task.result()->vocalsPath) &&
                                                       QFileInfo::exists(task.result()->instrumentalPath));
                 preview->findChild<QPushButton *>("previewSeparatedVocals")->click();
-                auto *audition = preview->findChild<QObject *>("audioStemPreviewAudition");
+                const QPointer<QObject> audition = preview->findChild<QObject *>("audioStemPreviewAudition");
                 check("real-vocal-preview-playing",
                       awaitPlayback(
                           [&]
