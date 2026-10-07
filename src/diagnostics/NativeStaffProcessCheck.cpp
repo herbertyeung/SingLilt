@@ -75,7 +75,7 @@ QJsonObject checkNativeStaffProcess()
             options.engineExecutable =
                 qEnvironmentVariable("SystemRoot") + "/System32/WindowsPowerShell/v1.0/powershell.exe";
             options.modelPath = root + "/model.gguf";
-            options.timeoutSeconds = mode == "timeout" ? 1 : 15;
+            options.timeoutSeconds = mode == "timeout" ? 5 : 15;
             const auto scriptPath = root + '/' + mode + ".ps1";
             QString script = "$ErrorActionPreference='Stop'\n";
             if (mode == "cancel" || mode == "timeout")
@@ -86,8 +86,9 @@ QJsonObject checkNativeStaffProcess()
                           "$start.UseShellExecute=$false\n$start.CreateNoWindow=$true\n"
                           "$child=[Diagnostics.Process]::Start($start)\n"
                           "[IO.File]::WriteAllText(" +
-                          literal(root + '/' + mode + ".pid") +
-                          ",($child.Id.ToString()))\nStart-Sleep -Seconds 60\n";
+                          literal(root + '/' + mode + ".pid.tmp") + ",($child.Id.ToString()))\n[IO.File]::Move(" +
+                          literal(root + '/' + mode + ".pid.tmp") + "," + literal(root + '/' + mode + ".pid") +
+                          ")\nStart-Sleep -Seconds 60\n";
             }
             else if (mode == "nonzero")
                 script += "[Console]::Error.WriteLine('native fixture error')\nexit 9\n";
@@ -134,13 +135,15 @@ QJsonObject checkNativeStaffProcess()
         std::atomic_bool cancellation{false};
         const auto cancelOptions = options("cancel");
         std::jthread cancelThread(
-            [&]
+            [&](std::stop_token stop)
             {
-                for (int attempt = 0; attempt < 100 && !QFileInfo::exists(root + "/cancel.pid"); ++attempt)
+                while (!stop.stop_requested() && !QFileInfo::exists(root + "/cancel.pid"))
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                cancellation.store(true, std::memory_order_relaxed);
+                if (!stop.stop_requested())
+                    cancellation.store(true, std::memory_order_relaxed);
             });
         result = recognizeLocalStaff(image, "fixture.png", cancelOptions, &cancellation);
+        cancelThread.request_stop();
         cancelThread.join();
         check(result.cancelled && !result.project, "running native request cancels");
         const auto childEnded = [&](const QString &mode)
