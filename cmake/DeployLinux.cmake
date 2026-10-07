@@ -14,7 +14,7 @@ set_target_properties(SingLilt PROPERTIES
     INSTALL_RPATH "$ORIGIN/qt/lib"
     INSTALL_RPATH_USE_LINK_PATH FALSE)
 install(TARGETS SingLilt RUNTIME DESTINATION "${CMAKE_INSTALL_LIBDIR}/singlilt")
-qt_generate_deploy_script(TARGET SingLilt OUTPUT_SCRIPT linux_deploy_script
+qt6_generate_deploy_script(TARGET SingLilt OUTPUT_SCRIPT linux_deploy_script
     CONTENT "
 set(app_dir \"${CMAKE_INSTALL_LIBDIR}/singlilt\")
 if(IS_ABSOLUTE \"\${app_dir}\")
@@ -25,6 +25,7 @@ set(QT_DEPLOY_LIB_DIR \"\${app_dir}/qt/lib\")
 set(QT_DEPLOY_PLUGINS_DIR \"\${app_dir}/qt/plugins\")
 qt_deploy_runtime_dependencies(EXECUTABLE \"$<TARGET_FILE:SingLilt>\" NO_TRANSLATIONS)
 ")
+qt6_finalize_target(SingLilt)
 install(SCRIPT "${linux_deploy_script}")
 file(WRITE "${CMAKE_BINARY_DIR}/linux-qt.conf" "[Paths]\nPrefix=qt\nLibraries=lib\nPlugins=plugins\n")
 install(FILES "${CMAKE_BINARY_DIR}/linux-qt.conf" DESTINATION "${CMAKE_INSTALL_LIBDIR}/singlilt" RENAME qt.conf)
