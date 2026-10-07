@@ -9,7 +9,10 @@ add_custom_command(TARGET SingLilt POST_BUILD
     VERBATIM)
 
 include(GNUInstallDirs)
-set_target_properties(SingLilt PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
+# Downloaded Qt lives inside build/, so CMake's external-link-path inference excludes it.
+set_target_properties(SingLilt PROPERTIES
+    INSTALL_RPATH "$<TARGET_FILE_DIR:Qt6::Core>"
+    INSTALL_RPATH_USE_LINK_PATH TRUE)
 install(TARGETS SingLilt RUNTIME DESTINATION "${CMAKE_INSTALL_LIBDIR}/singlilt")
 install(DIRECTORY language assets licenses DESTINATION "${CMAKE_INSTALL_LIBDIR}/singlilt")
 install(FILES README.md THIRD_PARTY_NOTICES.md LICENSE DESTINATION "${CMAKE_INSTALL_LIBDIR}/singlilt")
