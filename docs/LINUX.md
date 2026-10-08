@@ -70,7 +70,7 @@ The GitHub Release archive `SingLilt-0.27.0-ubuntu-24.04-x64.tar.gz` contains th
 sudo apt-get update
 sudo apt-get install -y libasound2t64 libfluidsynth3 libtesseract5 \
   tesseract-ocr-eng tesseract-ocr-chi-sim fluid-soundfont-gm ffmpeg \
-  fonts-dejavu-core libgl1 libopengl0 libx11-xcb1 libxcb-cursor0 libxkbcommon-x11-0 \
+  fonts-dejavu-core libgl1 libegl1 libopengl0 libx11-xcb1 libxcb-cursor0 libxkbcommon-x11-0 \
   libxcb-xinerama0 libxcb-icccm4 libxcb-keysyms1 libxcb-image0 libxcb-render-util0 \
   libxcb-randr0 libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1
 mkdir -p "$HOME/Applications"
