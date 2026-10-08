@@ -247,6 +247,12 @@ Include ALL sounding pitches of BOTH hands, including stacked chord digits. Rest
 startTick is the unexpanded absolute onset (480 ticks/quarter); same-beat notes share it regardless of row.
 sourceTonic equals tonic; midiPitch=60+tonic+[0,2,4,5,7,9,11][degree-1]+12*octave+accidental.
 sourceNoteIndex references the matching upper-hand guide pitch, or -1 for other pitches.
+Every sounding guide entry has exactly one primary event with the same onset/duration and its sourceNoteIndex.
+Split primary held notes at tied guide boundaries, retaining tieStart/tieStop on the resulting segments.
+Every numbered response with staffPerformance MUST also include writtenMeasures for the complete guide clock:
+"writtenMeasures":[{"startTick":0,"durationTicks":1920,"number":0,"beatsPerBar":4,"beatUnit":4,"pageIndex":0}].
+Use contiguous, non-overlapping measure spans covering the guide's full duration, with actual pickup lengths.
+Each guide note lies wholly in its written measure. Never omit measure boundaries from an editable performance.
 durationTicks of staffPerformance equals the total upper-hand guide duration, not the sum of both hands.
 Never flatten two braced hands into notes; never drop a hand or chord tone. Keep all ORIGINAL image boxes.
 degree=0 rest or 1..7. octave=0 middle octave, dots above +1 each, dots below -1 each.
@@ -438,6 +444,7 @@ RecognitionResult recognizeCloud(const QImage &image, const QString &path, const
         requireStaff(result.staffPerformance && result.staffPerformance->staffCount == 2);
     if (notation == RecognitionNotation::Numbered && result.staffPerformance)
     {
+        requireStaff(!result.score.writtenMeasures.empty());
         const auto &score = result.score;
         const auto &performance = *result.staffPerformance;
         std::vector<std::int64_t> starts{0};

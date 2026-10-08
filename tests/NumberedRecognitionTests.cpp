@@ -292,6 +292,18 @@ int main(int argc, char **argv)
         check(!cloud.staffNotation && cloud.staffPerformance &&
                   cloud.staffPerformance->notes.size() == performance.notes.size(),
               "Numbered cloud recognition must not discard a valid performance");
+        auto missingMeasures = payload;
+        missingMeasures.remove("writtenMeasures");
+        bool rejectedMissingMeasures = false;
+        try
+        {
+            cloudResult(image, missingMeasures);
+        }
+        catch (const std::runtime_error &)
+        {
+            rejectedMissingMeasures = true;
+        }
+        check(rejectedMissingMeasures, "Editable numbered cloud performances require written measure boundaries");
         auto unlinked = staffPerformanceToJson(performance);
         auto unlinkedNotes = unlinked.value("notes").toArray();
         auto unlinkedNote = unlinkedNotes[0].toObject();

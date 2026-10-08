@@ -29,7 +29,7 @@ import zlib
 
 MODEL = "gpt-6.1-sol"
 SYNTHETIC_SECRET = "fixture-only-key-7bf203-cloud-regression"
-PROMPT_SHA256 = "e9542f6f03fc421124f9380306d435beb421087469ec447f271339dbf54c05cd"
+PROMPT_SHA256 = "25f8bda83a377ed2c1b2cb547c8d5c65104c8e0e284550513cea3eea10adfb34"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
