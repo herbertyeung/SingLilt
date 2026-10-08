@@ -374,6 +374,15 @@ NumberedGuideCorrection correctedNumberedGuide(const Score &score, const StaffPe
     const auto newKeys = keyClock(guide);
     parts.notes.clear();
     std::vector<int> linked(guide.notes.size(), -1);
+    std::vector<const StaffPerformanceNote *> guideEvents(score.notes.size());
+    for (const auto &note : performance.notes)
+        if (note.sourceNoteIndex >= 0)
+        {
+            if (note.sourceNoteIndex >= int(score.notes.size()))
+                throw std::invalid_argument("messages.staff.invalid_performance");
+            if (note.staff == performance.primaryStaff)
+                guideEvents[std::size_t(note.sourceNoteIndex)] = &note;
+        }
     for (auto note : performance.notes)
     {
         if (note.sourceNoteIndex >= int(score.notes.size()))
@@ -381,7 +390,11 @@ NumberedGuideCorrection correctedNumberedGuide(const Score &score, const StaffPe
         const auto oldTick = note.startTick;
         const auto oldGuide = guideAt(oldStarts, oldTick);
         const auto newGuide = guideIndices[oldGuide];
-        if (note.staff == performance.primaryStaff)
+        const auto *guideEvent = guideEvents[oldGuide];
+        const bool chordTone = note.sourceNoteIndex < 0 && note.staff == performance.primaryStaff && guideEvent &&
+                               note.voice == guideEvent->voice && note.startTick == guideEvent->startTick &&
+                               note.durationTicks == guideEvent->durationTicks;
+        if (note.sourceNoteIndex >= 0 || chordTone)
         {
             if (newGuide >= guide.notes.size())
                 throw std::invalid_argument("messages.staff.invalid_performance");

@@ -133,33 +133,34 @@ void MainWindow::selectStaffNote(int index)
     if (!project_.staffPerformance || index < 0 || index >= int(project_.staffPerformance->notes.size()) ||
         busy_ || audioLoading_ || notePreviewLoading_)
         return;
-    const int guideIndex = project_.staffPerformance->notes[std::size_t(index)].sourceNoteIndex;
-    if (!project_.staffImagePlayback && project_.notationStyle == NotationStyle::Numbered && guideIndex < 0)
+    if (!project_.staffImagePlayback && project_.notationStyle == NotationStyle::Numbered)
     {
         const auto &selected = project_.staffPerformance->notes[std::size_t(index)];
         const auto anchor = selected.source;
         const int staff = selected.staff, page = selected.pageIndex;
         const auto voice = selected.voice;
+        const bool linked = selected.sourceNoteIndex >= 0;
         if (!resolveNoteDraft())
             return;
         const auto &notes = project_.staffPerformance->notes;
-        const auto current = std::find_if(notes.begin(), notes.end(),
-                                          [&](const StaffPerformanceNote &note)
-                                          {
-                                              return note.sourceNoteIndex < 0 && note.staff == staff &&
-                                                     note.voice == voice && note.pageIndex == page &&
-                                                     note.source.x == anchor.x && note.source.y == anchor.y &&
-                                                     note.source.width == anchor.width &&
-                                                     note.source.height == anchor.height;
-                                          });
-        selectNote(-1, false);
-        setStatus("ui.staff.numbered_unlinked_tip");
-        if (current != notes.end() && !correctionMode_ && !player_.isPlaying() && !originalAudio_.isPlaying())
-            auditionStaffNote(*current);
-        return;
-    }
-    if (!project_.staffImagePlayback && project_.notationStyle == NotationStyle::Numbered && guideIndex >= 0)
-    {
+        const auto current =
+            std::find_if(notes.begin(), notes.end(),
+                         [&](const StaffPerformanceNote &note)
+                         {
+                             return (note.sourceNoteIndex >= 0) == linked && note.staff == staff &&
+                                    note.voice == voice && note.pageIndex == page && note.source.x == anchor.x &&
+                                    note.source.y == anchor.y && note.source.width == anchor.width &&
+                                    note.source.height == anchor.height;
+                         });
+        if (!linked || current == notes.end())
+        {
+            selectNote(-1, false);
+            setStatus("ui.staff.numbered_unlinked_tip");
+            if (current != notes.end() && !correctionMode_ && !player_.isPlaying() && !originalAudio_.isPlaying())
+                auditionStaffNote(*current);
+            return;
+        }
+        const int guideIndex = current->sourceNoteIndex;
         selectNote(guideIndex, false);
         if (selected_ != guideIndex || hasNoteDraft() || correctionMode_)
             return;
@@ -173,12 +174,7 @@ void MainWindow::selectStaffNote(int index)
                                  { return entry.sourceNoteIndex == std::size_t(guideIndex); });
         if (event != timeline_.events.end())
             seekPracticeTick(event->startTick);
-        const auto &notes = project_.staffPerformance->notes;
-        const auto current =
-            std::find_if(notes.begin(), notes.end(), [guideIndex](const StaffPerformanceNote &note)
-                         { return note.sourceNoteIndex == guideIndex; });
-        if (current != notes.end() && (!player_.isPlaying() || !player_.practiceMix().melodyEnabled) &&
-            !originalAudio_.isPlaying())
+        if ((!player_.isPlaying() || !player_.practiceMix().melodyEnabled) && !originalAudio_.isPlaying())
             auditionStaffNote(*current);
         return;
     }

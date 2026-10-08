@@ -164,6 +164,34 @@ void numberedPerformanceTests()
           "Unbraced systems stay sequential alongside braced systems");
 
     Score editable;
+    Score polyphonic;
+    polyphonic.notes = {note(0, 20, 1, 960), note(0, 100, 2, 960)};
+    auto polyphonicParts = buildNumberedPerformance(polyphonic, {{0, -1, {}}});
+    auto independent = polyphonicParts.notes[0];
+    independent.sourceNoteIndex = -1;
+    independent.midiPitch = 64;
+    independent.voice = "2";
+    independent.startTick = 480;
+    polyphonicParts.notes.push_back(independent);
+    auto coincidentVoice = independent;
+    coincidentVoice.voice = "3";
+    coincidentVoice.startTick = 0;
+    polyphonicParts.notes.push_back(coincidentVoice);
+    auto chordTone = polyphonicParts.notes[0];
+    chordTone.sourceNoteIndex = -1;
+    chordTone.midiPitch = 67;
+    polyphonicParts.notes.push_back(chordTone);
+    auto shortGuide = polyphonic.notes[0];
+    shortGuide.durationTicks = 480;
+    const auto independentEdit = correctedNumberedGuide(polyphonic, polyphonicParts, 0, shortGuide);
+    check(independentEdit.performance.notes[2].startTick == 480 &&
+              independentEdit.performance.notes[2].durationTicks == 960 &&
+              independentEdit.performance.notes[3].startTick == 0 &&
+              independentEdit.performance.notes[3].durationTicks == 960,
+          "Unlinked independent primary voices retain measure-relative onsets and their own durations");
+    check(independentEdit.performance.notes[4].startTick == 0 &&
+              independentEdit.performance.notes[4].durationTicks == 480,
+          "A proven same-voice coincident chord tone follows the corrected guide rhythm");
     editable.notes = {note(0, 20, 1, 480), note(0, 60, 4, 480), note(1, 20, 3, 960)};
     editable.repeats = {{0, 2, 2, -1}};
     const auto editableParts = buildNumberedPerformance(editable, {{0, 1, {}}});

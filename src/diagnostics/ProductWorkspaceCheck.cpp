@@ -539,6 +539,44 @@ class WorkspaceProbe final : public QObject
             clickGuide(0);
             check("Numbered source clicks stay on the selected repeat pass",
                   window_.player().positionTicks() == repeating.staffPerformance->durationTicks);
+            auto draftProject = braced;
+            draftProject.image = QImage(420, 520, QImage::Format_RGB32);
+            draftProject.image.fill(Qt::white);
+            Note later = upper;
+            later.degree = 6;
+            later.line = 2;
+            later.source.y = 330;
+            Note laterLower = lower;
+            laterLower.line = 3;
+            laterLower.durationTicks = 480;
+            laterLower.source.y = 420;
+            draftProject.score.notes = {upper, next, lower, later, laterLower};
+            draftProject.staffPerformance = buildNumberedPerformance(draftProject.score, {{0, 1, {}}, {2, 3, {}}});
+            window_.setProject(draftProject);
+            correctionMode->click();
+            for (const double duration : {.5, 1.0})
+            {
+                clickGuide(0);
+                control<QDoubleSpinBox>("noteDuration")->setValue(duration);
+                QTimer::singleShot(0, this,
+                                   [this]
+                                   {
+                                       auto *dialog =
+                                           qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+                                       check("Linked-note click resolves the pending numbered draft",
+                                             dialog && dialog->objectName() == "noteDraftConfirmation");
+                                       if (dialog)
+                                           dialog->done(QMessageBox::Apply);
+                                   });
+                clickBox(later.source);
+                const int expectedIndex = duration == .5 ? 3 : 2;
+                const auto &parts = window_.project().staffPerformance->notes;
+                const auto selectedPart = std::find_if(parts.begin(), parts.end(), [&](const StaffPerformanceNote &note)
+                                                       { return note.source.y == later.source.y && note.staff == 1; });
+                check("Linked-note click reselects its source after padding insertion or removal",
+                      control<QComboBox>("noteDegree")->currentData().toInt() == 6 &&
+                          selectedPart != parts.end() && selectedPart->sourceNoteIndex == expectedIndex);
+            }
             window_.setProject(sample);
             check("Replacing project clears history",
                   !control<QAction>("menuUndo")->isEnabled() && !control<QAction>("menuRedo")->isEnabled());
