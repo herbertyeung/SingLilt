@@ -6,6 +6,7 @@
 #include "AudioTranscriber.h"
 #include "VocalSeparator.h"
 #include "i18n/LanguageManager.h"
+#include "platform/RuntimePaths.h"
 
 #include <QCoreApplication>
 #include <QDataStream>
@@ -29,6 +30,9 @@
 #include <numbers>
 #include <numeric>
 #include <stdexcept>
+#ifdef Q_OS_LINUX
+#include "linux/AudioDecoder.h"
+#endif
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -247,6 +251,20 @@ DecodedAudio decodeAudio(const QString &path, const AudioTranscriptionOptions &o
     if (copiedUntil <= firstFrame || audio.samples.empty())
         fail("messages.audio_transcription.decode_failed");
     return audio;
+#elif defined(Q_OS_LINUX)
+    try
+    {
+        auto decoded = decodeLinuxAudio(path, options.startSeconds, options.endSeconds, cancellation.get());
+        checkCancellation(cancellation);
+        if (durationMetadata)
+            *durationMetadata = decoded.duration;
+        report(progress, 25, "messages.audio_transcription.progress_decode");
+        return {std::move(decoded.samples), decoded.duration, decoded.start, decoded.end};
+    }
+    catch (const AudioDecodeCancelled &)
+    {
+        throw Cancelled{};
+    }
 #else
     Q_UNUSED(path);
     Q_UNUSED(options);
@@ -753,9 +771,10 @@ void recognizeLyrics(AudioTranscriptionResult &result, const DecodedAudio &audio
                      const std::shared_ptr<std::atomic_bool> &cancellation,
                      const AudioTranscriptionProgress &progress)
 {
-    const QString executable = options.whisperExecutable.isEmpty()
-                                   ? QCoreApplication::applicationDirPath() + "/tools/whisper/whisper-cli.exe"
-                                   : options.whisperExecutable;
+    const QString executable =
+        options.whisperExecutable.isEmpty()
+            ? QCoreApplication::applicationDirPath() + "/tools/whisper/whisper-cli" + NativeExecutableSuffix
+            : options.whisperExecutable;
     const QString model = options.whisperModel.isEmpty()
                               ? QCoreApplication::applicationDirPath() + "/models/ggml-base.bin"
                               : options.whisperModel;

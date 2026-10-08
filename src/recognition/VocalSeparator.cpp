@@ -5,6 +5,7 @@
 
 #include "VocalSeparator.h"
 #include "i18n/LanguageManager.h"
+#include "platform/RuntimePaths.h"
 
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -223,7 +224,7 @@ VocalSeparationResult separateVocals(const QString &path, const VocalSeparationO
         if (python.isEmpty())
             python = qEnvironmentVariable("JIANPU_SEPARATOR_PYTHON");
         if (python.isEmpty())
-            python = appDirectory + "/tools/separation/python/python.exe";
+            python = appDirectory + SeparatorPythonPath;
         const QString script = options.workerScript.isEmpty()
                                    ? appDirectory + "/tools/separation/separate_vocals.py"
                                    : options.workerScript;

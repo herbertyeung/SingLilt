@@ -11,15 +11,19 @@
 #include <QCommandLineParser>
 #include <QDialog>
 #include <QElapsedTimer>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QMessageBox>
+#include <QPointer>
 #include <QPushButton>
 #include <QSlider>
+#include <QThread>
 #include <QTimer>
 #include <cmath>
+#include <functional>
 
 namespace singlilt
 {
@@ -42,6 +46,19 @@ class AudioProbe final : public QObject
     {
         checks_.append(QJsonObject{{"name", name}, {"passed", passed}});
         passed_ = passed_ && passed;
+    }
+    bool awaitPlayback(const std::function<bool()> &ready)
+    {
+        timer_.stop();
+        QElapsedTimer elapsed;
+        elapsed.start();
+        while (!ready() && elapsed.elapsed() < 3000)
+        {
+            QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+            QThread::msleep(5);
+        }
+        timer_.start();
+        return ready();
     }
     void finish()
     {
@@ -124,12 +141,23 @@ class AudioProbe final : public QObject
                 check("real-stem-paths-returned", QFileInfo::exists(task.result()->vocalsPath) &&
                                                       QFileInfo::exists(task.result()->instrumentalPath));
                 preview->findChild<QPushButton *>("previewSeparatedVocals")->click();
-                auto *audition = preview->findChild<QObject *>("audioStemPreviewAudition");
-                check("real-vocal-preview-playing", audition && audition->property("auditionPlaying").toBool());
+                const QPointer<QObject> audition = preview->findChild<QObject *>("audioStemPreviewAudition");
+                check("real-vocal-preview-playing",
+                      awaitPlayback(
+                          [&]
+                          {
+                              return audition && !audition->property("auditionLoading").toBool() &&
+                                     audition->property("auditionPlaying").toBool();
+                          }));
                 check("vocal-preview-keeps-accepted-score", scoreToJson(window_.project().score) == baseline_);
                 preview->findChild<QPushButton *>("previewSeparatedInstrumental")->click();
                 check("real-instrumental-preview-playing",
-                      audition && audition->property("auditionPlaying").toBool());
+                      awaitPlayback(
+                          [&]
+                          {
+                              return audition && !audition->property("auditionLoading").toBool() &&
+                                     audition->property("auditionPlaying").toBool();
+                          }));
                 preview->findChild<QPushButton *>("previewSeparatedStop")->click();
                 check("stem-preview-keeps-accepted-source",
                       window_.project().score.title == baseline_.value("title").toString().toStdString());
@@ -154,6 +182,7 @@ class AudioProbe final : public QObject
             check("actual-digit-anchors",
                   !restored.image.isNull() && restored.score.notes.front().source.width > 0);
             window_.findChild<QComboBox *>("playbackSource")->setCurrentIndex(selectedAudioSource_);
+            check("original-source-loading-completes", awaitPlayback([&] { return !original.isLoading(); }));
             if (selectedAudioSource_ == 2)
                 check("confirmed-vocal-source-selected",
                       original.sourcePath() == QString::fromStdString(window_.project().audioSource->vocalsPath));

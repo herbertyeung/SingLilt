@@ -3,6 +3,11 @@
 # Author: Herbert Yeung
 # SPDX-License-Identifier: MIT
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    include(cmake/DeployLinux.cmake)
+    return()
+endif()
+
 add_custom_command(TARGET SingLilt POST_BUILD
     COMMAND Qt6::windeployqt "--$<LOWER_CASE:$<CONFIG>>"
         --no-translations --no-opengl-sw --no-system-d3d-compiler

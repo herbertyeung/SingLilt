@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+self=$(readlink -f -- "$0")
+bindir=$(CDPATH= cd -- "$(dirname -- "$self")" && pwd)
+case '@CMAKE_INSTALL_LIBDIR@' in
+    /*) appdir='@CMAKE_INSTALL_LIBDIR@/singlilt' ;;
+    *) appdir="$bindir/@SINGLILT_BIN_TO_LIB@/singlilt" ;;
+esac
+exec "$appdir/SingLilt" "$@"

@@ -5,6 +5,7 @@
 
 #include "MainWindow.h"
 #include "NotationRenderer.h"
+#include "PreviewAudioSession.h"
 #include "RecognitionPreviewDialog.h"
 #include "ScoreView.h"
 #include "i18n/LanguageManager.h"
@@ -63,163 +64,10 @@ bool mappingMatchesInput(const Project &project, const OriginalAudioPlayer &audi
            QFileInfo(audio.sourcePath()).absoluteFilePath() == QFileInfo(expected).absoluteFilePath() &&
            project.audioSource->timingFingerprint == audioTimingFingerprint(project.score);
 }
-// Dialog-owned playback never replaces the accepted project's original-audio device.
-class PreviewAudioSession final : public QObject
+} // namespace
+
+namespace
 {
-  public:
-    PreviewAudioSession(MainWindow &window, std::function<bool()> intent, std::function<void(bool)> setIntent,
-                        std::function<void(const QString &)> reportError, QDialog *dialog)
-        : QObject(dialog), window_(window), intent_(std::move(intent)), setIntent_(std::move(setIntent)),
-          reportError_(std::move(reportError))
-    {
-        stateTimer_.setInterval(50);
-        connect(&stateTimer_, &QTimer::timeout, this,
-                [this]
-                {
-                    if (!active_)
-                        return;
-                    setProperty("auditionPlaying", audio_.isPlaying());
-                    setProperty("auditionPositionSeconds", audio_.positionSeconds());
-                });
-        connect(dialog, &QDialog::finished, this, [this] { finish(); });
-        for (const char *name : {"play", "stop"})
-            if (auto *button = window.findChild<QPushButton *>(name))
-                connect(button, &QPushButton::clicked, this, [this] { abandon(); });
-        if (auto *source = window.findChild<QComboBox *>("playbackSource"))
-            connect(source, &QComboBox::currentIndexChanged, this, [this] { abandon(); });
-        if (auto *volume = window.findChild<QSlider *>("originalVolume"))
-            connect(volume, &QSlider::valueChanged, this,
-                    [this](int value)
-                    {
-                        if (active_ && !audio_.setVolume(value / 100.0))
-                            reportError_(audio_.errorString());
-                    });
-        if (auto *speed = window.findChild<QDoubleSpinBox *>("originalSpeed"))
-            connect(speed, &QDoubleSpinBox::valueChanged, this,
-                    [this](double value)
-                    {
-                        if (active_ && !audio_.setSpeed(value))
-                            reportError_(audio_.errorString());
-                    });
-    }
-    OriginalAudioPlayer &audio()
-    {
-        return audio_;
-    }
-    QString errorString() const
-    {
-        return error_;
-    }
-    bool play(const QString &path, double startSeconds)
-    {
-        error_.clear();
-        if (!audio_.open(path))
-        {
-            error_ = audio_.errorString();
-            return false;
-        }
-        if (!active_ || !acceptedTransportUnchanged())
-        {
-            wasMelodyPlaying_ = window_.player().isPlaying();
-            wasOriginalPlaying_ = window_.originalAudioPlayer().isPlaying();
-            previousIntent_ = intent_();
-            const auto *source = window_.findChild<QComboBox *>("playbackSource");
-            selection_ = source ? source->currentData().toInt() : 0;
-            fingerprint_ = audioTimingFingerprint(window_.project().score);
-            imageIdentity_ = window_.project().image.cacheKey();
-            projectSourcePath_ = window_.project().audioSource
-                                     ? QString::fromStdString(window_.project().audioSource->path)
-                                     : QString();
-            originalPath_ = window_.originalAudioPlayer().sourcePath();
-        }
-        window_.player().pause();
-        if (window_.originalAudioPlayer().isOpen())
-            window_.originalAudioPlayer().pause();
-        pausedTick_ = window_.player().positionTicks();
-        pausedSeconds_ = window_.originalAudioPlayer().positionSeconds();
-        setIntent_(false);
-        active_ = true;
-        const auto *speed = window_.findChild<QDoubleSpinBox *>("originalSpeed");
-        const auto *volume = window_.findChild<QSlider *>("originalVolume");
-        const bool ok = audio_.setSpeed(speed ? speed->value() : 1.0) &&
-                        audio_.setVolume(volume ? volume->value() / 100.0 : .9) && audio_.seek(startSeconds) &&
-                        audio_.play();
-        setProperty("auditionSourcePath", audio_.sourcePath());
-        setProperty("auditionPlaying", ok && audio_.isPlaying());
-        setProperty("auditionPositionSeconds", audio_.positionSeconds());
-        if (ok)
-            stateTimer_.start();
-        if (!ok)
-        {
-            error_ = audio_.errorString();
-            finish();
-        }
-        return ok;
-    }
-    void finish()
-    {
-        stateTimer_.stop();
-        audio_.close();
-        setProperty("auditionPlaying", false);
-        setProperty("auditionPositionSeconds", 0.0);
-        if (active_ && acceptedTransportUnchanged())
-        {
-            bool restored = true;
-            if (wasOriginalPlaying_)
-                restored = window_.originalAudioPlayer().play();
-            else if (wasMelodyPlaying_)
-                restored = window_.player().play();
-            setIntent_(restored && previousIntent_);
-            if (!restored)
-            {
-                const QString restoreError = wasOriginalPlaying_ ? window_.originalAudioPlayer().errorString()
-                                                                 : window_.player().errorString();
-                error_ = error_.isEmpty() ? restoreError : error_ + '\n' + restoreError;
-                reportError_(error_);
-            }
-        }
-        active_ = false;
-    }
-    void abandon()
-    {
-        stateTimer_.stop();
-        audio_.close();
-        setProperty("auditionPlaying", false);
-        setProperty("auditionPositionSeconds", 0.0);
-        active_ = false;
-    }
-
-  private:
-    bool acceptedTransportUnchanged() const
-    {
-        const auto *source = window_.findChild<QComboBox *>("playbackSource");
-        return !window_.player().isPlaying() && !window_.originalAudioPlayer().isPlaying() &&
-               (!source || source->currentData().toInt() == selection_) &&
-               audioTimingFingerprint(window_.project().score) == fingerprint_ &&
-               window_.project().image.cacheKey() == imageIdentity_ &&
-               (window_.project().audioSource ? QString::fromStdString(window_.project().audioSource->path)
-                                              : QString()) == projectSourcePath_ &&
-               window_.originalAudioPlayer().sourcePath() == originalPath_ &&
-               window_.player().positionTicks() == pausedTick_ &&
-               std::abs(window_.originalAudioPlayer().positionSeconds() - pausedSeconds_) < .03;
-    }
-    MainWindow &window_;
-    OriginalAudioPlayer audio_;
-    QTimer stateTimer_;
-    std::function<bool()> intent_;
-    std::function<void(bool)> setIntent_;
-    std::function<void(const QString &)> reportError_;
-    std::string fingerprint_;
-    QString originalPath_;
-    QString projectSourcePath_;
-    QString error_;
-    qint64 imageIdentity_ = 0;
-    std::int64_t pausedTick_ = 0;
-    double pausedSeconds_ = 0;
-    int selection_ = 0;
-    bool active_ = false, wasMelodyPlaying_ = false, wasOriginalPlaying_ = false, previousIntent_ = false;
-};
-
 double sourceSecondsAtTick(const AudioSourceInfo &source, std::int64_t tick)
 {
     for (const auto &timing : source.timings)
@@ -381,13 +229,45 @@ void MainWindow::openAudioImport(const QString &path)
         *this, [this] { return playIntent_; }, [this](bool playing) { playIntent_ = playing; },
         [this](const QString &error) { setStatusMessage(error); }, dialog);
     audition->setObjectName("audioImportAudition");
-    if (!audition->audio().open(path))
-    {
-        setStatusMessage(audition->audio().errorString());
-        dialog->deleteLater();
-        return;
-    }
     audioImportDialog_ = dialog;
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setObjectName("audioImportDialog");
+    dialog->setModal(false);
+    bindText(dialog, "ui.audio_import.title", "windowTitle");
+    auto *loadingLayout = new QVBoxLayout(dialog);
+    auto *loadingLabel = label("ui.status.loading_audio");
+    loadingLayout->addWidget(loadingLabel);
+    auto *cancel = new QDialogButtonBox(QDialogButtonBox::Cancel, dialog);
+    loadingLayout->addWidget(cancel);
+    connect(cancel, &QDialogButtonBox::rejected, dialog,
+            [this, dialog, audition]
+            {
+                audition->audio().cancelOpen();
+                if (audioImportDialog_ == dialog)
+                    audioImportDialog_.clear();
+                dialog->reject();
+            });
+    dialog->show();
+    audition->audio().openAsync(path, dialog,
+                                [this, path, dialog, audition, loadingLabel, cancel](bool opened)
+                                {
+                                    if (!opened)
+                                    {
+                                        setStatusMessage(audition->audio().errorString());
+                                        if (audioImportDialog_ == dialog)
+                                            audioImportDialog_.clear();
+                                        dialog->deleteLater();
+                                        return;
+                                    }
+                                    delete loadingLabel;
+                                    delete cancel;
+                                    delete dialog->layout();
+                                    populateAudioImportDialog(path, dialog, audition);
+                                });
+}
+
+void MainWindow::populateAudioImportDialog(const QString &path, QDialog *dialog, PreviewAudioSession *audition)
+{
     dialog->setObjectName("audioImportDialog");
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     dialog->setModal(false);
@@ -507,7 +387,7 @@ void MainWindow::openAudioImport(const QString &path)
     connect(listen, &QPushButton::clicked, dialog,
             [this, path, start, audition]
             {
-                if (!audition->play(path, start->value()))
+                if (!audition->requestPlay(path, start->value()))
                     setStatusMessage(audition->errorString());
                 else
                     setStatus("ui.vocal_separation.import_audition");
@@ -619,7 +499,7 @@ void MainWindow::previewAudioResult()
         instrumental->setEnabled(separated && !instrumentalPath.isEmpty());
         auto listen = [this, audition, startSeconds](const QString &path)
         {
-            if (!audition->play(path, startSeconds))
+            if (!audition->requestPlay(path, startSeconds))
                 setStatusMessage(audition->errorString());
             else
                 setStatus("ui.vocal_separation.preview_audition");
@@ -716,12 +596,28 @@ void MainWindow::changePlaybackSource()
         const QString path = project_.audioSource ? inputPath(*project_.audioSource, requested) : QString();
         if (path.isEmpty())
         {
+            if (originalAudio_.isLoading() && restorePendingOriginalSource_)
+            {
+                auto restore = std::move(restorePendingOriginalSource_);
+                originalAudio_.cancelOpen();
+                restore({});
+            }
+            else
+                originalAudio_.cancelOpen();
             setStatus(requested == 1 ? "ui.audio_import.no_original" : "ui.vocal_separation.no_stems");
             restoreSelection();
             return;
         }
         if (!QFileInfo(path).isFile())
         {
+            if (originalAudio_.isLoading() && restorePendingOriginalSource_)
+            {
+                auto restore = std::move(restorePendingOriginalSource_);
+                originalAudio_.cancelOpen();
+                restore({});
+            }
+            else
+                originalAudio_.cancelOpen();
             setStatus("messages.vocal_separation.missing_playback_file", {path});
             restoreSelection();
             return;
@@ -735,56 +631,83 @@ void MainWindow::changePlaybackSource()
             originalAudio_.pause();
         const double previousSeconds = originalAudio_.positionSeconds();
         const auto previousTick = player_.positionTicks();
-        auto restorePlayback = [&](QString error)
+        std::function<void(QString)> restorePlayback = [this, previousPath, previousSpeed, previousSeconds,
+                                                        wasOriginalPlaying, wasMelodyPlaying, previousIntent,
+                                                        restoreSelection](QString error)
         {
-            bool restored = true;
-            if (previousPath.isEmpty())
-                originalAudio_.close();
-            else
+            auto finish = [this, previousSpeed, previousSeconds, wasOriginalPlaying, wasMelodyPlaying,
+                           previousIntent, restoreSelection, error](bool restored) mutable
             {
-                restored = originalAudio_.open(previousPath) && originalAudio_.setSpeed(previousSpeed) &&
-                           originalAudio_.seek(previousSeconds) && (!wasOriginalPlaying || originalAudio_.play());
+                if (restored && originalAudio_.isOpen())
+                    restored = originalAudio_.setSpeed(previousSpeed) && originalAudio_.seek(previousSeconds) &&
+                               (!wasOriginalPlaying || originalAudio_.play());
                 if (!restored)
                 {
                     error += '\n' + originalAudio_.errorString();
                     originalAudio_.close();
                 }
-            }
-            if (wasMelodyPlaying && !player_.play())
+                if (wasMelodyPlaying && !player_.play())
+                {
+                    restored = false;
+                    error += '\n' + player_.errorString();
+                }
+                playIntent_ = restored && previousIntent;
+                restoreSelection();
+                setStatusMessage(error);
+                updatePlayback();
+            };
+            if (previousPath.isEmpty())
             {
-                restored = false;
-                error += '\n' + player_.errorString();
+                originalAudio_.close();
+                finish(true);
             }
-            playIntent_ = restored && previousIntent;
-            restoreSelection();
-            setStatusMessage(error);
+            else
+                originalAudio_.openAsync(previousPath, this, finish);
         };
-        bool opened = originalAudio_.open(path);
-        if (opened)
-            if (auto *speed = findChild<QDoubleSpinBox *>("originalSpeed"))
-                opened = originalAudio_.setSpeed(speed->value());
-        if (!opened)
-        {
-            restorePlayback(originalAudio_.errorString());
-            return;
-        }
-        originalAudio_.pause();
-        playIntent_ = false;
-        previousOriginalSource_ = requested;
-        if (originalMappingCurrent())
-        {
-            const auto mappedTick =
-                previous > 0 ? sourceTickAtSeconds(*project_.audioSource, previousSeconds) : previousTick;
-            if (!originalAudio_.seek(sourceSecondsAtTick(*project_.audioSource, mappedTick)))
+        if (originalAudio_.isLoading() && restorePendingOriginalSource_)
+            restorePlayback = restorePendingOriginalSource_;
+        restorePendingOriginalSource_ = restorePlayback;
+        originalAudio_.openAsync(
+            path, this,
+            [this, requested, previous, previousSeconds, previousTick, restorePlayback](bool opened)
             {
-                restorePlayback(originalAudio_.errorString());
-                return;
-            }
-        }
-        setStatus(requested == 1 ? "ui.audio_import.original_mode_help" : "ui.vocal_separation.stem_mode_help");
+                restorePendingOriginalSource_ = {};
+                if (playbackSource_->currentData().toInt() != requested)
+                {
+                    restorePlayback(trText("ui.status.loading_audio"));
+                    return;
+                }
+                if (opened)
+                    if (auto *speed = findChild<QDoubleSpinBox *>("originalSpeed"))
+                        opened = originalAudio_.setSpeed(speed->value());
+                if (!opened)
+                {
+                    restorePlayback(originalAudio_.errorString());
+                    return;
+                }
+                originalAudio_.pause();
+                playIntent_ = false;
+                previousOriginalSource_ = requested;
+                if (originalMappingCurrent())
+                {
+                    const auto mappedTick =
+                        previous > 0 ? sourceTickAtSeconds(*project_.audioSource, previousSeconds) : previousTick;
+                    if (!originalAudio_.seek(sourceSecondsAtTick(*project_.audioSource, mappedTick)))
+                    {
+                        restorePlayback(originalAudio_.errorString());
+                        return;
+                    }
+                }
+                setStatus(requested == 1 ? "ui.audio_import.original_mode_help"
+                                         : "ui.vocal_separation.stem_mode_help");
+                updatePlayback();
+            });
     }
     else
     {
+        restorePendingOriginalSource_ = {};
+        if (originalAudio_.isLoading())
+            originalAudio_.close();
         player_.pause();
         if (originalAudio_.isOpen())
             originalAudio_.pause();

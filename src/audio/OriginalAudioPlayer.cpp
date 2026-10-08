@@ -7,6 +7,7 @@
 #include "i18n/LanguageManager.h"
 
 #include <QFileInfo>
+#include <QPointer>
 #include <algorithm>
 #include <cmath>
 
@@ -70,6 +71,23 @@ OriginalAudioPlayer::~OriginalAudioPlayer()
 {
     close();
 }
+
+void OriginalAudioPlayer::openAsync(const QString &path, QObject *context, std::function<void(bool)> completion)
+{
+    const QPointer<QObject> receiver(context);
+    if (!receiver)
+        return;
+    const bool opened = open(path);
+    if (receiver && completion)
+        completion(opened);
+}
+
+bool OriginalAudioPlayer::isLoading() const
+{
+    return false;
+}
+
+void OriginalAudioPlayer::cancelOpen() {}
 
 bool OriginalAudioPlayer::open(const QString &path)
 {

@@ -3,6 +3,20 @@
 # Author: Herbert Yeung
 # SPDX-License-Identifier: MIT
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    if(EXISTS "${CMAKE_BINARY_DIR}/_deps/Qt/6.8.3/gcc_64")
+        list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/_deps/Qt/6.8.3/gcc_64")
+    endif()
+    find_package(Qt6 6.8 REQUIRED COMPONENTS Widgets Network Concurrent Multimedia)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(FluidSynth REQUIRED IMPORTED_TARGET fluidsynth>=2.3)
+    pkg_check_modules(Tesseract REQUIRED IMPORTED_TARGET tesseract>=5)
+    find_package(ALSA REQUIRED)
+    add_library(FluidSynthRuntime INTERFACE)
+    target_link_libraries(FluidSynthRuntime INTERFACE PkgConfig::FluidSynth)
+    return()
+endif()
+
 if(EXISTS "${CMAKE_BINARY_DIR}/_deps/Qt/6.8.3/msvc2022_64")
     list(PREPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/_deps/Qt/6.8.3/msvc2022_64")
 endif()

@@ -17,6 +17,7 @@ set(CORE_FILES
 )
 
 set(APP_FILES
+    src/platform/RuntimePaths.h
     src/diagnostics/ThemeCheck.h src/diagnostics/ThemeCheck.cpp
     src/ui/ThemeManager.h src/ui/ThemeManager.cpp
     src/diagnostics/NativeStaffProcessCheck.h src/diagnostics/NativeStaffProcessCheck.cpp
@@ -40,6 +41,7 @@ set(APP_FILES
     src/diagnostics/AccompanimentPreviewCheck.h src/diagnostics/AccompanimentPreviewCheck.cpp
     src/diagnostics/AsyncRecognitionCheck.h src/diagnostics/AsyncRecognitionCheck.cpp
     src/diagnostics/AudioImportCheck.h src/diagnostics/AudioImportCheck.cpp
+    src/diagnostics/AudioCancellationCheck.h src/diagnostics/AudioCancellationCheck.cpp
     src/diagnostics/BekernDecoderCheck.h src/diagnostics/BekernDecoderCheck.cpp
     src/diagnostics/ClassroomCheck.h src/diagnostics/ClassroomCheck.cpp
     src/diagnostics/CrispStaffAnchorCheck.h src/diagnostics/CrispStaffAnchorCheck.cpp
@@ -108,6 +110,7 @@ set(APP_FILES
     src/ui/ClassroomOptions.cpp
     src/ui/InstrumentNames.h
     src/ui/MainWindow.h src/ui/MainWindow.cpp
+    src/ui/PreviewAudioSession.h src/ui/PreviewAudioSession.cpp
     src/ui/MainWindowAccompaniment.cpp
     src/ui/MainWindowAudio.cpp
     src/ui/MainWindowCloud.cpp
@@ -138,3 +141,16 @@ set(RESOURCE_FILES
     resources/fonts/Bravura.otf
     resources/branding/singlilt-icon.png
     resources/styles/app.qss)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    list(REMOVE_ITEM APP_FILES src/audio/MicrophoneCapture.cpp src/audio/OriginalAudioPlayer.cpp
+        src/audio/MidiInstrument.cpp src/recognition/WindowsOcr.cpp)
+    list(APPEND APP_FILES
+        src/audio/linux/MicrophoneCapture.cpp
+        src/audio/linux/OriginalAudioPlayer.cpp
+        src/audio/linux/MidiInstrument.cpp
+        src/audio/linux/MidiRouting.h
+        src/recognition/linux/TextOcr.cpp
+        src/recognition/linux/AudioDecoder.h src/recognition/linux/AudioDecoder.cpp
+        src/platform/LinuxRuntime.h)
+endif()

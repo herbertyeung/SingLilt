@@ -12,6 +12,7 @@
 #include "diagnostics/AccompanimentCheck.h"
 #include "diagnostics/AccompanimentPreviewCheck.h"
 #include "diagnostics/AsyncRecognitionCheck.h"
+#include "diagnostics/AudioCancellationCheck.h"
 #include "diagnostics/AudioImportCheck.h"
 #include "diagnostics/BekernDecoderCheck.h"
 #include "diagnostics/ClassroomCheck.h"
@@ -67,12 +68,13 @@ bool configureDiagnosticSettings(const QStringList &rawArguments)
     if (hasOption("--theme-check") || hasOption("--language-pack-check") || hasOption("--smoke") ||
         hasOption("--ui-localization-check") || hasOption("--async-recognition-check") ||
         hasOption("--accompaniment-check") || hasOption("--accompaniment-preview-check") ||
-        hasOption("--whole-song-check") || hasOption("--audio-task-check") || hasOption("--classroom-check") ||
-        hasOption("--note-preview-check") || hasOption("--instrument-check") || hasOption("--options-check") ||
-        hasOption("--options-read-check") || hasOption("--project-package-check") ||
-        hasOption("--product-workspace-check") || hasOption("--settings-product-check") ||
-        hasOption("--wave-export-check") || hasOption("--history-recovery-check") ||
-        hasOption("--menu-icons-check") || hasOption("--staff-renderer-check") || hasOption("--musicxml-check") ||
+        hasOption("--audio-cancellation-check") || hasOption("--whole-song-check") ||
+        hasOption("--audio-task-check") || hasOption("--classroom-check") || hasOption("--note-preview-check") ||
+        hasOption("--instrument-check") || hasOption("--options-check") || hasOption("--options-read-check") ||
+        hasOption("--project-package-check") || hasOption("--product-workspace-check") ||
+        hasOption("--settings-product-check") || hasOption("--wave-export-check") ||
+        hasOption("--history-recovery-check") || hasOption("--menu-icons-check") ||
+        hasOption("--staff-renderer-check") || hasOption("--musicxml-check") ||
         hasOption("--staff-recognition-check") || hasOption("--staff-playback-check") ||
         hasOption("--staff-workflow-check") || hasOption("--local-staff-image-check") ||
         hasOption("--multi-page-workflow-check") || hasOption("--staff-fidelity-check") ||
@@ -237,6 +239,8 @@ void runWindowDiagnostics(MainWindow &window, LanguageManager &languages, ThemeM
         runNotePreviewCheck(window, languages, args, app);
     else if (args.isSet("classroom-check"))
         runClassroomCheck(window, languages, args, app);
+    else if (args.isSet("audio-cancellation-check"))
+        runAudioCancellationCheck(window, args, app);
     else if (args.isSet("audio-task-check"))
         runAudioImportCheck(window, args, app);
     else if (args.isSet("whole-song-check"))

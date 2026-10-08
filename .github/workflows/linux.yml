@@ -1,0 +1,75 @@
+# Native Linux builds and hardware-independent desktop regressions.
+name: Linux
+on:
+  push:
+    branches: [main, feature/linux-port]
+    paths-ignore: ['site/**']
+  pull_request:
+    paths-ignore: ['site/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: linux-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  desktop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install distribution libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build pkg-config libasound2-dev libfluidsynth-dev \
+            libtesseract-dev tesseract-ocr-eng tesseract-ocr-chi-sim fluid-soundfont-gm ffmpeg \
+            fonts-dejavu-core libgl1-mesa-dev libxcb-cursor0 libxkbcommon-x11-0 libxcb-xinerama0 \
+            libxcb-icccm4 libxcb-keysyms1 libxcb-image0 libxcb-render-util0 patchelf
+      - name: Cache pinned Qt runtime
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: build/_deps/Qt/6.8.3/gcc_64
+          key: ${{ runner.os }}-qt-6.8.3-gcc64-icu-declarative-multimedia
+      - name: Prepare pinned Qt and CMake
+        run: bash scripts/setup-linux.sh
+      - name: Build and test Debug
+        run: bash scripts/build-linux.sh Debug
+      - name: Build and test Release
+        run: bash scripts/build-linux.sh Release
+      - name: Install and verify runtime data
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          build/tools/linux-env/bin/cmake --install build --config Release --prefix "$PWD/build/install"
+          readelf -d build/install/lib/singlilt/SingLilt
+          build/install/bin/singlilt --version --language en_US
+          build/install/bin/singlilt --catalog-check --language en_US
+          python tests/LinuxPackageTests.py build/install
+          build/tools/linux-env/bin/cpack --config build/CPackConfig.cmake -C Release -B build/packages
+          mkdir -p build/unpacked
+          archive=$(find build/packages -maxdepth 1 -name '*.tar.gz' -print -quit)
+          tar -xzf "$archive" -C build/unpacked
+          launcher=$(find build/unpacked -type f -path '*/bin/singlilt' -print -quit)
+          "$launcher" --version --language en_US
+          "$launcher" --catalog-check --language en_US
+          mv build/_deps/Qt build/_deps/Qt-unavailable
+          trap 'mv build/_deps/Qt-unavailable build/_deps/Qt' EXIT
+          python tests/LinuxPackageTests.py build/install
+          prefix=$(dirname "$(dirname "$launcher")")
+          python tests/LinuxPackageTests.py "$prefix"
+      - name: Save reports and Linux package
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: linux-reports-and-package
+          path: |
+            build/Testing/Temporary
+            build/**/*report.json
+            build/packages/*.tar.gz
+          if-no-files-found: ignore
+          retention-days: 7

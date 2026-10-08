@@ -6,7 +6,10 @@
 #pragma once
 
 #include <QString>
+#include <functional>
 #include <memory>
+
+class QObject;
 
 namespace singlilt
 {
@@ -21,7 +24,12 @@ class OriginalAudioPlayer final
     OriginalAudioPlayer(const OriginalAudioPlayer &) = delete;
     OriginalAudioPlayer &operator=(const OriginalAudioPlayer &) = delete;
 
+    // Synchronous compatibility path for diagnostics; UI uses openAsync.
     bool open(const QString &path);
+    // UI callers use the completion path; replacement/cancellation suppresses stale callbacks.
+    void openAsync(const QString &path, QObject *context, std::function<void(bool)> completion);
+    bool isLoading() const;
+    void cancelOpen();
     void close();
     bool isOpen() const;
     bool play();

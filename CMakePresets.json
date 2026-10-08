@@ -18,6 +18,28 @@
       "cacheVariables": {
         "SINGLILT_BUILD_APP": "OFF"
       }
+    },
+    {
+      "name": "linux",
+      "displayName": "Linux desktop (Ninja Multi-Config)",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "cacheVariables": {
+        "SINGLILT_BUILD_APP": "ON"
+      }
+    },
+    {
+      "name": "linux-core",
+      "displayName": "Linux core tests",
+      "inherits": "linux",
+      "cacheVariables": {
+        "SINGLILT_BUILD_APP": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -29,7 +51,8 @@
         "SingLilt",
         "SingLiltCoreTests",
         "SingLiltLanguageTests",
-        "SingLiltMigrationTests"
+        "SingLiltMigrationTests",
+        "SingLiltAudioDecoderTests"
       ]
     },
     {
@@ -40,7 +63,8 @@
         "SingLilt",
         "SingLiltCoreTests",
         "SingLiltLanguageTests",
-        "SingLiltMigrationTests"
+        "SingLiltMigrationTests",
+        "SingLiltAudioDecoderTests"
       ]
     },
     {
@@ -55,6 +79,48 @@
       "name": "core-debug",
       "configurePreset": "core",
       "configuration": "Debug",
+      "targets": [
+        "SingLiltCoreTests"
+      ]
+    },
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux",
+      "configuration": "Debug",
+      "targets": [
+        "SingLilt",
+        "SingLiltCoreTests",
+        "SingLiltLanguageTests",
+        "SingLiltMigrationTests",
+        "SingLiltLinuxMediaTests",
+        "SingLiltAudioDecoderTests"
+      ]
+    },
+    {
+      "name": "linux-core-debug",
+      "configurePreset": "linux-core",
+      "configuration": "Debug",
+      "targets": [
+        "SingLiltCoreTests"
+      ]
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux",
+      "configuration": "Release",
+      "targets": [
+        "SingLilt",
+        "SingLiltCoreTests",
+        "SingLiltLanguageTests",
+        "SingLiltMigrationTests",
+        "SingLiltLinuxMediaTests",
+        "SingLiltAudioDecoderTests"
+      ]
+    },
+    {
+      "name": "linux-core-release",
+      "configurePreset": "linux-core",
+      "configuration": "Release",
       "targets": [
         "SingLiltCoreTests"
       ]
@@ -75,6 +141,50 @@
       "configuration": "Release",
       "output": {
         "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "environment": {
+        "QT_QPA_PLATFORM": "offscreen"
+      }
+    },
+    {
+      "name": "linux-core-debug",
+      "configurePreset": "linux-core",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      },
+      "environment": {
+        "QT_QPA_PLATFORM": "offscreen"
+      }
+    },
+    {
+      "name": "linux-release",
+      "configurePreset": "linux",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "environment": {
+        "QT_QPA_PLATFORM": "offscreen"
+      }
+    },
+    {
+      "name": "linux-core-release",
+      "configurePreset": "linux-core",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "environment": {
+        "QT_QPA_PLATFORM": "offscreen"
       }
     }
   ]
