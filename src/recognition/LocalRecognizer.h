@@ -26,7 +26,7 @@ struct RecognitionResult
 class LocalRecognizer
 {
   public:
-    // Recognizes printed monophonic numbered notation, retaining image anchors.
+    // Recognizes printed numbered notation, including brace-linked hands and image anchors.
     // Confidence below 0.8 marks a note for manual review.
     static RecognitionResult recognize(const QImage &image, const QString &imagePath);
 };

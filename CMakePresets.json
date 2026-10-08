@@ -50,6 +50,7 @@
       "targets": [
         "SingLilt",
         "SingLiltCoreTests",
+        "SingLiltNumberedRecognitionTests",
         "SingLiltLanguageTests",
         "SingLiltMigrationTests",
         "SingLiltAudioDecoderTests"
@@ -62,6 +63,7 @@
       "targets": [
         "SingLilt",
         "SingLiltCoreTests",
+        "SingLiltNumberedRecognitionTests",
         "SingLiltLanguageTests",
         "SingLiltMigrationTests",
         "SingLiltAudioDecoderTests"
@@ -90,6 +92,7 @@
       "targets": [
         "SingLilt",
         "SingLiltCoreTests",
+        "SingLiltNumberedRecognitionTests",
         "SingLiltLanguageTests",
         "SingLiltMigrationTests",
         "SingLiltLinuxMediaTests",
@@ -111,6 +114,7 @@
       "targets": [
         "SingLilt",
         "SingLiltCoreTests",
+        "SingLiltNumberedRecognitionTests",
         "SingLiltLanguageTests",
         "SingLiltMigrationTests",
         "SingLiltLinuxMediaTests",

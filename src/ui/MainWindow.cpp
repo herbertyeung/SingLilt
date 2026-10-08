@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "MainWindow.h"
+#include "domain/NumberedPerformance.h"
 #include "AccompanimentPanel.h"
 #include "ClassroomDialog.h"
 #include "NotationRenderer.h"
@@ -389,7 +390,11 @@ MainWindow::MainWindow(LanguageManager &languageManager, ThemeManager &themes, Q
                              auto result = watcher_.result();
                              if (result.score.notes.empty())
                                  throw std::runtime_error("ui.error.no_notes");
-                             setProject({result.score, pendingImage_, result.warnings}, true);
+                             Project candidate{result.score, pendingImage_, result.warnings};
+                             candidate.staffPerformance = result.staffPerformance;
+                             if (candidate.staffPerformance)
+                                 candidate.practiceMix.accompanimentEnabled = candidate.staffPerformance->staffCount > 1;
+                             setProject(std::move(candidate), true);
                              debugText_ = result.debugText;
                              setStatus("ui.status.recognized", {QString::number(project_.score.notes.size())});
                          }
@@ -681,6 +686,20 @@ void MainWindow::selectNote(int index, bool seek)
     if (index < 0 || index >= int(project_.score.notes.size()))
     {
         selected_ = -1;
+        if (project_.staffPerformance && !project_.staffImagePlayback &&
+            project_.notationStyle == NotationStyle::Numbered)
+        {
+            for (QWidget *field :
+                 std::initializer_list<QWidget *>{degree_, octave_, accidental_, duration_, noteKey_, lyricEdit_,
+                                                  lyricBEdit_, sharedLyric_, tie_})
+                field->setEnabled(false);
+            if (auto *apply = findChild<QPushButton *>("applyNoteChanges"))
+                apply->setEnabled(false);
+            if (auto *remove = findChild<QPushButton *>("removeNote"))
+                remove->setEnabled(false);
+            noteTitle_->setText(trText("ui.staff.numbered_unlinked_tip"));
+            view_->setCurrent(-1, false);
+        }
         return;
     }
     if (seek && !project_.staffPages.empty() &&
@@ -706,14 +725,18 @@ void MainWindow::selectNote(int index, bool seek)
     lyricBEdit_->setDisabled(sharedLyric_->isChecked());
     tie_->setChecked(n.tieToNext);
     view_->setCurrent(index, false);
-    const bool editable = !project_.staffPerformance;
+    const bool editable = !project_.staffPerformance ||
+                          (!project_.staffImagePlayback && project_.notationStyle == NotationStyle::Numbered);
     for (QWidget *field : std::initializer_list<QWidget *>{degree_, octave_, accidental_, duration_, noteKey_,
                                                            lyricEdit_, lyricBEdit_, sharedLyric_, tie_})
         field->setEnabled(editable);
     if (auto *apply = findChild<QPushButton *>("applyNoteChanges"))
         apply->setEnabled(editable);
     if (auto *remove = findChild<QPushButton *>("removeNote"))
-        remove->setEnabled(editable);
+    {
+        remove->setEnabled(!project_.staffPerformance);
+        remove->setToolTip(project_.staffPerformance && editable ? trText("ui.staff.numbered_remove_tip") : QString());
+    }
     if (seek)
     {
         const int verse = verseView_->currentData().toInt();
@@ -740,7 +763,9 @@ void MainWindow::selectNote(int index, bool seek)
 }
 void MainWindow::updateNote()
 {
-    if (project_.staffPerformance)
+    const bool numberedPerformance = project_.staffPerformance && !project_.staffImagePlayback &&
+                                     project_.notationStyle == NotationStyle::Numbered;
+    if (project_.staffPerformance && !numberedPerformance)
     {
         setStatus("ui.staff.guide_only");
         return;
@@ -748,7 +773,7 @@ void MainWindow::updateNote()
     if (selected_ < 0 || (!hasNoteDraft() && project_.score.notes[size_t(selected_)].confidence >= 1))
         return;
     const auto before = materialState();
-    auto &n = project_.score.notes[size_t(selected_)];
+    auto n = project_.score.notes[size_t(selected_)];
     n.degree = degree_->currentData().toInt();
     n.octave = octave_->value();
     n.accidental = accidental_->value();
@@ -770,6 +795,24 @@ void MainWindow::updateNote()
     n.lyric = legacyLines.join('\n').toStdString();
     n.tieToNext = tie_->isChecked();
     n.confidence = 1;
+    if (numberedPerformance)
+    {
+        try
+        {
+            auto corrected = correctedNumberedGuide(project_.score, *project_.staffPerformance,
+                                                    std::size_t(selected_), std::move(n));
+            project_.score = std::move(corrected.score);
+            project_.staffPerformance = std::move(corrected.performance);
+            selected_ = int(corrected.selectedNote);
+        }
+        catch (const std::exception &error)
+        {
+            showError(QString::fromUtf8(error.what()));
+            return;
+        }
+    }
+    else
+        project_.score.notes[std::size_t(selected_)] = std::move(n);
     commitMaterialEdit(before, "ui.product.update_note");
     rebuild(true);
     selectNote(selected_, false);

@@ -342,6 +342,7 @@ void MainWindow::createScoreOptions(QVBoxLayout *layout)
     options->addSpacing(12);
     options->addWidget(label("ui.option.meter"));
     meterTop_ = new QSpinBox;
+    meterTop_->setObjectName("meterTop");
     meterTop_->setRange(1, MaximumBeatsPerBar);
     meterTop_->setFixedWidth(58);
     options->addWidget(meterTop_);
@@ -399,6 +400,12 @@ void MainWindow::createScoreOptions(QVBoxLayout *layout)
                      {
                          if (!loading_)
                          {
+                             if (project_.staffPerformance && !project_.staffImagePlayback &&
+                                 project_.notationStyle == NotationStyle::Numbered)
+                             {
+                                 updateNumberedMetadata();
+                                 return;
+                             }
                              project_.score.tonic = key_->itemData(i).toInt();
                              markModified();
                              rebuild(true);
@@ -418,6 +425,12 @@ void MainWindow::createScoreOptions(QVBoxLayout *layout)
     {
         if (!loading_)
         {
+            if (project_.staffPerformance && !project_.staffImagePlayback &&
+                project_.notationStyle == NotationStyle::Numbered)
+            {
+                updateNumberedMetadata();
+                return;
+            }
             project_.score.beatsPerBar = meterTop_->value();
             project_.score.beatUnit = meterBottom_->currentData().toInt();
             markModified();
@@ -496,6 +509,7 @@ QWidget *MainWindow::createInspector()
     form->addRow(sharedLyric_);
     QObject::connect(sharedLyric_, &QCheckBox::toggled, lyricBEdit_, &QWidget::setDisabled);
     tie_ = checkBox("ui.inspector.tie");
+    tie_->setObjectName("noteTie");
     form->addRow(tie_);
     side->addLayout(form);
     auto *noteButtons = new QHBoxLayout;

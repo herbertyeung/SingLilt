@@ -21,6 +21,8 @@
   "ui.staff.other_parts": "Other staff",
   "ui.staff.original_parts": "Original staves play together; all written notes are retained, not generated accompaniment.",
   "ui.staff.guide_only": "This inspector is the practice cursor guide. Complete written parts are stored and played on the shared staff timeline.",
+  "ui.staff.numbered_remove_tip": "To remove a false sounding note, change its degree to rest (0). Deleting a timed column would change both hands' alignment.",
+  "ui.staff.numbered_unlinked_tip": "This pitch is not linked to the numbered guide and is read-only in the guide editor. Select a linked guide note to edit it.",
   "messages.staff.performance_stale": "Original parts no longer match the note timing. Reimport the complete score.",
   "messages.staff.invalid_performance": "Invalid staff performance fields or incomplete lead coverage.",
   "messages.staff.invalid_performance_tie": "Staff performance tie endpoints do not match.",

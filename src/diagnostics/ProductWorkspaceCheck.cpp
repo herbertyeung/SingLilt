@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "ProductWorkspaceCheck.h"
+#include "domain/NumberedPerformance.h"
 #include "i18n/LanguageManager.h"
 #include "storage/ProjectStore.h"
 #include "ui/MainWindow.h"
@@ -18,6 +19,7 @@
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QDoubleSpinBox>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -28,6 +30,7 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScrollBar>
@@ -387,6 +390,192 @@ class WorkspaceProbe final : public QObject
                 correctionMode->click();
                 name_ = locale + " correction";
                 screenshot(locale + "-correction-980x700");
+            }
+            Project braced = sample;
+            braced.image = QImage(420, 280, QImage::Format_RGB32);
+            braced.image.fill(Qt::white);
+            braced.generatedNotation = false;
+            Note upper;
+            upper.source = {120, 120, 18, 24};
+            Note next = upper;
+            next.degree = 4;
+            next.source.x = 180;
+            Note lower = upper;
+            lower.degree = 3;
+            lower.octave = -1;
+            lower.line = 1;
+            lower.durationTicks = 960;
+            lower.source.y = 210;
+            braced.score.notes = {upper, next, lower};
+            braced.score.repeats.clear();
+            braced.staffPerformance = buildNumberedPerformance(braced.score, {{0, 1, {}}});
+            braced.practiceMix.accompanimentEnabled = true;
+            window_.setProject(braced);
+            correctionMode->click();
+            check("Braced numbered guide keeps its correction fields enabled",
+                  control<QComboBox>("noteDegree")->isEnabled() &&
+                      control<QPushButton>("applyNoteChanges")->isEnabled());
+            check("Numbered timed-column removal explains the alignment constraint",
+                  !control<QPushButton>("removeNote")->isEnabled() &&
+                      !control<QPushButton>("removeNote")->toolTip().isEmpty());
+            check("Braced numbered key and meter controls remain editable",
+                  control<QComboBox>("scoreKey")->isEnabled() && control<QComboBox>("meterBottom")->isEnabled());
+            auto *bracedView = control<QGraphicsView>("scoreView");
+            const auto clickBox = [&](const SourceRect &box)
+            {
+                const auto point =
+                    bracedView->mapFromScene(QPointF(box.x + box.width / 2, box.y + box.height / 2));
+                const auto global = bracedView->viewport()->mapToGlobal(point);
+                QMouseEvent press(QEvent::MouseButtonPress, QPointF(point), QPointF(global), Qt::LeftButton,
+                                  Qt::LeftButton, Qt::NoModifier);
+                QMouseEvent release(QEvent::MouseButtonRelease, QPointF(point), QPointF(global), Qt::LeftButton,
+                                    Qt::NoButton, Qt::NoModifier);
+                QApplication::sendEvent(bracedView->viewport(), &press);
+                QApplication::sendEvent(bracedView->viewport(), &release);
+            };
+            const auto clickGuide = [&](int index)
+            { clickBox(window_.project().score.notes[std::size_t(index)].source); };
+            const auto beforeLowerClick = scoreToJson(window_.project().score);
+            clickBox(window_.project().staffPerformance->notes[2].source);
+            check("Unlinked lower-hand clicks cannot edit the upper guide",
+                  !control<QComboBox>("noteDegree")->isEnabled() &&
+                      !control<QPushButton>("applyNoteChanges")->isEnabled());
+            control<QPushButton>("applyNoteChanges")->click();
+            check("Applying after an unlinked part click leaves the upper guide unchanged",
+                  scoreToJson(window_.project().score) == beforeLowerClick);
+            clickGuide(1);
+            check("Braced performance hit opens the matching numbered guide inspector",
+                  control<QComboBox>("noteDegree")->currentData().toInt() == 4 &&
+                      control<QPushButton>("applyNoteChanges")->isEnabled());
+            clickGuide(0);
+            control<QComboBox>("noteDegree")->setCurrentIndex(4);
+            control<QDoubleSpinBox>("noteDuration")->setValue(.5);
+            control<QLineEdit>("lyricAEditor")->setText("corrected numbered lyric");
+            control<QCheckBox>("noteTie")->setChecked(true);
+            control<QPushButton>("applyNoteChanges")->click();
+            const auto numberedEdit = window_.project();
+            const auto editedParts = staffPerformanceToJson(*numberedEdit.staffPerformance);
+            check("Numbered inspector synchronizes pitch, duration, lyrics, ties and both-hand timing",
+                  numberedEdit.score.notes[0].degree == 4 && numberedEdit.score.notes[0].durationTicks == 240 &&
+                      numberedEdit.score.notes[0].lyric == "corrected numbered lyric" &&
+                      numberedEdit.staffPerformance->notes[0].tieStart &&
+                      numberedEdit.staffPerformance->notes[1].tieStop &&
+                      numberedEdit.staffPerformance->notes[2].durationTicks == 960 &&
+                      buildStaffPerformancePlan(numberedEdit.score, buildTimeline(numberedEdit.score),
+                                                *numberedEdit.staffPerformance)
+                          .valid());
+            action("menuUndo");
+            check("Numbered correction Undo restores the complete original performance",
+                  window_.project().score.notes[0].degree == 1 &&
+                      staffPerformanceToJson(*window_.project().staffPerformance) ==
+                          staffPerformanceToJson(*braced.staffPerformance));
+            action("menuRedo");
+            check("Numbered correction Redo restores synchronized performance",
+                  staffPerformanceToJson(*window_.project().staffPerformance) == editedParts);
+            const QString numberedPath = folder_ + "/numbered-corrected.jpp";
+            saveProject(numberedPath, window_.project());
+            const auto reopenedNumbered = loadProject(numberedPath);
+            check("Saved numbered correction retains the guide, both hands and numbered view",
+                  reopenedNumbered.notationStyle == NotationStyle::Numbered &&
+                      reopenedNumbered.score.notes[0].lyric == "corrected numbered lyric" &&
+                      staffPerformanceToJson(*reopenedNumbered.staffPerformance) == editedParts);
+            control<QComboBox>("programA")->setCurrentIndex(control<QComboBox>("programA")->findData(40));
+            practiceMode->click();
+            const auto auditions = window_.player().voiceState().previewNoteOns;
+            clickGuide(1);
+            QEventLoop previewLoop;
+            QTimer previewPoll;
+            QObject::connect(&previewPoll, &QTimer::timeout, &previewLoop,
+                             [&]
+                             {
+                                 if (window_.player().voiceState().previewNoteOns > auditions)
+                                     previewLoop.quit();
+                             });
+            // Allow device initialization within the workspace diagnostic's 45-second limit.
+            QTimer::singleShot(10000, &previewLoop, &QEventLoop::quit);
+            previewPoll.start(10);
+            previewLoop.exec();
+            previewPoll.stop();
+            const auto preview = window_.player().voiceState();
+            check("Paused numbered-part audition uses the selected primary instrument and performed velocity",
+                  preview.previewNoteOns > auditions && preview.previewProgram == 40 &&
+                      preview.previewVelocity == window_.project().staffPerformance->notes[1].velocity &&
+                      control<QComboBox>("noteDegree")->currentData().toInt() == 4);
+            window_.player().stop();
+            const auto beforeMetadata = window_.project();
+            control<QComboBox>("scoreKey")->setCurrentIndex(control<QComboBox>("scoreKey")->findData(2));
+            control<QSpinBox>("meterTop")->setValue(3);
+            control<QComboBox>("meterBottom")->setCurrentIndex(control<QComboBox>("meterBottom")->findData(8));
+            const auto metadata = window_.project();
+            const auto metadataTimeline = buildTimeline(metadata.score);
+            check("Numbered global key and meter corrections synchronize performed pitches and metronome",
+                  metadata.score.tonic == 2 && metadata.score.beatsPerBar == 3 && metadata.score.beatUnit == 8 &&
+                      metadata.score.writtenMeasures[0].beatsPerBar == 3 &&
+                      metadata.score.writtenMeasures[0].beatUnit == 8 &&
+                      metadata.staffPerformance->sourceTonic == 2 &&
+                      metadata.staffPerformance->notes[0].midiPitch ==
+                          beforeMetadata.staffPerformance->notes[0].midiPitch + 2 &&
+                      metadata.staffPerformance->notes[2].midiPitch ==
+                          beforeMetadata.staffPerformance->notes[2].midiPitch + 2 &&
+                      metadata.staffPerformance->durationTicks == beforeMetadata.staffPerformance->durationTicks &&
+                      metadata.staffPerformance->notes[2].durationTicks ==
+                          beforeMetadata.staffPerformance->notes[2].durationTicks &&
+                      metadataTimeline.metronomeBeats.size() == 4 &&
+                      metadataTimeline.metronomeBeats[1].startTick == 240 &&
+                      buildStaffPerformancePlan(metadata.score, metadataTimeline, *metadata.staffPerformance)
+                          .valid());
+            saveProject(numberedPath, metadata);
+            const auto reopenedMetadata = loadProject(numberedPath);
+            check("Numbered metadata corrections survive save and reopen",
+                  reopenedMetadata.score.tonic == 2 && reopenedMetadata.score.writtenMeasures[0].beatUnit == 8 &&
+                      staffPerformanceToJson(*reopenedMetadata.staffPerformance) ==
+                          staffPerformanceToJson(*metadata.staffPerformance));
+            auto repeating = metadata;
+            repeating.score.repeats = {{0, repeating.score.notes.size(), 2, -1}};
+            repeating.staffPerformance->timingFingerprint = staffTimingFingerprint(repeating.score);
+            window_.setProject(repeating);
+            practiceMode->click();
+            control<QComboBox>("verseSelector")->setCurrentIndex(control<QComboBox>("verseSelector")->findData(1));
+            clickGuide(0);
+            check("Numbered source clicks stay on the selected repeat pass",
+                  window_.player().positionTicks() == repeating.staffPerformance->durationTicks);
+            auto draftProject = braced;
+            draftProject.image = QImage(420, 520, QImage::Format_RGB32);
+            draftProject.image.fill(Qt::white);
+            Note later = upper;
+            later.degree = 6;
+            later.line = 2;
+            later.source.y = 330;
+            Note laterLower = lower;
+            laterLower.line = 3;
+            laterLower.durationTicks = 480;
+            laterLower.source.y = 420;
+            draftProject.score.notes = {upper, next, lower, later, laterLower};
+            draftProject.staffPerformance = buildNumberedPerformance(draftProject.score, {{0, 1, {}}, {2, 3, {}}});
+            window_.setProject(draftProject);
+            correctionMode->click();
+            for (const double duration : {.5, 1.0})
+            {
+                clickGuide(0);
+                control<QDoubleSpinBox>("noteDuration")->setValue(duration);
+                QTimer::singleShot(0, this,
+                                   [this]
+                                   {
+                                       auto *dialog =
+                                           qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+                                       check("Linked-note click resolves the pending numbered draft",
+                                             dialog && dialog->objectName() == "noteDraftConfirmation");
+                                       if (dialog)
+                                           dialog->done(QMessageBox::Apply);
+                                   });
+                clickBox(later.source);
+                const int expectedIndex = duration == .5 ? 3 : 2;
+                const auto &parts = window_.project().staffPerformance->notes;
+                const auto selectedPart = std::find_if(parts.begin(), parts.end(), [&](const StaffPerformanceNote &note)
+                                                       { return note.source.y == later.source.y && note.staff == 1; });
+                check("Linked-note click reselects its source after padding insertion or removal",
+                      control<QComboBox>("noteDegree")->currentData().toInt() == 6 &&
+                          selectedPart != parts.end() && selectedPart->sourceNoteIndex == expectedIndex);
             }
             window_.setProject(sample);
             check("Replacing project clears history",

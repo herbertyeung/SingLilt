@@ -21,6 +21,8 @@
   "ui.staff.other_parts": "左手/其他谱表",
   "ui.staff.original_parts": "原谱双手同步演奏：使用全部写定音符，不自动生成左手。",
   "ui.staff.guide_only": "此栏是整谱的练唱定位线；原谱声部在全谱数据中保存，演奏按两手时间轴。",
+  "ui.staff.numbered_remove_tip": "误识别的发声音符请将音级改为休止（0）；删除带时值的音符列会改变左右手的对齐。",
+  "ui.staff.numbered_unlinked_tip": "此音没有关联的简谱定位线音符，定位线编辑器对此音只读；请选择已关联的定位线音符进行修改。",
   "messages.staff.performance_stale": "原谱声部与当前音符时间轴不一致，请重新导入完整谱。",
   "messages.staff.invalid_performance": "原谱多声部演奏字段或领奏覆盖无效。",
   "messages.staff.invalid_performance_tie": "原谱延音起止不匹配。",

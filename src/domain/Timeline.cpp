@@ -272,10 +272,15 @@ Timeline buildTimeline(const Score &score, int transpose)
     pitches.reserve(std::min(score.notes.size(), MaximumScoreNotes));
     int tonic = score.tonic;
     std::int64_t sourceDuration = 0;
+    std::size_t nextKey = 0;
+    std::vector<std::int64_t> sourceStarts;
     for (std::size_t i = 0; i < score.notes.size() && i < MaximumScoreNotes; ++i)
     {
         const auto &note = score.notes[i];
         const auto index = static_cast<int>(i);
+        sourceStarts.push_back(sourceDuration);
+        while (nextKey < score.keyChanges.size() && score.keyChanges[nextKey].startTick <= sourceDuration)
+            tonic = score.keyChanges[nextKey++].tonic;
         sourceDuration += std::max(note.durationTicks, 0);
         if (note.pageIndex < 0 || note.pageIndex > 9999)
             error(timeline, "messages.domain.page_range", index);
@@ -301,6 +306,21 @@ Timeline buildTimeline(const Score &score, int transpose)
         pitches.push_back(pitch);
     }
     validateWrittenMeasures(score, timeline, sourceDuration);
+    if (score.keyChanges.size() > MaximumScoreNotes)
+        error(timeline, "messages.domain.key_change_range");
+    std::int64_t previousKeyTick = -1;
+    int previousKeyTonic = -1;
+    for (const auto &change : score.keyChanges)
+    {
+        if (change.startTick < 0 || change.startTick >= sourceDuration || change.startTick < previousKeyTick ||
+            (change.startTick == previousKeyTick && change.tonic != previousKeyTonic) ||
+            change.tonic < 0 || change.tonic > 11 || change.sourceNoteIndex < -1 ||
+            change.sourceNoteIndex >= int(sourceStarts.size()) ||
+            (change.sourceNoteIndex >= 0 && sourceStarts[std::size_t(change.sourceNoteIndex)] != change.startTick))
+            error(timeline, "messages.domain.key_change_range");
+        previousKeyTick = change.startTick;
+        previousKeyTonic = change.tonic;
+    }
 
     auto repeats = score.repeats;
     std::sort(repeats.begin(), repeats.end(), [](const RepeatSection &left, const RepeatSection &right)
