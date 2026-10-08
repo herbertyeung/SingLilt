@@ -1,6 +1,6 @@
 # Third-party notices
 
-SingLilt uses dynamically linked Qt 6.8.3 (Qt Core, GUI, Widgets, Network and Concurrent), Copyright The Qt Company Ltd. and other contributors. Qt's applicable open-source terms include LGPL-3.0 / GPL-3.0 and module-specific notices. Qt binaries are unmodified and remain separate, replaceable DLLs.
+SingLilt uses dynamically linked Qt 6.8.3 (Core, GUI, Widgets, Network and Concurrent; Linux also deploys Multimedia, QML and Quick), Copyright The Qt Company Ltd. and other contributors. Qt's applicable open-source terms include LGPL-3.0 / GPL-3.0 and module-specific notices. The libraries remain separate, replaceable shared files.
 
 - Source for the corresponding version: https://download.qt.io/archive/qt/6.8/6.8.3/submodules/
 - Qt licensing: https://www.qt.io/licensing/open-source-lgpl-obligations
@@ -62,8 +62,11 @@ The installer uses Inno Setup 6.7.3 by Jordan Russell and Martijn Laan. Its lice
 Linux packages include dynamically linked, replaceable Qt 6.8.3 libraries and the media
 plugin's Qt/ICU/FFmpeg dependencies selected by Qt's deployment tooling. Loader paths may
 be adjusted for relocation; application runtime data stay separate from these libraries.
-Qt LGPL/GPL terms are retained under the package's Qt license directory; corresponding
-module sources and Qt third-party notices are linked above.
+The release source ZIP includes Qt Base, Declarative and Multimedia 6.8.3, FFmpeg 7.1 and
+ICU 73.2 sources, alongside the existing FluidSynth and libsndfile sources. FFmpeg's
+deployed libraries identify LGPL 2.1 or later; its license text and ICU's license are
+included under `licenses/ffmpeg` and `licenses/icu`. Qt LGPL/GPL terms are retained under
+the package's Qt license directory. The release source ZIP also contains those license copies.
 
 ALSA and Tesseract are distribution-managed libraries, not copied into the TGZ.
 - ALSA source: https://github.com/alsa-project/alsa-lib ; terms: https://github.com/alsa-project/alsa-lib/blob/master/COPYING .
