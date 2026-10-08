@@ -35,7 +35,7 @@ add_test(NAME SingLiltNativeStaffProcess COMMAND SingLilt --native-staff-process
     --report "${CMAKE_BINARY_DIR}/native-staff-process/$<CONFIG>/report.json")
 set(linux_tests SingLiltLanguages SingLiltMigration SingLiltLinuxMedia SingLiltVersion
     SingLiltCli SingLiltExternalLanguage SingLiltNativeStaffProcess SingLiltCatalog)
-foreach(diagnostic project-package musicxml staff-renderer settings-product)
+foreach(diagnostic project-package musicxml staff-renderer settings-product audio-cancellation)
     add_test(NAME "SingLiltLinux-${diagnostic}" COMMAND SingLilt "--${diagnostic}-check"
         --audio-backend sampled --diagnostic-no-audio --language en_US
         --report "${CMAKE_BINARY_DIR}/linux-diagnostics/$<CONFIG>/${diagnostic}.json")
@@ -46,4 +46,5 @@ add_test(NAME SingLiltCatalog COMMAND SingLilt --catalog-check --language en_US)
 set_tests_properties(${linux_tests} PROPERTIES LABELS "ci" TIMEOUT 120 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 set_tests_properties(SingLiltVersion SingLiltCli SingLiltExternalLanguage SingLiltCatalog
     SingLiltNativeStaffProcess SingLiltLinux-project-package SingLiltLinux-musicxml
-    SingLiltLinux-staff-renderer SingLiltLinux-settings-product PROPERTIES RUN_SERIAL TRUE)
+    SingLiltLinux-staff-renderer SingLiltLinux-settings-product SingLiltLinux-audio-cancellation
+    PROPERTIES RUN_SERIAL TRUE)

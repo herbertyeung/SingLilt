@@ -695,9 +695,19 @@ void MainWindow::createTransport(QVBoxLayout *layout)
     QObject::connect(stop, &QPushButton::clicked, this,
                      [this]
                      {
+                         restorePendingOriginalSource_ = {};
+                         if (originalAudio_.isLoading())
+                         {
+                             originalAudio_.cancelOpen();
+                             const QSignalBlocker blocker(playbackSource_);
+                             playbackSource_->setCurrentIndex(
+                                 std::max(0, playbackSource_->findData(previousOriginalSource_)));
+                             refreshSourceControls();
+                         }
                          playIntent_ = false;
                          player_.stop();
                          originalAudio_.stop();
+                         updatePlayback();
                      });
     metronome_ = checkBox("ui.transport.metronome");
     metronome_->setObjectName("metronome");

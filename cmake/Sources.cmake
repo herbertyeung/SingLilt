@@ -41,6 +41,7 @@ set(APP_FILES
     src/diagnostics/AccompanimentPreviewCheck.h src/diagnostics/AccompanimentPreviewCheck.cpp
     src/diagnostics/AsyncRecognitionCheck.h src/diagnostics/AsyncRecognitionCheck.cpp
     src/diagnostics/AudioImportCheck.h src/diagnostics/AudioImportCheck.cpp
+    src/diagnostics/AudioCancellationCheck.h src/diagnostics/AudioCancellationCheck.cpp
     src/diagnostics/BekernDecoderCheck.h src/diagnostics/BekernDecoderCheck.cpp
     src/diagnostics/ClassroomCheck.h src/diagnostics/ClassroomCheck.cpp
     src/diagnostics/CrispStaffAnchorCheck.h src/diagnostics/CrispStaffAnchorCheck.cpp
@@ -109,6 +110,7 @@ set(APP_FILES
     src/ui/ClassroomOptions.cpp
     src/ui/InstrumentNames.h
     src/ui/MainWindow.h src/ui/MainWindow.cpp
+    src/ui/PreviewAudioSession.h src/ui/PreviewAudioSession.cpp
     src/ui/MainWindowAccompaniment.cpp
     src/ui/MainWindowAudio.cpp
     src/ui/MainWindowCloud.cpp

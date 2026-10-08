@@ -138,6 +138,7 @@ void addCommandLineOptions(QCommandLineParser &args)
     args.addOption({"whisper-executable", trText("cli.whisper_executable"), "file"});
     args.addOption({"whisper-model", trText("cli.whisper_model"), "file"});
     args.addOption({"notation-image", trText("cli.notation_image"), "file"});
+    args.addOption({"audio-cancellation-check", "Verify asynchronous audio cancellation and selection"});
     args.addOption({"audio-task-check", trText("cli.audio_task_check"), "file"});
     args.addOption({"audio-whole-song", trText("cli.audio_whole_song")});
     args.addOption({"audio-language", trText("cli.audio_language"), "language", "auto"});
