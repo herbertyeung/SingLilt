@@ -167,6 +167,42 @@ void numberedPerformanceTests()
     editable.notes = {note(0, 20, 1, 480), note(0, 60, 4, 480), note(1, 20, 3, 960)};
     editable.repeats = {{0, 2, 2, -1}};
     const auto editableParts = buildNumberedPerformance(editable, {{0, 1, {}}});
+    const auto metadata = correctedNumberedMetadata(editable, editableParts, 2, 3, 8);
+    const auto metadataTimeline = buildTimeline(metadata.score);
+    check(metadataTimeline.valid() && metadata.score.tonic == 2 && metadata.score.beatsPerBar == 3 &&
+              metadata.score.beatUnit == 8 && metadata.score.writtenMeasures[0].beatsPerBar == 3 &&
+              metadata.score.writtenMeasures[0].beatUnit == 8 && metadata.performance.sourceTonic == 2 &&
+              metadata.performance.notes[0].midiPitch == 62 && metadata.performance.notes[2].midiPitch == 54 &&
+              metadata.performance.durationTicks == editableParts.durationTicks &&
+              metadata.performance.notes[2].durationTicks == 960 &&
+              buildStaffPerformancePlan(metadata.score, metadataTimeline, metadata.performance).valid(),
+          "Global numbered key and meter corrections synchronize both hands without changing written timing");
+    const auto metadataModulation = correctedNumberedMetadata(lowerKey, lowerKeyParts, 3, 4, 4);
+    check(metadataModulation.performance.notes[0].midiPitch == 63 &&
+              metadataModulation.performance.notes[2].midiPitch == 55 &&
+              metadataModulation.performance.notes[3].midiPitch == 54 &&
+              metadataModulation.performance.notes[1].midiPitch == 64,
+          "Global key correction respects explicit independently timed modulations in either hand");
+    auto highScore = editable;
+    highScore.tonic = 10;
+    highScore.notes[0].degree = 6;
+    highScore.notes[0].octave = 4;
+    auto highParts = editableParts;
+    highParts.sourceTonic = 10;
+    highParts.notes[0].midiPitch = 127;
+    highParts.notes[1].midiPitch += 10;
+    highParts.notes[2].midiPitch += 10;
+    highParts.timingFingerprint = staffTimingFingerprint(highScore);
+    try
+    {
+        correctedNumberedMetadata(highScore, highParts, 11, 4, 4);
+        throw std::runtime_error("Out-of-range global key correction must be rejected");
+    }
+    catch (const std::invalid_argument &)
+    {
+        check(highScore.tonic == 10 && highParts.notes[0].midiPitch == 127,
+              "Rejected metadata corrections leave both input models unchanged");
+    }
     auto replacement = editable.notes[0];
     replacement.degree = 4;
     replacement.durationTicks = 240;

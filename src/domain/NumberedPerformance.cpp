@@ -454,4 +454,38 @@ NumberedGuideCorrection correctedNumberedGuide(const Score &score, const StaffPe
         throw std::invalid_argument("messages.staff.invalid_performance");
     return corrected;
 }
+NumberedGuideCorrection correctedNumberedMetadata(const Score &score, const StaffPerformance &performance,
+                                                  int tonic, int beatsPerBar, int beatUnit)
+{
+    if (!buildStaffPerformancePlan(score, buildTimeline(score), performance).valid())
+        throw std::invalid_argument("messages.staff.invalid_performance");
+    NumberedGuideCorrection corrected{score, performance, 0};
+    auto &guide = corrected.score;
+    auto &parts = corrected.performance;
+    guide.tonic = tonic;
+    guide.beatsPerBar = beatsPerBar;
+    guide.beatUnit = beatUnit;
+    for (auto &measure : guide.writtenMeasures)
+        if (measure.beatsPerBar == score.beatsPerBar && measure.beatUnit == score.beatUnit)
+        {
+            measure.beatsPerBar = beatsPerBar;
+            measure.beatUnit = beatUnit;
+        }
+    if (!buildTimeline(guide).valid())
+        throw std::invalid_argument("messages.staff.invalid_performance");
+    const auto oldKeys = keyClock(score);
+    const auto newKeys = keyClock(guide);
+    for (auto &note : parts.notes)
+    {
+        note.midiPitch += score.tonic - performance.sourceTonic + keyAt(newKeys, note.startTick, tonic) -
+                          keyAt(oldKeys, note.startTick, score.tonic);
+        if (note.midiPitch < 0 || note.midiPitch > 127)
+            throw std::invalid_argument("messages.domain.pitch_range");
+    }
+    parts.sourceTonic = tonic;
+    parts.timingFingerprint = staffTimingFingerprint(guide);
+    if (!buildStaffPerformancePlan(guide, buildTimeline(guide), parts).valid())
+        throw std::invalid_argument("messages.staff.invalid_performance");
+    return corrected;
+}
 } // namespace singlilt

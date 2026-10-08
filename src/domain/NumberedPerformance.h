@@ -30,4 +30,6 @@ struct NumberedGuideCorrection
 // Correct the practice guide without dropping or stretching the other written hand.
 NumberedGuideCorrection correctedNumberedGuide(const Score &score, const StaffPerformance &performance,
                                                std::size_t noteIndex, Note replacement);
+NumberedGuideCorrection correctedNumberedMetadata(const Score &score, const StaffPerformance &performance,
+                                                  int tonic, int beatsPerBar, int beatUnit);
 } // namespace singlilt

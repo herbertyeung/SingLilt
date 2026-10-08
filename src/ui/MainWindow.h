@@ -145,6 +145,7 @@ class MainWindow : public QMainWindow
     void showMessage(const QString &text, const char *titleKey, bool warning);
     void createUi();
     void refreshNotationControls();
+    void updateNumberedMetadata();
     void selectStaffNote(int index);
     void beginStaffAnchorEdit(int index);
     void moveStaffAnchor(int index, const SourceRect &anchor);

@@ -418,10 +418,11 @@ class WorkspaceProbe final : public QObject
             check("Numbered timed-column removal explains the alignment constraint",
                   !control<QPushButton>("removeNote")->isEnabled() &&
                       !control<QPushButton>("removeNote")->toolTip().isEmpty());
+            check("Braced numbered key and meter controls remain editable",
+                  control<QComboBox>("scoreKey")->isEnabled() && control<QComboBox>("meterBottom")->isEnabled());
             auto *bracedView = control<QGraphicsView>("scoreView");
-            const auto clickGuide = [&](int index)
+            const auto clickBox = [&](const SourceRect &box)
             {
-                const auto &box = window_.project().score.notes[std::size_t(index)].source;
                 const auto point =
                     bracedView->mapFromScene(QPointF(box.x + box.width / 2, box.y + box.height / 2));
                 const auto global = bracedView->viewport()->mapToGlobal(point);
@@ -432,6 +433,16 @@ class WorkspaceProbe final : public QObject
                 QApplication::sendEvent(bracedView->viewport(), &press);
                 QApplication::sendEvent(bracedView->viewport(), &release);
             };
+            const auto clickGuide = [&](int index)
+            { clickBox(window_.project().score.notes[std::size_t(index)].source); };
+            const auto beforeLowerClick = scoreToJson(window_.project().score);
+            clickBox(window_.project().staffPerformance->notes[2].source);
+            check("Unlinked lower-hand clicks cannot edit the upper guide",
+                  !control<QComboBox>("noteDegree")->isEnabled() &&
+                      !control<QPushButton>("applyNoteChanges")->isEnabled());
+            control<QPushButton>("applyNoteChanges")->click();
+            check("Applying after an unlinked part click leaves the upper guide unchanged",
+                  scoreToJson(window_.project().score) == beforeLowerClick);
             clickGuide(1);
             check("Braced performance hit opens the matching numbered guide inspector",
                   control<QComboBox>("noteDegree")->currentData().toInt() == 4 &&
@@ -488,6 +499,35 @@ class WorkspaceProbe final : public QObject
                   preview.previewNoteOns > auditions && preview.previewProgram == 40 &&
                       preview.previewVelocity == window_.project().staffPerformance->notes[1].velocity &&
                       control<QComboBox>("noteDegree")->currentData().toInt() == 4);
+            window_.player().stop();
+            const auto beforeMetadata = window_.project();
+            control<QComboBox>("scoreKey")->setCurrentIndex(control<QComboBox>("scoreKey")->findData(2));
+            control<QSpinBox>("meterTop")->setValue(3);
+            control<QComboBox>("meterBottom")->setCurrentIndex(control<QComboBox>("meterBottom")->findData(8));
+            const auto metadata = window_.project();
+            const auto metadataTimeline = buildTimeline(metadata.score);
+            check("Numbered global key and meter corrections synchronize performed pitches and metronome",
+                  metadata.score.tonic == 2 && metadata.score.beatsPerBar == 3 && metadata.score.beatUnit == 8 &&
+                      metadata.score.writtenMeasures[0].beatsPerBar == 3 &&
+                      metadata.score.writtenMeasures[0].beatUnit == 8 &&
+                      metadata.staffPerformance->sourceTonic == 2 &&
+                      metadata.staffPerformance->notes[0].midiPitch ==
+                          beforeMetadata.staffPerformance->notes[0].midiPitch + 2 &&
+                      metadata.staffPerformance->notes[2].midiPitch ==
+                          beforeMetadata.staffPerformance->notes[2].midiPitch + 2 &&
+                      metadata.staffPerformance->durationTicks == beforeMetadata.staffPerformance->durationTicks &&
+                      metadata.staffPerformance->notes[2].durationTicks ==
+                          beforeMetadata.staffPerformance->notes[2].durationTicks &&
+                      metadataTimeline.metronomeBeats.size() == 4 &&
+                      metadataTimeline.metronomeBeats[1].startTick == 240 &&
+                      buildStaffPerformancePlan(metadata.score, metadataTimeline, *metadata.staffPerformance)
+                          .valid());
+            saveProject(numberedPath, metadata);
+            const auto reopenedMetadata = loadProject(numberedPath);
+            check("Numbered metadata corrections survive save and reopen",
+                  reopenedMetadata.score.tonic == 2 && reopenedMetadata.score.writtenMeasures[0].beatUnit == 8 &&
+                      staffPerformanceToJson(*reopenedMetadata.staffPerformance) ==
+                          staffPerformanceToJson(*metadata.staffPerformance));
             window_.setProject(sample);
             check("Replacing project clears history",
                   !control<QAction>("menuUndo")->isEnabled() && !control<QAction>("menuRedo")->isEnabled());

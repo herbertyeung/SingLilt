@@ -6,6 +6,7 @@
 #include "ClassroomDialog.h"
 #include "InstrumentNames.h"
 #include "MainWindow.h"
+#include "domain/NumberedPerformance.h"
 #include "NotationRenderer.h"
 #include "ScoreView.h"
 #include "StaffCorrectionDialog.h"
@@ -133,14 +134,25 @@ void MainWindow::selectStaffNote(int index)
         busy_ || audioLoading_ || notePreviewLoading_)
         return;
     const int guideIndex = project_.staffPerformance->notes[std::size_t(index)].sourceNoteIndex;
+    if (!project_.staffImagePlayback && project_.notationStyle == NotationStyle::Numbered && guideIndex < 0)
+    {
+        const auto clicked = project_.staffPerformance->notes[std::size_t(index)];
+        if (!resolveNoteDraft())
+            return;
+        selectNote(-1, false);
+        setStatus("ui.staff.numbered_unlinked_tip");
+        if (!correctionMode_ && !player_.isPlaying() && !originalAudio_.isPlaying())
+            auditionStaffNote(clicked);
+        return;
+    }
     if (!project_.staffImagePlayback && project_.notationStyle == NotationStyle::Numbered && guideIndex >= 0)
     {
         selectNote(guideIndex, false);
         if (selected_ != guideIndex || hasNoteDraft() || correctionMode_)
             return;
-        const auto event = std::find_if(timeline_.events.begin(), timeline_.events.end(),
-                                        [guideIndex](const TimelineEvent &entry)
-                                        { return entry.sourceNoteIndex == std::size_t(guideIndex); });
+        const auto event =
+            std::find_if(timeline_.events.begin(), timeline_.events.end(), [guideIndex](const TimelineEvent &entry)
+                         { return entry.sourceNoteIndex == std::size_t(guideIndex); });
         if (event != timeline_.events.end())
             seekPracticeTick(event->startTick);
         const auto &notes = project_.staffPerformance->notes;
@@ -755,6 +767,37 @@ void MainWindow::confirmStaffTempo()
     rebuild(true);
     updatePlayback();
 }
+void MainWindow::updateNumberedMetadata()
+{
+    const auto resetFields = [this]
+    {
+        const QSignalBlocker keyBlock(key_), topBlock(meterTop_), bottomBlock(meterBottom_);
+        key_->setCurrentIndex(key_->findData(project_.score.tonic));
+        meterTop_->setValue(project_.score.beatsPerBar);
+        meterBottom_->setCurrentIndex(meterBottom_->findData(project_.score.beatUnit));
+    };
+    if (!resolveNoteDraft())
+    {
+        resetFields();
+        return;
+    }
+    try
+    {
+        auto corrected =
+            correctedNumberedMetadata(project_.score, *project_.staffPerformance, key_->currentData().toInt(),
+                                      meterTop_->value(), meterBottom_->currentData().toInt());
+        project_.score = std::move(corrected.score);
+        project_.staffPerformance = std::move(corrected.performance);
+        markModified();
+        rebuild(true);
+    }
+    catch (const std::exception &error)
+    {
+        resetFields();
+        showError(QString::fromUtf8(error.what()));
+    }
+}
+
 void MainWindow::refreshNotationControls()
 {
     if (!notationStyle_)
@@ -776,9 +819,11 @@ void MainWindow::refreshNotationControls()
         playbackSource_->setItemData(synthesized, QByteArray(sourceKey), Qt::UserRole + 1);
         playbackSource_->setItemText(synthesized, trText(sourceKey));
     }
-    key_->setEnabled(!fullScore);
-    meterTop_->setEnabled(!fullScore);
-    meterBottom_->setEnabled(!fullScore);
+    const bool numbered =
+        fullScore && !project_.staffImagePlayback && project_.notationStyle == NotationStyle::Numbered;
+    key_->setEnabled(!fullScore || numbered);
+    meterTop_->setEnabled(!fullScore || numbered);
+    meterBottom_->setEnabled(!fullScore || numbered);
     for (QWidget *field : std::initializer_list<QWidget *>{velocity_, accentBeats_})
         field->setEnabled(!fullScore);
     programA_->setEnabled(true);

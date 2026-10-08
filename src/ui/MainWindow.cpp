@@ -686,6 +686,20 @@ void MainWindow::selectNote(int index, bool seek)
     if (index < 0 || index >= int(project_.score.notes.size()))
     {
         selected_ = -1;
+        if (project_.staffPerformance && !project_.staffImagePlayback &&
+            project_.notationStyle == NotationStyle::Numbered)
+        {
+            for (QWidget *field :
+                 std::initializer_list<QWidget *>{degree_, octave_, accidental_, duration_, noteKey_, lyricEdit_,
+                                                  lyricBEdit_, sharedLyric_, tie_})
+                field->setEnabled(false);
+            if (auto *apply = findChild<QPushButton *>("applyNoteChanges"))
+                apply->setEnabled(false);
+            if (auto *remove = findChild<QPushButton *>("removeNote"))
+                remove->setEnabled(false);
+            noteTitle_->setText(trText("ui.staff.numbered_unlinked_tip"));
+            view_->setCurrent(-1, false);
+        }
         return;
     }
     if (seek && !project_.staffPages.empty() &&
