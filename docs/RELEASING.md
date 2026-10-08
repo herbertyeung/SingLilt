@@ -24,7 +24,7 @@ Use `-OutputDirectory` to put release artifacts on another drive. `package.ps1 -
 
 The package manifest lists every payload file, its size and SHA256. Installer compilation validates those entries before reading the payload. Both archives and installers receive `.sha256` sidecars. An existing output is not silently replaced.
 
-The release also includes corresponding Qt base, FluidSynth and libsndfile source archives. Their URLs and hashes are pinned in `packaging/third-party-sources.json`; publish this source ZIP alongside the binaries, not only the installer.
+The release also includes corresponding Qt Base, Declarative and Multimedia, FFmpeg, ICU, FluidSynth and libsndfile source archives. Their URLs and hashes are pinned in `packaging/third-party-sources.json`; publish this source ZIP alongside both platform packages.
 
 The installer uses a stable AppId and a per-user directory. It creates a Start menu entry and an optional desktop shortcut. Installation never runs setup/download scripts, and uninstall does not remove JPP files, preferences or practice history.
 
