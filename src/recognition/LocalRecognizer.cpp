@@ -4,8 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 #include "LocalRecognizer.h"
-#include "i18n/LanguageManager.h"
 #include "WindowsOcr.h"
+#include "domain/NumberedPerformance.h"
+#include "i18n/LanguageManager.h"
 
 #include <QFileInfo>
 #include <QFont>
@@ -548,6 +549,167 @@ void metadata(const QImage &image, const Raster &raster, const OcrText &full, co
     if (!name.isEmpty())
         result.score.title = name.toStdString();
 }
+std::vector<NumberedSystem> numberedSystems(const Raster &raster, const std::vector<Row> &rows, Score &score,
+                                            double sourceScale)
+{
+    // A brace is a curved, tall component left of both note rows, not a barline.
+    std::vector<NumberedSystem> systems;
+    bool braced = false;
+    std::vector<Component> braces;
+    for (const auto &component : raster.components)
+        if (component.box.height() > rows.front().height * 1.5 &&
+            component.box.width() >= rows.front().height * 0.25 &&
+            component.box.width() <= rows.front().height * 1.5 &&
+            double(component.area) / (component.box.width() * component.box.height()) < 0.65)
+        {
+            // Downsampling can disconnect the two thin halves of a printed brace.
+            auto adjacent =
+                std::find_if(braces.begin(), braces.end(),
+                             [&](const Component &before)
+                             {
+                                 return std::abs(before.box.center().x() - component.box.center().x()) <
+                                            rows.front().height * 0.4 &&
+                                        component.box.top() > before.box.bottom() &&
+                                        component.box.top() - before.box.bottom() < rows.front().height * 1.5;
+                             });
+            if (adjacent == braces.end())
+                braces.push_back(component);
+            else
+            {
+                adjacent->box = adjacent->box.united(component.box);
+                adjacent->area += component.area;
+            }
+        }
+    for (std::size_t rowIndex = 0; rowIndex < rows.size(); ++rowIndex)
+    {
+        const auto &upper = rows[rowIndex];
+        std::size_t lastRow = rowIndex;
+        for (const auto &component : braces)
+        {
+            const auto &box = component.box;
+            if (box.height() < upper.height * 3 || box.width() < upper.height * 0.25 ||
+                box.width() > upper.height * 1.5 || box.top() > upper.y + upper.height * 0.3 ||
+                box.top() < upper.y - upper.height * 2.5 ||
+                double(component.area) / (box.width() * box.height()) > 0.65)
+                continue;
+            std::size_t end = rowIndex;
+            while (end + 1 < rows.size() && rows[end + 1].y + rows[end + 1].height * 0.6 < box.bottom())
+                ++end;
+            if (end == rowIndex || box.bottom() > rows[end].y + rows[end].height * 2.0)
+                continue;
+            const bool leftOfNotes =
+                std::all_of(score.notes.begin(), score.notes.end(),
+                            [&](const Note &note)
+                            {
+                                return note.line < int(rowIndex) || note.line > int(end) ||
+                                       box.right() < note.source.x / sourceScale - upper.height * 0.3;
+                            });
+            if (leftOfNotes)
+                lastRow = std::max(lastRow, end);
+        }
+        NumberedSystem system{int(rowIndex), -1, {}};
+        if (lastRow > rowIndex)
+        {
+            braced = true;
+            // Extra digit rows inside a hand are vertically stacked chord tones.
+            std::size_t split = rowIndex;
+            for (std::size_t row = rowIndex + 1; row < lastRow; ++row)
+                if (rows[row + 1].y - rows[row].y > rows[split + 1].y - rows[split].y)
+                    split = row;
+            system.upperLine = int(split);
+            system.lowerLine = int(lastRow);
+            for (auto &note : score.notes)
+                if (note.line >= int(rowIndex) && note.line <= int(lastRow))
+                    note.line = note.line <= int(split) ? system.upperLine : system.lowerLine;
+        }
+        const auto &bottom = rows[lastRow];
+        double firstX = raster.gray.width(), finalX = 0;
+        for (const auto &note : score.notes)
+            if (note.line == system.upperLine || note.line == system.lowerLine)
+            {
+                firstX = std::min(firstX, (note.source.x + note.source.width / 2) / sourceScale);
+                finalX = std::max(finalX, (note.source.x + note.source.width / 2) / sourceScale);
+            }
+        for (const auto &component : raster.components)
+        {
+            const auto &box = component.box;
+            if (box.center().x() <= firstX || box.center().x() >= finalX || box.width() > bottom.height * 0.3 ||
+                box.top() > bottom.y - bottom.height * 0.25 || box.bottom() < bottom.y + bottom.height * 1.15)
+                continue;
+            const double x = box.center().x() * sourceScale;
+            system.barlines.push_back(x);
+        }
+        std::sort(system.barlines.begin(), system.barlines.end());
+        system.barlines.erase(std::unique(system.barlines.begin(), system.barlines.end(),
+                                          [&](double a, double b) { return b - a < bottom.height * sourceScale; }),
+                              system.barlines.end());
+        systems.push_back(std::move(system));
+        rowIndex = lastRow;
+    }
+    if (!braced)
+        systems.clear();
+    return systems;
+}
+
+void recoverNumberedChords(const Raster &raster, const std::vector<Template> &templates,
+                           const std::vector<NumberedSystem> &systems, double sourceScale, Score &score)
+{
+    const auto originalCount = score.notes.size();
+    for (std::size_t i = 0; i < originalCount; ++i)
+    {
+        const auto base = score.notes[i];
+        const bool hand = std::any_of(
+            systems.begin(), systems.end(), [&](const NumberedSystem &system)
+            { return system.lowerLine >= 0 && (base.line == system.upperLine || base.line == system.lowerLine); });
+        if (!hand || base.degree == 0)
+            continue;
+        const double height = base.source.height / sourceScale;
+        const double top = base.source.y / sourceScale;
+        const double center = (base.source.x + base.source.width / 2) / sourceScale;
+        for (const auto &component : raster.components)
+        {
+            const auto &box = component.box;
+            if (box.height() < height * 0.75 || box.height() > height * 1.3 || box.width() < height * 0.23 ||
+                box.width() > height || box.bottom() >= top - height * 0.3 || box.top() < top - height * 3 ||
+                std::abs(box.center().x() - center) > height * 0.3)
+                continue;
+            const SourceRect source{box.x() * sourceScale, box.y() * sourceScale, box.width() * sourceScale,
+                                    box.height() * sourceScale};
+            const bool recognized =
+                std::any_of(score.notes.begin(), score.notes.end(),
+                            [&](const Note &note)
+                            {
+                                return std::abs(note.source.x - source.x) < source.width * 0.3 &&
+                                       std::abs(note.source.y - source.y) < source.height * 0.3;
+                            });
+            if (recognized)
+                continue;
+            const auto glyph = classify(raster, box, templates);
+            if (glyph.digit == 0 || glyph.score > 0.25)
+                continue;
+            Note chord = base;
+            chord.degree = glyph.digit;
+            chord.source = source;
+            chord.tieToNext = false;
+            chord.lyric.clear();
+            chord.verseLyrics.clear();
+            chord.octave = 0;
+            for (const auto &mark : raster.components)
+                if (dot(mark, int(height)) && std::abs(mark.box.center().x() - box.center().x()) < height * 0.32)
+                {
+                    if (mark.box.bottom() < box.top() && mark.box.top() >= box.top() - height * 1.5)
+                        ++chord.octave;
+                    if (mark.box.top() > box.bottom() && mark.box.bottom() <= box.bottom() + height)
+                        --chord.octave;
+                }
+            score.notes.push_back(std::move(chord));
+        }
+    }
+    for (auto &repeat : score.repeats)
+        if (repeat.endNote == originalCount)
+            repeat.endNote = score.notes.size();
+}
+
 } // namespace
 
 RecognitionResult LocalRecognizer::recognize(const QImage &input, const QString &imagePath)
@@ -981,6 +1143,23 @@ RecognitionResult LocalRecognizer::recognize(const QImage &input, const QString 
             }
         ++measure;
     }
+    const auto systems = numberedSystems(raster, rows, result.score, sourceScale);
+    const bool braced = !systems.empty();
+    if (braced)
+    {
+        std::erase_if(repeatMarkers,
+                      [&](const RepeatMarker &marker)
+                      {
+                          return std::any_of(systems.begin(), systems.end(), [&](const NumberedSystem &system)
+                                             { return marker.line == system.lowerLine; });
+                      });
+        std::erase_if(endingMarkers,
+                      [&](const EndingMarker &marker)
+                      {
+                          return std::any_of(systems.begin(), systems.end(), [&](const NumberedSystem &system)
+                                             { return marker.line == system.lowerLine; });
+                      });
+    }
     // Commit only structurally consistent repeat spans, with matched volta labels.
     int pendingStart = -1;
     bool ambiguousRepeat = false;
@@ -1042,13 +1221,11 @@ RecognitionResult LocalRecognizer::recognize(const QImage &input, const QString 
                 }
         }
     if (uncertain)
-        result.warnings << trText("messages.recognition.uncertain_notes")
-                               .arg(uncertain);
+        result.warnings << trText("messages.recognition.uncertain_notes").arg(uncertain);
     if ((hasRepeatSymbols || hasEnding) && (ambiguousRepeat || result.score.repeats.empty()))
         result.warnings << trText("messages.recognition.unpaired_repeats");
     if (!result.score.repeats.empty())
-        result.warnings << trText("messages.recognition.recognized_repeats")
-                               .arg(result.score.repeats.size());
+        result.warnings << trText("messages.recognition.recognized_repeats").arg(result.score.repeats.size());
     int irregular = 0;
     for (std::size_t i = 0; i < result.score.notes.size();)
     {
@@ -1063,6 +1240,14 @@ RecognitionResult LocalRecognizer::recognize(const QImage &input, const QString 
         result.warnings
             << trText("messages.recognition.irregular_groups")
                    .arg(irregular);
+    if (braced)
+    {
+        recoverNumberedChords(raster, templates, systems, sourceScale, result.score);
+        result.staffPerformance = buildNumberedPerformance(result.score, systems);
+        result.debugText += QStringLiteral("Braced numbered systems=%1 performanceNotes=%2\n")
+                                .arg(systems.size())
+                                .arg(result.staffPerformance->notes.size());
+    }
     result.debugText += QStringLiteral("\n--- Local recognition ---\nrows=%1 notes=%2 uncertain=%3 "
                                        "irregularMeasures=%4 key=%5 bpm=%6 meter=%7/%8\n")
                             .arg(rows.size())

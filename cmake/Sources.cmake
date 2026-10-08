@@ -9,6 +9,7 @@ set(CORE_FILES
     src/domain/AccompanimentTimeline.h src/domain/AccompanimentTimeline.cpp
     src/domain/AudioSource.h src/domain/AudioSource.cpp
     src/domain/EarTraining.h src/domain/EarTraining.cpp
+    src/domain/NumberedPerformance.h src/domain/NumberedPerformance.cpp
     src/domain/Score.h src/domain/Score.cpp
     src/domain/SingingAssessment.h src/domain/SingingAssessment.cpp
     src/domain/SingingLesson.h

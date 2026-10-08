@@ -26,7 +26,8 @@ option(SINGLILT_BUILD_APP "Build the desktop application" ON)
 include(cmake/Sources.cmake)
 enable_testing()
 
-add_executable(SingLiltCoreTests tests/CoreTests.cpp tests/SingingTests.h tests/SingingTests.cpp ${CORE_FILES})
+add_executable(SingLiltCoreTests tests/CoreTests.cpp tests/SingingTests.h tests/SingingTests.cpp
+    tests/NumberedPerformanceTests.h tests/NumberedPerformanceTests.cpp ${CORE_FILES})
 target_include_directories(SingLiltCoreTests PRIVATE src)
 set_target_properties(SingLiltCoreTests PROPERTIES FOLDER "Tests")
 if(MSVC)
@@ -37,7 +38,8 @@ set_tests_properties(SingLiltCore PROPERTIES LABELS "core;ci")
 add_test(NAME SingLiltPlatformSources COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_SOURCE_DIR}/tests/LinuxSourceSelection.cmake")
 set_tests_properties(SingLiltPlatformSources PROPERTIES LABELS "core;ci")
 source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" PREFIX "Source" FILES ${CORE_FILES})
-source_group("Tests" FILES tests/CoreTests.cpp tests/SingingTests.h tests/SingingTests.cpp)
+source_group("Tests" FILES tests/CoreTests.cpp tests/SingingTests.h tests/SingingTests.cpp
+    tests/NumberedPerformanceTests.h tests/NumberedPerformanceTests.cpp)
 
 if(NOT SINGLILT_BUILD_APP)
     return()
@@ -49,6 +51,25 @@ if(WIN32)
     enable_language(RC)
 endif()
 include(cmake/Dependencies.cmake)
+
+add_executable(SingLiltNumberedRecognitionTests tests/NumberedRecognitionTests.cpp
+    src/recognition/LocalRecognizer.h src/recognition/LocalRecognizer.cpp
+    src/recognition/CloudRecognizer.h src/recognition/CloudRecognizer.cpp
+    src/i18n/LanguageManager.h src/i18n/LanguageManager.cpp
+    src/storage/ProjectStore.h src/storage/ProjectStore.cpp
+    src/storage/ProjectPackage.h src/storage/ProjectPackage.cpp
+    src/storage/StaffPagesStore.h src/storage/StaffPagesStore.cpp
+    src/storage/StaffPerformanceStore.cpp ${CORE_FILES})
+target_include_directories(SingLiltNumberedRecognitionTests PRIVATE src)
+target_link_libraries(SingLiltNumberedRecognitionTests PRIVATE Qt6::Gui Qt6::Network)
+set_target_properties(SingLiltNumberedRecognitionTests PROPERTIES FOLDER "Tests")
+if(MSVC)
+    target_compile_options(SingLiltNumberedRecognitionTests PRIVATE /W4 /permissive- /utf-8 /Zc:__cplusplus)
+endif()
+add_test(NAME SingLiltNumberedRecognition COMMAND SingLiltNumberedRecognitionTests)
+set_tests_properties(SingLiltNumberedRecognition PROPERTIES LABELS "ci" TIMEOUT 90
+    ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 add_executable(SingLilt WIN32 ${APP_FILES} ${CORE_FILES})
 configure_file(resources/branding/Version.h.in "${CMAKE_BINARY_DIR}/generated/Version.h" @ONLY)

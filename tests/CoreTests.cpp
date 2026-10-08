@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "SingingTests.h"
+#include "NumberedPerformanceTests.h"
 #include "domain/Accompaniment.h"
 #include "domain/AccompanimentTimeline.h"
 #include "domain/Score.h"
@@ -871,6 +872,7 @@ void writtenMeasuresAndMetronome()
 int main()
 {
     const std::vector<std::pair<const char *, void (*)()>> tests{
+        {"braced numbered performance", numberedPerformanceTests},
         {"continuous singing pitch", singingPitchTests},
         {"singing assessment", singingAssessmentTests},
         {"ear-training generation", earTrainingTests},

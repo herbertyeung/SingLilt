@@ -551,6 +551,9 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
         else
             result = LocalRecognizer::recognize(image, args.value("recognize"));
         Project p{result.score, image, result.warnings};
+        p.staffPerformance = result.staffPerformance;
+        if (p.staffPerformance)
+            p.practiceMix.accompanimentEnabled = true;
         if (args.isSet("out"))
             saveProject(args.value("out"), p);
         auto timeline = buildTimeline(result.score);
@@ -560,6 +563,8 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
         report.insert("durationSeconds", timeline.durationSeconds());
         report.insert("warnings", QJsonArray::fromStringList(result.warnings));
         report.insert("ocrText", result.debugText);
+        if (p.staffPerformance)
+            report.insert("staffPerformance", staffPerformanceToJson(*p.staffPerformance));
         if (args.isSet("timeline"))
             report.insert("events", timelineJson(timeline));
         if (args.isSet("report"))

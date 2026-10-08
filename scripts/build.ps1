@@ -30,6 +30,6 @@ $testArguments = @('--test-dir', "$root/build", '-C', $Configuration, '--output-
 if ($CiTests) { $testArguments += @('-L', 'ci') }
 Invoke-NativeCommand (Get-Command ctest -ErrorAction Stop).Source $testArguments
 $solution = if (Test-Path "$root/build/SingLilt.slnx") { 'SingLilt.slnx' } else { 'SingLilt.sln' }
-$filter = @{ solution = @{ path = $solution; projects = @('SingLilt.vcxproj', 'SingLiltCoreTests.vcxproj', 'SingLiltLanguageTests.vcxproj', 'SingLiltMigrationTests.vcxproj', 'SingLiltAudioDecoderTests.vcxproj') } }
+$filter = @{ solution = @{ path = $solution; projects = @('SingLilt.vcxproj', 'SingLiltCoreTests.vcxproj', 'SingLiltNumberedRecognitionTests.vcxproj', 'SingLiltLanguageTests.vcxproj', 'SingLiltMigrationTests.vcxproj', 'SingLiltAudioDecoderTests.vcxproj') } }
 $filter | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath "$root/build/SingLilt.slnf" -Encoding utf8
 Write-Output "READY: $root/build/bin/$Configuration/SingLilt.exe"

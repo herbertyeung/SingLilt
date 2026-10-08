@@ -99,13 +99,15 @@ void MainWindow::previewCloudResult()
         return;
     }
     Project candidate{result->score, cloudTask_.image(), result->warnings};
+    candidate.staffPerformance = result->staffPerformance;
+    if (candidate.staffPerformance)
+        candidate.practiceMix.accompanimentEnabled = candidate.staffPerformance->staffCount > 1;
     if (result->staffNotation)
     {
         candidate.notationStyle = NotationStyle::Staff;
         candidate.staffBassClef = result->staffBass;
         candidate.staffKeyFifths = result->staffKeyFifths;
         candidate.staffMinor = result->staffMinor;
-        candidate.staffPerformance = result->staffPerformance;
     }
     auto *preview = new RecognitionPreviewDialog(std::move(candidate), cloudTask_.sourceLabel(), this);
     cloudPreview_ = preview;
@@ -132,15 +134,15 @@ void MainWindow::applyCloudResult()
         return;
     // Snapshot before modal confirmations; queued UI events may run while they are open.
     Project candidate{result->score, cloudTask_.image(), result->warnings};
+    candidate.staffPerformance = result->staffPerformance;
+    if (candidate.staffPerformance)
+        candidate.practiceMix.accompanimentEnabled = candidate.staffPerformance->staffCount > 1;
     if (result->staffNotation)
     {
         candidate.notationStyle = NotationStyle::Staff;
         candidate.staffBassClef = result->staffBass;
         candidate.staffKeyFifths = result->staffKeyFifths;
         candidate.staffMinor = result->staffMinor;
-        candidate.staffPerformance = result->staffPerformance;
-        if (candidate.staffPerformance)
-            candidate.practiceMix.accompanimentEnabled = candidate.staffPerformance->staffCount > 1;
     }
     const auto debugText = result->debugText;
     QMessageBox confirmation(QMessageBox::Question, trText("ui.cloud.replace_title"),

@@ -230,7 +230,22 @@ Return only one JSON object matching this schema:
  "notes":[{"degree":1,"octave":0,"accidental":0,"durationTicks":480,"measure":0,"line":0,"lyric":"","verseLyrics":["A lyric","B lyric"],"confidence":0.9,"keyOverride":-1,"tieToNext":false,"bbox":[x,y,width,height]}],
  "repeats":[{"firstNote":0,"endNote":16,"count":2,"firstEndingNote":-1}]}
 tonic is chromatic pitch class: C=0,C#=1,D=2,...B=11. All tempo is quarter-notes/minute.
-notes remain in visual reading order; do NOT duplicate notes for repeats.
+For single-voice notation, notes remain in visual reading order; do NOT duplicate notes for repeats.
+A left brace joining two numbered rows means simultaneous right/left hands, NOT successive music lines.
+For every braced system, notes contains only a continuous upper-hand practice guide, including rests.
+The next system starts after both hands finish the current system; align each measure by duration, not pixel x.
+For braced or polyphonic numbered notation, also return this REQUIRED field:
+"staffPerformance":{"staffCount":2,"primaryStaff":1,"sourceTonic":0,"durationTicks":1920,
+ "notes":[{"startTick":0,"durationTicks":480,"midiPitch":60,"staff":1,"voice":"1",
+ "velocity":88,"sourceNoteIndex":0,"tieStart":false,"tieStop":false,"bbox":[x,y,width,height]},
+ {"startTick":0,"durationTicks":960,"midiPitch":48,"staff":2,"voice":"1",
+ "velocity":88,"sourceNoteIndex":-1,"tieStart":false,"tieStop":false,"bbox":[x,y,width,height]}]}
+Include ALL sounding pitches of BOTH hands, including stacked chord digits. Rests advance only their own voice.
+startTick is the unexpanded absolute onset (480 ticks/quarter); same-beat notes share it regardless of row.
+sourceTonic equals tonic; midiPitch=60+tonic+[0,2,4,5,7,9,11][degree-1]+12*octave+accidental.
+sourceNoteIndex references the matching upper-hand guide pitch, or -1 for other pitches.
+durationTicks of staffPerformance equals the total upper-hand guide duration, not the sum of both hands.
+Never flatten two braced hands into notes; never drop a hand or chord tone. Keep all ORIGINAL image boxes.
 degree=0 rest or 1..7. octave=0 middle octave, dots above +1 each, dots below -1 each.
 480 ticks = quarter; one underline 240, two 120; augmentation dot x1.5.
 Extension dashes add duration to the preceding note, not separate notes.
@@ -391,20 +406,18 @@ RecognitionResult recognizeCloud(const QImage &image, const QString &path, const
         readStaffMetadata(doc.object(), result);
     result.score = scoreFromJson(doc.object());
     if (notation == RecognitionNotation::Staff)
-    {
         validateStaffScore(result);
-        if (doc.object().contains("staffPerformance"))
+    if (doc.object().contains("staffPerformance"))
+    {
+        requireStaff(doc.object().value("staffPerformance").isObject());
+        result.staffPerformance =
+            staffPerformanceFromJson(doc.object().value("staffPerformance").toObject(), result.score);
+        for (const auto &note : result.staffPerformance->notes)
         {
-            requireStaff(doc.object().value("staffPerformance").isObject());
-            result.staffPerformance =
-                staffPerformanceFromJson(doc.object().value("staffPerformance").toObject(), result.score);
-            for (const auto &note : result.staffPerformance->notes)
-            {
-                requireStaff(note.source.width > 0 && note.source.height > 0);
-                if (note.source.x + note.source.width > image.width() + 2 ||
-                    note.source.y + note.source.height > image.height() + 2)
-                    throw std::runtime_error(trText("messages.recognition.rectangle_outside").toStdString());
-            }
+            requireStaff(note.source.width > 0 && note.source.height > 0);
+            if (note.source.x + note.source.width > image.width() + 2 ||
+                note.source.y + note.source.height > image.height() + 2)
+                throw std::runtime_error(trText("messages.recognition.rectangle_outside").toStdString());
         }
     }
     result.score.imagePath = path.toStdString();

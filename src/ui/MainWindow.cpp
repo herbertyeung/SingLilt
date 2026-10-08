@@ -389,7 +389,11 @@ MainWindow::MainWindow(LanguageManager &languageManager, ThemeManager &themes, Q
                              auto result = watcher_.result();
                              if (result.score.notes.empty())
                                  throw std::runtime_error("ui.error.no_notes");
-                             setProject({result.score, pendingImage_, result.warnings}, true);
+                             Project candidate{result.score, pendingImage_, result.warnings};
+                             candidate.staffPerformance = result.staffPerformance;
+                             if (candidate.staffPerformance)
+                                 candidate.practiceMix.accompanimentEnabled = true;
+                             setProject(std::move(candidate), true);
                              debugText_ = result.debugText;
                              setStatus("ui.status.recognized", {QString::number(project_.score.notes.size())});
                          }
