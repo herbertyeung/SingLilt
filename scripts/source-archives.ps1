@@ -38,6 +38,9 @@ try {
     foreach ($source in $sources) { Copy-Item -LiteralPath (Join-Path $cache $source.name) -Destination $staging }
     Copy-Item -LiteralPath "$root/packaging/third-party-sources.json" -Destination "$staging/sources.json"
     Copy-Item -LiteralPath "$root/licenses/LGPL-3.0-only.txt" -Destination $staging
+    New-Item -ItemType Directory -Force -Path "$staging/licenses/ffmpeg", "$staging/licenses/icu" | Out-Null
+    Copy-Item -LiteralPath "$root/licenses/ffmpeg/LGPL-2.1.txt" -Destination "$staging/licenses/ffmpeg/LGPL-2.1.txt"
+    Copy-Item -LiteralPath "$root/licenses/icu/LICENSE.txt" -Destination "$staging/licenses/icu/LICENSE.txt"
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [IO.Compression.ZipFile]::CreateFromDirectory($staging, $archive, [IO.Compression.CompressionLevel]::Fastest, $false)
 } finally {

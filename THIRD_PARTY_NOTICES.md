@@ -66,7 +66,7 @@ The release source ZIP includes Qt Base, Declarative and Multimedia 6.8.3, FFmpe
 ICU 73.2 sources, alongside the existing FluidSynth and libsndfile sources. FFmpeg's
 deployed libraries identify LGPL 2.1 or later; its license text and ICU's license are
 included under `licenses/ffmpeg` and `licenses/icu`. Qt LGPL/GPL terms are retained under
-the package's Qt license directory.
+the package's Qt license directory. The release source ZIP also contains those license copies.
 
 ALSA and Tesseract are distribution-managed libraries, not copied into the TGZ.
 - ALSA source: https://github.com/alsa-project/alsa-lib ; terms: https://github.com/alsa-project/alsa-lib/blob/master/COPYING .
