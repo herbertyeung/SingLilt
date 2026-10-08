@@ -11,8 +11,10 @@ sudo apt-get update
 sudo apt-get install -y build-essential python3-venv ninja-build pkg-config \
   libasound2-dev libfluidsynth-dev libtesseract-dev \
   tesseract-ocr-eng tesseract-ocr-chi-sim fluid-soundfont-gm ffmpeg \
-  fonts-dejavu-core libgl1-mesa-dev libxcb-cursor0 libxkbcommon-x11-0 \
-  libxcb-xinerama0 libxcb-icccm4 libxcb-keysyms1 libxcb-image0 libxcb-render-util0
+  fonts-dejavu-core libgl1-mesa-dev libegl1 libopengl0 libx11-xcb1 \
+  libxcb-cursor0 libxkbcommon-x11-0 libxcb-xinerama0 libxcb-icccm4 \
+  libxcb-keysyms1 libxcb-image0 libxcb-render-util0 libxcb-randr0 \
+  libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1
 bash scripts/setup-linux.sh
 bash scripts/build-linux.sh Release
 build/bin/Release/SingLilt
