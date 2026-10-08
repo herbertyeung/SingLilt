@@ -58,6 +58,27 @@ std::vector<NumberedColumn> columns(const Score &score, int line, double left, d
     }
     return result;
 }
+
+std::map<std::int64_t, int> keyClock(const Score &score)
+{
+    std::map<std::int64_t, int> clock;
+    for (const auto &change : score.keyChanges)
+        clock[change.startTick] = change.tonic;
+    std::int64_t tick = 0;
+    for (const auto &note : score.notes)
+    {
+        if (note.keyOverride >= 0)
+            clock[tick] = note.keyOverride;
+        tick += note.durationTicks;
+    }
+    return clock;
+}
+
+int keyAt(const std::map<std::int64_t, int> &clock, std::int64_t tick, int initial)
+{
+    const auto after = clock.upper_bound(tick);
+    return after == clock.begin() ? initial : std::prev(after)->second;
+}
 } // namespace
 
 StaffPerformance buildNumberedPerformance(Score &score, const std::vector<NumberedSystem> &systems)
@@ -66,6 +87,7 @@ StaffPerformance buildNumberedPerformance(Score &score, const std::vector<Number
     guide.notes.clear();
     guide.repeats.clear();
     guide.writtenMeasures.clear();
+    guide.keyChanges.clear();
     StaffPerformance performance;
     performance.sourceTonic = score.tonic;
     performance.staffCount = 2;
@@ -74,8 +96,7 @@ StaffPerformance buildNumberedPerformance(Score &score, const std::vector<Number
     std::vector<bool> requestedTies;
     std::int64_t measureStart = 0;
     int measure = 0;
-    int tonic = score.tonic;
-    std::map<std::int64_t, int> keyChanges{{0, tonic}};
+    std::map<std::int64_t, KeyChange> keyChanges;
     std::size_t comparisons = 0;
     for (const auto &system : systems)
     {
@@ -96,8 +117,29 @@ StaffPerformance buildNumberedPerformance(Score &score, const std::vector<Number
             const double right = bar == system.barlines.size() ? 1e12 : system.barlines[bar];
             const auto upper = columns(score, system.upperLine, left, right);
             const auto lower = columns(score, system.lowerLine, left, right);
-            std::int64_t durations[2]{};
             const std::vector<NumberedColumn> *hands[] = {&upper, &lower};
+            // Collect both hands before pitching either one; visual row order is not musical time.
+            for (int hand = 0; hand < 2; ++hand)
+            {
+                std::int64_t offset = 0;
+                for (const auto &column : *hands[hand])
+                {
+                    for (const auto index : column.indices)
+                    {
+                        const auto &note = score.notes[index];
+                        if (note.keyOverride < 0)
+                            continue;
+                        const auto tick = measureStart + offset;
+                        const auto found = keyChanges.find(tick);
+                        if (found != keyChanges.end() && found->second.tonic != note.keyOverride)
+                            throw std::invalid_argument("messages.domain.key_change_range");
+                        if (found == keyChanges.end() || hand == 0)
+                            keyChanges[tick] = {tick, note.keyOverride, hand == 0 ? int(index) : -1};
+                    }
+                    offset += column.durationTicks;
+                }
+            }
+            std::int64_t durations[2]{};
             for (int hand = 0; hand < 2; ++hand)
                 for (const auto &column : *hands[hand])
                 {
@@ -109,11 +151,6 @@ StaffPerformance buildNumberedPerformance(Score &score, const std::vector<Number
                         auto note = score.notes[column.indices.front()];
                         note.durationTicks = column.durationTicks;
                         note.measure = measure;
-                        if (note.keyOverride >= 0)
-                        {
-                            tonic = note.keyOverride;
-                            keyChanges[measureStart + durations[hand]] = tonic;
-                        }
                         guide.notes.push_back(std::move(note));
                     }
                     for (const auto index : column.indices)
@@ -124,8 +161,10 @@ StaffPerformance buildNumberedPerformance(Score &score, const std::vector<Number
                         if (hand == 0)
                             guideIndices[index] = std::size_t(guideIndex);
                         const auto &note = score.notes[index];
-                        const auto key = std::prev(keyChanges.upper_bound(measureStart + durations[hand]));
-                        const int pitch = midiPitch(note, key->second);
+                        const auto afterKey = keyChanges.upper_bound(measureStart + durations[hand]);
+                        const int tonic =
+                            afterKey == keyChanges.begin() ? score.tonic : std::prev(afterKey)->second.tonic;
+                        const int pitch = midiPitch(note, tonic);
                         if (note.degree == 0)
                             continue;
                         if (pitch < 0)
@@ -183,6 +222,10 @@ StaffPerformance buildNumberedPerformance(Score &score, const std::vector<Number
     }
     for (std::size_t i = 0; i < guide.notes.size(); ++i)
         guide.notes[i].id = int(i);
+    for (const auto &[tick, change] : keyChanges)
+        guide.keyChanges.push_back(
+            {tick, change.tonic,
+             change.sourceNoteIndex < 0 ? -1 : int(guideIndices[std::size_t(change.sourceNoteIndex)])});
     // Source traversal is already chronological within each hand, including across systems.
     std::map<std::pair<int, int>, std::size_t> previous;
     for (std::size_t i = 0; i < performance.notes.size(); ++i)
@@ -231,12 +274,11 @@ NumberedGuideCorrection correctedNumberedGuide(const Score &score, const StaffPe
     std::vector<std::size_t> guideIndices(score.notes.size() + 1);
     std::size_t nextNote = 0;
     std::int64_t measureStart = 0;
-    std::size_t comparisons = 0;
     for (const auto &written : score.writtenMeasures)
     {
         const auto oldEnd = written.startTick + written.durationTicks;
         const auto first = guide.notes.size();
-        std::int64_t upperDuration = 0, otherDuration = 0;
+        std::int64_t upperDuration = 0;
         std::optional<std::size_t> oldPadding;
         while (nextNote < score.notes.size() && oldStarts[nextNote] < oldEnd)
         {
@@ -257,18 +299,8 @@ NumberedGuideCorrection correctedNumberedGuide(const Score &score, const StaffPe
             }
             ++nextNote;
         }
-        for (const auto &note : performance.notes)
-        {
-            if (++comparisons > 20000000)
-                throw std::invalid_argument("messages.staff.performance_limit");
-            if (note.staff != performance.primaryStaff && note.startTick < oldEnd &&
-                note.startTick + note.durationTicks > written.startTick)
-                otherDuration = std::max(otherDuration, std::min(oldEnd, note.startTick + note.durationTicks) -
-                                                            written.startTick);
-        }
-        auto duration = std::max(upperDuration, otherDuration);
-        if (duration == 0)
-            duration = written.durationTicks;
+        // A shorter guide attack must not remove the other hand's written rests.
+        const auto duration = std::max(upperDuration, written.durationTicks);
         if (duration > upperDuration)
         {
             if (duration - upperDuration > MaximumNoteDurationTicks)
@@ -299,22 +331,11 @@ NumberedGuideCorrection correctedNumberedGuide(const Score &score, const StaffPe
             repeat.firstEndingNote = int(guideIndices[std::size_t(repeat.firstEndingNote)]);
     }
     std::vector<std::int64_t> newStarts{0};
-    std::vector<int> oldKeys, newKeys;
-    int oldKey = score.tonic, newKey = guide.tonic;
-    for (const auto &note : score.notes)
-    {
-        if (note.keyOverride >= 0)
-            oldKey = note.keyOverride;
-        oldKeys.push_back(oldKey);
-    }
     for (std::size_t index = 0; index < guide.notes.size(); ++index)
     {
         auto &note = guide.notes[index];
         note.id = int(index);
         newStarts.push_back(newStarts.back() + note.durationTicks);
-        if (note.keyOverride >= 0)
-            newKey = note.keyOverride;
-        newKeys.push_back(newKey);
     }
     const auto guideAt = [](const std::vector<std::int64_t> &starts, std::int64_t tick)
     { return std::size_t(std::upper_bound(starts.begin(), starts.end(), tick) - starts.begin() - 1); };
@@ -328,13 +349,37 @@ NumberedGuideCorrection correctedNumberedGuide(const Score &score, const StaffPe
         const auto index = std::size_t(after - score.writtenMeasures.begin() - 1);
         return guide.writtenMeasures[index].startTick + tick - score.writtenMeasures[index].startTick;
     };
+    guide.keyChanges.clear();
+    for (auto change : score.keyChanges)
+    {
+        if (change.sourceNoteIndex >= 0)
+        {
+            const auto oldIndex = std::size_t(change.sourceNoteIndex);
+            if (oldIndex == noteIndex && replacement.keyOverride != score.notes[noteIndex].keyOverride)
+            {
+                if (replacement.keyOverride < 0)
+                    continue;
+                change.tonic = replacement.keyOverride;
+            }
+            change.sourceNoteIndex = int(guideIndices[oldIndex]);
+            change.startTick = newStarts[std::size_t(change.sourceNoteIndex)];
+        }
+        else
+            change.startTick = measureTick(change.startTick);
+        guide.keyChanges.push_back(change);
+    }
+    std::sort(guide.keyChanges.begin(), guide.keyChanges.end(),
+              [](const KeyChange &a, const KeyChange &b) { return a.startTick < b.startTick; });
+    const auto oldKeys = keyClock(score);
+    const auto newKeys = keyClock(guide);
     parts.notes.clear();
     std::vector<int> linked(guide.notes.size(), -1);
     for (auto note : performance.notes)
     {
         if (note.sourceNoteIndex >= int(score.notes.size()))
             throw std::invalid_argument("messages.staff.invalid_performance");
-        const auto oldGuide = guideAt(oldStarts, note.startTick);
+        const auto oldTick = note.startTick;
+        const auto oldGuide = guideAt(oldStarts, oldTick);
         const auto newGuide = guideIndices[oldGuide];
         if (note.staff == performance.primaryStaff)
         {
@@ -351,10 +396,10 @@ NumberedGuideCorrection correctedNumberedGuide(const Score &score, const StaffPe
             if (note.tieStart)
                 note.durationTicks = end - note.startTick;
         }
-        const auto pitchGuide = guideAt(newStarts, note.startTick);
-        if (pitchGuide >= newKeys.size())
+        if (note.startTick < 0 || note.startTick >= newStarts.back())
             throw std::invalid_argument("messages.staff.invalid_performance");
-        note.midiPitch += score.tonic - performance.sourceTonic + newKeys[pitchGuide] - oldKeys[oldGuide];
+        note.midiPitch += score.tonic - performance.sourceTonic + keyAt(newKeys, note.startTick, guide.tonic) -
+                          keyAt(oldKeys, oldTick, score.tonic);
         if (note.sourceNoteIndex >= 0)
         {
             const auto index = guideIndices[std::size_t(note.sourceNoteIndex)];
@@ -364,11 +409,13 @@ NumberedGuideCorrection correctedNumberedGuide(const Score &score, const StaffPe
             note.sourceNoteIndex = int(index);
             note.startTick = newStarts[index];
             note.durationTicks = source.durationTicks;
-            note.midiPitch = midiPitch(source, newKeys[index]);
+            note.midiPitch = midiPitch(source, keyAt(newKeys, newStarts[index], guide.tonic));
             note.tieStart = false;
             note.tieStop = false;
             linked[index] = int(parts.notes.size());
         }
+        if (note.midiPitch < 0 || note.midiPitch > 127)
+            throw std::invalid_argument("messages.domain.pitch_range");
         parts.notes.push_back(std::move(note));
     }
     const auto selected = guideIndices[noteIndex];
@@ -378,7 +425,7 @@ NumberedGuideCorrection correctedNumberedGuide(const Score &score, const StaffPe
         StaffPerformanceNote note;
         note.startTick = newStarts[selected];
         note.durationTicks = edited.durationTicks;
-        note.midiPitch = midiPitch(edited, newKeys[selected]);
+        note.midiPitch = midiPitch(edited, keyAt(newKeys, newStarts[selected], guide.tonic));
         note.staff = performance.primaryStaff;
         note.sourceNoteIndex = int(selected);
         note.velocity = guide.baseVelocity;

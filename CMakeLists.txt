@@ -53,25 +53,20 @@ endif()
 include(cmake/Dependencies.cmake)
 
 add_executable(SingLiltNumberedRecognitionTests tests/NumberedRecognitionTests.cpp
-    src/recognition/LocalRecognizer.h src/recognition/LocalRecognizer.cpp
-    src/recognition/CloudRecognizer.h src/recognition/CloudRecognizer.cpp
-    src/i18n/LanguageManager.h src/i18n/LanguageManager.cpp
-    src/storage/ProjectStore.h src/storage/ProjectStore.cpp
-    src/storage/ProjectPackage.h src/storage/ProjectPackage.cpp
-    src/storage/StaffPagesStore.h src/storage/StaffPagesStore.cpp
-    src/storage/StaffPerformanceStore.cpp ${CORE_FILES})
+    ${NUMBERED_RECOGNITION_FILES} ${CORE_FILES})
 target_include_directories(SingLiltNumberedRecognitionTests PRIVATE src)
 target_link_libraries(SingLiltNumberedRecognitionTests PRIVATE Qt6::Gui Qt6::Network)
 set_target_properties(SingLiltNumberedRecognitionTests PROPERTIES FOLDER "Tests")
 if(MSVC)
     target_compile_options(SingLiltNumberedRecognitionTests PRIVATE /W4 /permissive- /utf-8 /Zc:__cplusplus)
 endif()
-add_test(NAME SingLiltNumberedRecognition COMMAND SingLiltNumberedRecognitionTests)
+add_test(NAME SingLiltNumberedRecognition COMMAND SingLiltNumberedRecognitionTests "$<TARGET_FILE:SingLilt>")
 set_tests_properties(SingLiltNumberedRecognition PROPERTIES LABELS "ci" TIMEOUT 90
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
 add_executable(SingLilt WIN32 ${APP_FILES} ${CORE_FILES})
+add_dependencies(SingLiltNumberedRecognitionTests SingLilt)
 configure_file(resources/branding/Version.h.in "${CMAKE_BINARY_DIR}/generated/Version.h" @ONLY)
 if(WIN32)
     target_sources(SingLilt PRIVATE resources/branding/SingLilt.rc resources/branding/singlilt.ico)

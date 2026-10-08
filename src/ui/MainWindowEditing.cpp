@@ -243,7 +243,8 @@ void MainWindow::removeNote()
 {
     if (project_.staffPerformance)
     {
-        setStatus("ui.staff.guide_only");
+        setStatus(!project_.staffImagePlayback && project_.notationStyle == NotationStyle::Numbered
+                      ? "ui.staff.numbered_remove_tip" : "ui.staff.guide_only");
         return;
     }
     if (selected_ < 0 || !resolveNoteDraft())

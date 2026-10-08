@@ -14,7 +14,11 @@ namespace singlilt
 {
 std::string staffTimingFingerprint(const Score &score)
 {
-    return "staff:" + audioTimingFingerprint(score);
+    auto fingerprint = "staff:" + audioTimingFingerprint(score);
+    for (const auto &change : score.keyChanges)
+        fingerprint += ":key:" + std::to_string(change.startTick) + ":" + std::to_string(change.tonic) + ":" +
+                       std::to_string(change.sourceNoteIndex);
+    return fingerprint;
 }
 
 AccompanimentPlan buildStaffPerformancePlan(const Score &score, const Timeline &timeline,

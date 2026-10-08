@@ -29,7 +29,7 @@ import zlib
 
 MODEL = "gpt-6.1-sol"
 SYNTHETIC_SECRET = "fixture-only-key-7bf203-cloud-regression"
-PROMPT_SHA256 = "e4f89fefbe5dee062744ff63476ac8d90fa2fa39b3cf78e2c265790569aa36c0"
+PROMPT_SHA256 = "e9542f6f03fc421124f9380306d435beb421087469ec447f271339dbf54c05cd"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -124,7 +124,7 @@ def png_rgb(data: bytes) -> tuple[int, int, bytes]:
 
 def valid_score() -> dict:
     return {
-        "title": "Cloud regression fixture", "tonic": 0, "bpm": 90,
+        "title": "Cloud regression fixture", "numberedLayout": "single", "tonic": 0, "bpm": 90,
         "beatsPerBar": 4, "beatUnit": 4,
         "notes": [{"degree": 1, "octave": 0, "accidental": 0, "durationTicks": 480,
                    "measure": 0, "line": 0, "lyric": "", "verseLyrics": [],

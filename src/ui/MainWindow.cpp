@@ -393,7 +393,7 @@ MainWindow::MainWindow(LanguageManager &languageManager, ThemeManager &themes, Q
                              Project candidate{result.score, pendingImage_, result.warnings};
                              candidate.staffPerformance = result.staffPerformance;
                              if (candidate.staffPerformance)
-                                 candidate.practiceMix.accompanimentEnabled = true;
+                                 candidate.practiceMix.accompanimentEnabled = candidate.staffPerformance->staffCount > 1;
                              setProject(std::move(candidate), true);
                              debugText_ = result.debugText;
                              setStatus("ui.status.recognized", {QString::number(project_.score.notes.size())});
@@ -719,7 +719,10 @@ void MainWindow::selectNote(int index, bool seek)
     if (auto *apply = findChild<QPushButton *>("applyNoteChanges"))
         apply->setEnabled(editable);
     if (auto *remove = findChild<QPushButton *>("removeNote"))
+    {
         remove->setEnabled(!project_.staffPerformance);
+        remove->setToolTip(project_.staffPerformance && editable ? trText("ui.staff.numbered_remove_tip") : QString());
+    }
     if (seek)
     {
         const int verse = verseView_->currentData().toInt();

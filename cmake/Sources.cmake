@@ -17,7 +17,18 @@ set(CORE_FILES
     src/domain/Timeline.h src/domain/Timeline.cpp
 )
 
+set(NUMBERED_RECOGNITION_FILES
+    src/recognition/LocalRecognizer.h src/recognition/LocalRecognizer.cpp
+    src/recognition/CloudRecognizer.h src/recognition/CloudRecognizer.cpp
+    src/i18n/LanguageManager.h src/i18n/LanguageManager.cpp
+    src/storage/ProjectStore.h src/storage/ProjectStore.cpp
+    src/storage/ProjectPackage.h src/storage/ProjectPackage.cpp
+    src/storage/StaffPagesStore.h src/storage/StaffPagesStore.cpp
+    src/storage/StaffPerformanceStore.cpp
+)
+
 set(APP_FILES
+    ${NUMBERED_RECOGNITION_FILES}
     src/platform/RuntimePaths.h
     src/diagnostics/ThemeCheck.h src/diagnostics/ThemeCheck.cpp
     src/ui/ThemeManager.h src/ui/ThemeManager.cpp
@@ -75,17 +86,14 @@ set(APP_FILES
     src/diagnostics/StaffWorkflowCheck.h src/diagnostics/StaffWorkflowCheck.cpp
     src/diagnostics/WaveExportCheck.h src/diagnostics/WaveExportCheck.cpp
     src/diagnostics/WholeSongCheck.h src/diagnostics/WholeSongCheck.cpp
-    src/i18n/LanguageManager.h src/i18n/LanguageManager.cpp
     src/main.cpp
     src/practice/PracticeSession.h src/practice/PracticeSession.cpp
     src/recognition/AudioTranscriber.h src/recognition/AudioTranscriber.cpp
     src/recognition/AudioTranscriptionTask.h src/recognition/AudioTranscriptionTask.cpp
     src/recognition/BekernDecoder.h src/recognition/BekernDecoder.cpp
     src/recognition/CloudRecognitionTask.h src/recognition/CloudRecognitionTask.cpp
-    src/recognition/CloudRecognizer.h src/recognition/CloudRecognizer.cpp
     src/recognition/CrispStaffRecognizer.h src/recognition/CrispStaffRecognizer.cpp
     src/recognition/CrispStaffSourceAnchors.h src/recognition/CrispStaffSourceAnchors.cpp
-    src/recognition/LocalRecognizer.h src/recognition/LocalRecognizer.cpp
     src/recognition/LocalStaffRecognitionTask.h src/recognition/LocalStaffRecognitionTask.cpp
     src/recognition/LocalStaffRecognizer.h src/recognition/LocalStaffRecognizer.cpp
     src/recognition/StaffPageInput.h
@@ -99,11 +107,7 @@ set(APP_FILES
     src/storage/LessonStore.h src/storage/LessonStore.cpp
     src/storage/MusicXmlImporter.h src/storage/MusicXmlImporter.cpp
     src/storage/PracticeHistory.h src/storage/PracticeHistory.cpp
-    src/storage/ProjectPackage.h src/storage/ProjectPackage.cpp
-    src/storage/ProjectStore.h src/storage/ProjectStore.cpp
     src/storage/StaffEditRecovery.h src/storage/StaffEditRecovery.cpp
-    src/storage/StaffPagesStore.h src/storage/StaffPagesStore.cpp
-    src/storage/StaffPerformanceStore.cpp
     src/ui/AccompanimentPanel.h src/ui/AccompanimentPanel.cpp
     src/ui/ClassroomDialog.h src/ui/ClassroomDialog.cpp
     src/ui/ClassroomEarTraining.cpp

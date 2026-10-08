@@ -135,7 +135,20 @@ void MainWindow::selectStaffNote(int index)
     const int guideIndex = project_.staffPerformance->notes[std::size_t(index)].sourceNoteIndex;
     if (!project_.staffImagePlayback && project_.notationStyle == NotationStyle::Numbered && guideIndex >= 0)
     {
-        selectNote(guideIndex, !correctionMode_);
+        selectNote(guideIndex, false);
+        if (selected_ != guideIndex || hasNoteDraft() || correctionMode_)
+            return;
+        const auto event = std::find_if(timeline_.events.begin(), timeline_.events.end(),
+                                        [guideIndex](const TimelineEvent &entry)
+                                        { return entry.sourceNoteIndex == std::size_t(guideIndex); });
+        if (event != timeline_.events.end())
+            seekPracticeTick(event->startTick);
+        const auto &notes = project_.staffPerformance->notes;
+        const auto current = std::find_if(notes.begin(), notes.end(), [guideIndex](const StaffPerformanceNote &note)
+                                          { return note.sourceNoteIndex == guideIndex; });
+        if (current != notes.end() && (!player_.isPlaying() || !player_.practiceMix().melodyEnabled) &&
+            !originalAudio_.isPlaying())
+            auditionStaffNote(*current);
         return;
     }
     if (project_.staffImagePlayback && !loadingNote_ && hasNoteDraft())

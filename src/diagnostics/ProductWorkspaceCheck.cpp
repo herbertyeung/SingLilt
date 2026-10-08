@@ -19,6 +19,7 @@
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QDoubleSpinBox>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -414,6 +415,9 @@ class WorkspaceProbe final : public QObject
             check("Braced numbered guide keeps its correction fields enabled",
                   control<QComboBox>("noteDegree")->isEnabled() &&
                       control<QPushButton>("applyNoteChanges")->isEnabled());
+            check("Numbered timed-column removal explains the alignment constraint",
+                  !control<QPushButton>("removeNote")->isEnabled() &&
+                      !control<QPushButton>("removeNote")->toolTip().isEmpty());
             auto *bracedView = control<QGraphicsView>("scoreView");
             const auto clickGuide = [&](int index)
             {
@@ -464,6 +468,26 @@ class WorkspaceProbe final : public QObject
                   reopenedNumbered.notationStyle == NotationStyle::Numbered &&
                       reopenedNumbered.score.notes[0].lyric == "corrected numbered lyric" &&
                       staffPerformanceToJson(*reopenedNumbered.staffPerformance) == editedParts);
+            control<QComboBox>("programA")->setCurrentIndex(control<QComboBox>("programA")->findData(40));
+            practiceMode->click();
+            const auto auditions = window_.player().voiceState().previewNoteOns;
+            clickGuide(1);
+            QEventLoop previewLoop;
+            QTimer previewPoll;
+            QObject::connect(&previewPoll, &QTimer::timeout, &previewLoop,
+                             [&]
+                             {
+                                 if (window_.player().voiceState().previewNoteOns > auditions)
+                                     previewLoop.quit();
+                             });
+            QTimer::singleShot(2000, &previewLoop, &QEventLoop::quit);
+            previewPoll.start(10);
+            previewLoop.exec();
+            const auto preview = window_.player().voiceState();
+            check("Paused numbered-part audition uses the selected primary instrument and performed velocity",
+                  preview.previewNoteOns > auditions && preview.previewProgram == 40 &&
+                      preview.previewVelocity == window_.project().staffPerformance->notes[1].velocity &&
+                      control<QComboBox>("noteDegree")->currentData().toInt() == 4);
             window_.setProject(sample);
             check("Replacing project clears history",
                   !control<QAction>("menuUndo")->isEnabled() && !control<QAction>("menuRedo")->isEnabled());

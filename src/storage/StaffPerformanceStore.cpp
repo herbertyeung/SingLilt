@@ -300,9 +300,12 @@ StaffPerformance staffPerformanceFromJson(const QJsonObject &json, const Score &
     }
     std::int64_t tick = 0;
     int tonic = score.tonic;
+    std::size_t nextKey = 0;
     std::size_t comparisons = 0;
     for (const auto &guide : score.notes)
     {
+        while (nextKey < score.keyChanges.size() && score.keyChanges[nextKey].startTick <= tick)
+            tonic = score.keyChanges[nextKey++].tonic;
         if (guide.keyOverride >= 0)
             tonic = guide.keyOverride;
         if (guide.degree != 0)

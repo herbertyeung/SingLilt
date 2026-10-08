@@ -553,7 +553,7 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
         Project p{result.score, image, result.warnings};
         p.staffPerformance = result.staffPerformance;
         if (p.staffPerformance)
-            p.practiceMix.accompanimentEnabled = true;
+            p.practiceMix.accompanimentEnabled = p.staffPerformance->staffCount > 1;
         if (args.isSet("out"))
             saveProject(args.value("out"), p);
         auto timeline = buildTimeline(result.score);

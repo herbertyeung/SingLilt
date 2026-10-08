@@ -47,6 +47,13 @@ struct WrittenMeasure
     int pageIndex = 0;
 };
 
+struct KeyChange
+{
+    std::int64_t startTick = 0;
+    int tonic = 0;
+    int sourceNoteIndex = -1; // A guide-note onset, or -1 for an independently timed part.
+};
+
 struct Note
 {
     int id = 0;
@@ -96,6 +103,7 @@ struct Score
     // Written-measure downbeat +8, beat +0, subdivision -4; first short pickup +0.
     bool accentBeats = true;
     std::vector<WrittenMeasure> writtenMeasures;
+    std::vector<KeyChange> keyChanges;
 };
 
 int midiPitch(const Note &note, int tonic, int transpose = 0);

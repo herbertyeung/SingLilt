@@ -114,6 +114,37 @@ void numberedPerformanceTests()
     const auto modulated = buildNumberedPerformance(modulation, {{0, 1, {}}});
     check(modulated.notes[2].midiPitch == 52 && modulated.notes[3].midiPitch == 54,
           "The lower hand follows the key at its onset, not the final key of the measure");
+    Score lowerKey;
+    lowerKey.notes = {note(0, 20, 1, 960), note(0, 120, 2, 960), note(1, 20, 3, 480), note(1, 60, 3, 480),
+                      note(1, 120, 4, 960)};
+    lowerKey.notes[3].keyOverride = 2;
+    const auto lowerKeyParts = buildNumberedPerformance(lowerKey, {{0, 1, {}}});
+    const auto lowerKeyTimeline = buildTimeline(lowerKey);
+    check(lowerKey.keyChanges.size() == 1 && lowerKey.keyChanges[0].startTick == 480 &&
+              lowerKey.keyChanges[0].tonic == 2 && lowerKey.keyChanges[0].sourceNoteIndex == -1 &&
+              lowerKeyTimeline.events[0].midiPitch == 60 && lowerKeyTimeline.events[1].midiPitch == 64 &&
+              lowerKeyParts.notes[2].midiPitch == 52 && lowerKeyParts.notes[3].midiPitch == 54 &&
+              lowerKeyParts.notes[4].midiPitch == 55,
+          "A lower-hand modulation preserves its exact onset without retuning the held upper note");
+    auto retimedUpper = lowerKey.notes[0];
+    retimedUpper.durationTicks = 480;
+    const auto retimedLowerKey = correctedNumberedGuide(lowerKey, lowerKeyParts, 0, retimedUpper);
+    check(retimedLowerKey.score.keyChanges[0].startTick == 480 &&
+              retimedLowerKey.performance.notes[2].midiPitch == 52 &&
+              retimedLowerKey.performance.notes[3].midiPitch == 54 &&
+              buildStaffPerformancePlan(retimedLowerKey.score, buildTimeline(retimedLowerKey.score),
+                                        retimedLowerKey.performance)
+                  .valid(),
+          "Guide duration correction keeps independently timed lower-hand modulations and pitches");
+    Score lowerRest;
+    lowerRest.notes = {note(0, 20, 1, 480), note(1, 20, 0, 1920)};
+    const auto lowerRestParts = buildNumberedPerformance(lowerRest, {{0, 1, {}}});
+    auto shorter = lowerRest.notes[0];
+    shorter.durationTicks = 240;
+    const auto restCorrection = correctedNumberedGuide(lowerRest, lowerRestParts, 0, shorter);
+    check(restCorrection.performance.durationTicks == 1920 &&
+              restCorrection.score.notes.back().durationTicks == 1680,
+          "A guide correction must retain the other hand's entirely silent measure");
 
     Score tied;
     tied.notes = {note(0, 20, 1, 480), note(0, 60, 1, 480), note(1, 20, 3, 480), note(1, 60, 3, 480)};

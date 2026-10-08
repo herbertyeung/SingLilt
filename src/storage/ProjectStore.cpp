@@ -350,6 +350,15 @@ QJsonObject scoreToJson(const Score &s)
                                                {"pageIndex", measure.pageIndex}});
         result.insert("writtenMeasures", writtenMeasures);
     }
+    if (!s.keyChanges.empty())
+    {
+        QJsonArray changes;
+        for (const auto &change : s.keyChanges)
+            changes.append(QJsonObject{{"startTick", double(change.startTick)},
+                                       {"tonic", change.tonic},
+                                       {"sourceNoteIndex", change.sourceNoteIndex}});
+        result.insert("keyChanges", changes);
+    }
     return result;
 }
 Score scoreFromJson(const QJsonObject &o)
@@ -473,6 +482,19 @@ Score scoreFromJson(const QJsonObject &o)
             s.writtenMeasures.push_back(measure);
         }
     }
+    if (o.contains("keyChanges"))
+    {
+        require(o.value("keyChanges").isArray(), "messages.domain.key_change_range");
+        const auto changes = o.value("keyChanges").toArray();
+        require(changes.size() <= int(MaximumScoreNotes), "messages.domain.key_change_range");
+        for (const auto &entry : changes)
+        {
+            require(entry.isObject(), "messages.domain.key_change_range");
+            const auto change = entry.toObject();
+            s.keyChanges.push_back({tick(change, "startTick"), integer(change, "tonic", -1, true),
+                                    integer(change, "sourceNoteIndex", -1)});
+        }
+    }
     for (const auto &v : o.value("repeats").toArray())
     {
         require(v.isObject(), "messages.storage.repeat_object");
@@ -486,8 +508,9 @@ Score scoreFromJson(const QJsonObject &o)
                 s.bpm <= MaximumScoreBpm,
             "messages.storage.invalid_key_tempo");
     require(ticksPerBar(s) > 0, "messages.storage.invalid_meter");
-    const auto timeline =
-        s.notes.empty() && s.repeats.empty() && s.writtenMeasures.empty() ? Timeline{} : buildTimeline(s);
+    const auto timeline = s.notes.empty() && s.repeats.empty() && s.writtenMeasures.empty() && s.keyChanges.empty()
+                              ? Timeline{}
+                              : buildTimeline(s);
     for (const auto &diagnostic : timeline.diagnostics)
         if (diagnostic.severity == DiagnosticSeverity::Error)
             throw std::runtime_error(localizeMessage(QString::fromStdString(diagnostic.message)).toStdString());

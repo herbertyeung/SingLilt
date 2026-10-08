@@ -7,14 +7,19 @@
 #include "recognition/CloudRecognizer.h"
 #include "recognition/WindowsOcr.h"
 #include "storage/ProjectStore.h"
+#include <QDir>
+#include <QEventLoop>
 #include <QGuiApplication>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QPainter>
 #include <QPainterPath>
+#include <QProcess>
+#include <QProcessEnvironment>
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QTemporaryDir>
+#include <QTimer>
 #include <iostream>
 #include <stdexcept>
 
@@ -88,10 +93,8 @@ QImage scoreImage(bool brace, bool splitBrace = false)
     return image;
 }
 
-singlilt::RecognitionResult cloudResult(const QImage &image, const QJsonObject &payload)
+void servePayload(QTcpServer &server, const QJsonObject &payload)
 {
-    QTcpServer server;
-    check(server.listen(QHostAddress::LocalHost), "Mock vision endpoint must start");
     const auto body =
         QJsonDocument(
             QJsonObject{{"choices",
@@ -101,7 +104,7 @@ singlilt::RecognitionResult cloudResult(const QImage &image, const QJsonObject &
                                                                      QJsonDocument::Compact))}}}}}}})
             .toJson(QJsonDocument::Compact);
     QObject::connect(&server, &QTcpServer::newConnection, &server,
-                     [&]
+                     [&server, body]
                      {
                          auto *socket = server.nextPendingConnection();
                          QObject::connect(
@@ -126,12 +129,64 @@ singlilt::RecognitionResult cloudResult(const QImage &image, const QJsonObject &
                                  socket->disconnectFromHost();
                              });
                      });
+}
+
+singlilt::RecognitionResult cloudResult(const QImage &image, const QJsonObject &payload)
+{
+    QTcpServer server;
+    check(server.listen(QHostAddress::LocalHost), "Mock vision endpoint must start");
+    servePayload(server, payload);
     singlilt::VisionConfig config;
     config.endpoint = QString("http://127.0.0.1:%1/v1/chat/completions").arg(server.serverPort());
     config.model = "fixture";
     config.apiKey = "fixture";
     config.timeoutSeconds = 30;
     return singlilt::recognizeCloud(image, "synthetic.png", config);
+}
+
+singlilt::Project cliResult(const QString &executable, const QImage &image, const QJsonObject &payload)
+{
+    QTcpServer server;
+    check(server.listen(QHostAddress::LocalHost), "CLI vision endpoint must start");
+    servePayload(server, payload);
+    QTemporaryDir temporary;
+    check(temporary.isValid(), "CLI fixture directory must exist");
+    const auto input = temporary.filePath("single-hand.png");
+    const auto output = temporary.filePath("single-hand.jpp");
+    check(image.save(input), "CLI fixture image must save");
+    QProcess process;
+    auto environment = QProcessEnvironment::systemEnvironment();
+    environment.insert("OPENAI_API_KEY", "fixture");
+    environment.insert("QT_PLUGIN_PATH", QCoreApplication::libraryPaths().join(QDir::listSeparator()));
+    process.setProcessEnvironment(environment);
+    QEventLoop loop;
+    QObject::connect(&process, &QProcess::finished, &loop, &QEventLoop::quit);
+    QObject::connect(&process, &QProcess::errorOccurred, &loop, &QEventLoop::quit);
+    QTimer deadline;
+    deadline.setSingleShot(true);
+    QObject::connect(&deadline, &QTimer::timeout, &loop,
+                     [&]
+                     {
+                         process.kill();
+                         loop.quit();
+                     });
+    process.start(executable, {"--recognize", input, "--vision-endpoint",
+                               QString("http://127.0.0.1:%1/v1/chat/completions").arg(server.serverPort()),
+                               "--vision-model", "fixture", "--out", output, "--language", "en_US"});
+    deadline.start(30000);
+    loop.exec();
+    if (process.state() != QProcess::NotRunning)
+    {
+        process.kill();
+        process.waitForFinished(5000);
+    }
+    if (process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0)
+        std::cerr << "CLI stderr: " << process.readAllStandardError().toStdString()
+                  << " CLI stdout: " << process.readAllStandardOutput().toStdString() << '\n';
+    check(process.state() == QProcess::NotRunning && process.exitStatus() == QProcess::NormalExit &&
+              process.exitCode() == 0,
+          "CLI recognition must accept the single-hand fixture");
+    return singlilt::loadProject(output);
 }
 } // namespace
 
@@ -183,16 +238,82 @@ int main(int argc, char **argv)
         const auto reopenedEdit = loadProject(path);
         check(reopenedEdit.notationStyle == NotationStyle::Numbered && reopenedEdit.score.notes[0].degree == 6 &&
                   reopenedEdit.score.notes[0].verseLyrics[0] == "corrected" && reopenedEdit.staffPerformance &&
+                  std::any_of(reopenedEdit.staffPerformance->notes.begin(),
+                              reopenedEdit.staffPerformance->notes.end(),
+                              [](const StaffPerformanceNote &note) { return note.staff == 2; }) &&
                   buildStaffPerformancePlan(reopenedEdit.score, buildTimeline(reopenedEdit.score),
                                             *reopenedEdit.staffPerformance)
                       .valid(),
               "Edited numbered guide and synchronized performance survive JPP save/reload");
+        auto timedProject = project;
+        timedProject.score.keyChanges = {{480, 2, -1}};
+        for (auto &note : timedProject.staffPerformance->notes)
+            if (note.startTick >= 480)
+                note.midiPitch += 2;
+        timedProject.staffPerformance->timingFingerprint = staffTimingFingerprint(timedProject.score);
+        saveProject(path, timedProject);
+        const auto reopenedKey = loadProject(path);
+        check(reopenedKey.score.keyChanges.size() == 1 && reopenedKey.score.keyChanges[0].startTick == 480 &&
+                  reopenedKey.score.keyChanges[0].tonic == 2 &&
+                  reopenedKey.score.keyChanges[0].sourceNoteIndex == -1 &&
+                  buildStaffPerformancePlan(reopenedKey.score, buildTimeline(reopenedKey.score),
+                                            *reopenedKey.staffPerformance)
+                      .valid(),
+              "JPP preserves independently timed key changes and their performed pitches");
         auto payload = scoreToJson(braced.score);
+        payload.insert("numberedLayout", "braced");
         payload.insert("staffPerformance", staffPerformanceToJson(performance));
         const auto cloud = cloudResult(image, payload);
         check(!cloud.staffNotation && cloud.staffPerformance &&
                   cloud.staffPerformance->notes.size() == performance.notes.size(),
               "Numbered cloud recognition must not discard a valid performance");
+        auto unlinked = staffPerformanceToJson(performance);
+        auto unlinkedNotes = unlinked.value("notes").toArray();
+        auto unlinkedNote = unlinkedNotes[0].toObject();
+        unlinkedNote.insert("sourceNoteIndex", -1);
+        unlinkedNotes[0] = unlinkedNote;
+        unlinked.insert("notes", unlinkedNotes);
+        auto unlinkedPayload = payload;
+        unlinkedPayload.insert("staffPerformance", unlinked);
+        bool rejectedGuideLink = false;
+        try
+        {
+            cloudResult(image, unlinkedPayload);
+        }
+        catch (const std::runtime_error &)
+        {
+            rejectedGuideLink = true;
+        }
+        check(rejectedGuideLink,
+              "Numbered cloud parts require one correctly linked primary event per sounding guide note");
+        for (const QString layout : {QString("braced"), QString("polyphonic"), QString("missing")})
+        {
+            auto incomplete = scoreToJson(braced.score);
+            if (layout != "missing")
+                incomplete.insert("numberedLayout", layout);
+            bool rejectedMissingParts = false;
+            try
+            {
+                cloudResult(image, incomplete);
+            }
+            catch (const std::runtime_error &)
+            {
+                rejectedMissingParts = true;
+            }
+            check(rejectedMissingParts,
+                  "Undeclared layout or declared polyphony without performance must be rejected");
+        }
+        auto single = performance;
+        single.staffCount = 1;
+        std::erase_if(single.notes, [](const StaffPerformanceNote &note) { return note.staff != 1; });
+        auto singlePayload = scoreToJson(braced.score);
+        singlePayload.insert("numberedLayout", "single");
+        singlePayload.insert("staffPerformance", staffPerformanceToJson(single));
+        check(argc > 1, "The recognition regression requires the application executable argument");
+        const auto cli = cliResult(QString::fromLocal8Bit(argv[1]), image, singlePayload);
+        check(cli.staffPerformance && cli.staffPerformance->staffCount == 1 &&
+                  !cli.practiceMix.accompanimentEnabled,
+              "CLI single-hand recognition must keep the other-hand mix disabled");
         auto invalid = staffPerformanceToJson(performance);
         auto notes = invalid.value("notes").toArray();
         auto note = notes[0].toObject();

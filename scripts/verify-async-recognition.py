@@ -24,7 +24,7 @@ import time
 
 def response_score(title: str) -> dict:
     return {
-        "title": title, "tonic": 0, "bpm": 90, "beatsPerBar": 4, "beatUnit": 4,
+        "title": title, "numberedLayout": "single", "tonic": 0, "bpm": 90, "beatsPerBar": 4, "beatUnit": 4,
         "notes": [
             {"degree": 1, "octave": 0, "accidental": 1, "durationTicks": 480,
              "measure": 0, "line": 0, "lyric": "fixture A\nfixture B",
