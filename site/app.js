@@ -3,8 +3,16 @@ const languageButtons = document.querySelectorAll("[data-language]");
 const appearanceButtons = document.querySelectorAll("[data-appearance]");
 const image = document.querySelector("#app-image");
 const copyStatus = document.querySelector("#copy-status");
+const buildCommand = document.querySelector("#build-command");
+const buildGuide = document.querySelector("#build-guide");
+const linuxDesktop = /Linux/i.test(navigator.userAgent) && !/Android|CrOS/i.test(navigator.userAgent);
 let language = "en";
 let appearance = "dark";
+
+if (linuxDesktop) {
+  buildCommand.textContent = "bash scripts/setup-linux.sh && bash scripts/build-linux.sh Release";
+  buildGuide.href = "https://github.com/herbertyeung/SingLilt/blob/main/docs/LINUX.md";
+}
 
 function updateScreenshot() {
   image.src = `assets/app-${language}-${appearance}.png`;
@@ -14,7 +22,7 @@ function setLanguage(selected) {
   language = selected === "zh" ? "zh" : "en";
   document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
   document.querySelectorAll("[data-en][data-zh]").forEach(element => {
-    element.textContent = element.dataset[language];
+    element.textContent = (linuxDesktop && element.getAttribute(`data-${language}-linux`)) || element.dataset[language];
   });
   document.querySelectorAll("[data-en-label][data-zh-label]").forEach(element => {
     element.setAttribute("aria-label", element.getAttribute(`data-${language}-label`));
@@ -26,8 +34,8 @@ function setLanguage(selected) {
   updateScreenshot();
   document.title = language === "zh" ? "SingLilt — 听谱、改谱、练唱" : "SingLilt — Score playback and singing practice";
   document.querySelector('meta[name="description"]').content = language === "zh"
-    ? "SingLilt 是开源 Windows 桌面程序，用于乐谱播放、音符校正和唱歌练习。"
-    : "SingLilt is an open-source Windows app for score playback, notation correction and singing practice.";
+    ? "用 SingLilt 导入乐谱、核对音符并练唱。支持 Windows 和 Ubuntu。"
+    : "Open a score, check the notes and practise singing with SingLilt on Windows or Ubuntu.";
   copyStatus.textContent = "";
   const url = new URL(window.location.href);
   if (language === "zh") url.searchParams.set("lang", "zh");
