@@ -135,6 +135,23 @@ jobs:
           cp "$archive" "build/releases/$name"
           (cd build/releases && sha256sum "$name" > "$name.sha256")
           (cd build/releases && sha256sum -c "$name.sha256")
+      - name: Verify runtime packages on clean Ubuntu
+        shell: bash
+        run: |
+          docker run --rm -v "$PWD/build/releases:/release:ro" -e SINGLILT_VERSION \
+            ubuntu:24.04 bash -euc '
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+                libasound2t64 libfluidsynth3 libtesseract5 \
+                tesseract-ocr-eng tesseract-ocr-chi-sim fluid-soundfont-gm ffmpeg \
+                fonts-dejavu-core libgl1 libopengl0 libx11-xcb1 libxcb-cursor0 libxkbcommon-x11-0 \
+                libxcb-xinerama0 libxcb-icccm4 libxcb-keysyms1 libxcb-image0 libxcb-render-util0 \
+                libxcb-randr0 libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1 \
+                xvfb xauth
+              tar -xzf "/release/SingLilt-${SINGLILT_VERSION}-ubuntu-24.04-x64.tar.gz" -C /tmp
+              QT_QPA_PLATFORM=xcb xvfb-run -a \
+                "/tmp/singlilt-${SINGLILT_VERSION}-Linux/bin/singlilt" --version --language en_US
+            '
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ubuntu-release
