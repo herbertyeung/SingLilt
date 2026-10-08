@@ -11,8 +11,10 @@ sudo apt-get update
 sudo apt-get install -y build-essential python3-venv ninja-build pkg-config \
   libasound2-dev libfluidsynth-dev libtesseract-dev \
   tesseract-ocr-eng tesseract-ocr-chi-sim fluid-soundfont-gm ffmpeg \
-  fonts-dejavu-core libgl1-mesa-dev libxcb-cursor0 libxkbcommon-x11-0 \
-  libxcb-xinerama0 libxcb-icccm4 libxcb-keysyms1 libxcb-image0 libxcb-render-util0
+  fonts-dejavu-core libgl1-mesa-dev libegl1 libopengl0 libx11-xcb1 \
+  libxcb-cursor0 libxkbcommon-x11-0 libxcb-xinerama0 libxcb-icccm4 \
+  libxcb-keysyms1 libxcb-image0 libxcb-render-util0 libxcb-randr0 \
+  libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1
 bash scripts/setup-linux.sh
 bash scripts/build-linux.sh Release
 build/bin/Release/SingLilt
@@ -62,7 +64,25 @@ between incompatible hosts/generators. Debug and Release use the same multi-conf
   Supply compatible tools/models explicitly when using those features. The native OMR
   engine and its workers share a private process group for timeout/cancellation cleanup.
 
-## Install/package
+## Prebuilt archive (Ubuntu 24.04 x64)
+
+The GitHub Release archive `SingLilt-0.27.0-ubuntu-24.04-x64.tar.gz` contains the app and its Qt runtime. It uses Ubuntu's ALSA, FluidSynth, Tesseract and other system libraries. Install the runtime packages, then extract the archive without rearranging its `bin`, `lib` and `share` directories:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libasound2t64 libfluidsynth3 libtesseract5 \
+  tesseract-ocr-eng tesseract-ocr-chi-sim fluid-soundfont-gm ffmpeg \
+  fonts-dejavu-core libgl1 libegl1 libopengl0 libx11-xcb1 libxcb-cursor0 libxkbcommon-x11-0 \
+  libxcb-xinerama0 libxcb-icccm4 libxcb-keysyms1 libxcb-image0 libxcb-render-util0 \
+  libxcb-randr0 libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-xfixes0 libxcb-xkb1
+mkdir -p "$HOME/Applications"
+tar -xzf SingLilt-0.27.0-ubuntu-24.04-x64.tar.gz -C "$HOME/Applications"
+"$HOME/Applications/singlilt-0.27.0-Linux/bin/singlilt"
+```
+
+The desktop package is tested with X11/XWayland; it is a tar archive, not a `.deb` or AppImage. Other distributions need their own compatible system libraries or a source build.
+
+## Build from source and package locally
 
 ```bash
 build/tools/linux-env/bin/cmake --install build --config Release --prefix "$HOME/.local"

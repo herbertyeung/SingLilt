@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MIT
 
 cmake_minimum_required(VERSION 3.30)
-project(SingLilt VERSION 0.26.0 LANGUAGES CXX)
+project(SingLilt VERSION 0.27.0 LANGUAGES CXX)
 
 # All generated material, including downloaded dependencies, stays in build/.
 file(REAL_PATH "${CMAKE_SOURCE_DIR}/build" allowed_build)

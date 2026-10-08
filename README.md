@@ -4,7 +4,7 @@
 
 ## English
 
-SingLilt is a Windows desktop app for score playback and singing practice, written in C++20 with Qt 6. Import a score, check the notes against the original, and save it as a JPP project. You can slow down playback, transpose the score, or repeat a difficult phrase.
+SingLilt is a desktop app for Windows and Ubuntu that helps you play scores and practise singing. It is written in C++20 with Qt 6. Import a score, check the notes against the original, and save it as a JPP project. You can slow down playback, transpose the score, or repeat a difficult phrase.
 
 [Project website](https://herbertyeung.github.io/SingLilt/)
 
@@ -21,15 +21,15 @@ Image recognition produces an editable draft, not a checked score. Review comple
 
 ### Install
 
-Download the Windows x64 installer or portable ZIP from [Releases](https://github.com/herbertyeung/SingLilt/releases). For the ZIP, extract it and run `SingLilt.exe`. The first open-source release has not been published yet.
+Download the Windows x64 installer or portable ZIP, or the Ubuntu 24.04 x64 tar archive, from [Releases](https://github.com/herbertyeung/SingLilt/releases). For the Windows ZIP, extract it and run `SingLilt.exe`. For Ubuntu, install the [runtime packages](docs/LINUX.md#prebuilt-archive-ubuntu-2404-x64), extract the archive and run its `bin/singlilt` launcher.
 
-Both packages contain the same application and resources. The core package includes the piano sound bank and native staff-recognition tools; it starts without a separate Python installation. Uninstalling leaves your projects and practice history in place.
+The Windows core packages include the piano sound bank and native staff-recognition tools; they start without a separate Python installation. The Ubuntu archive includes the app and Qt, but uses distribution audio/OCR libraries and sound banks. Optional native OMR and transcription tools are not bundled on Ubuntu. Uninstalling leaves your projects and practice history in place.
 
 Start with a built-in exercise, or import your own material, check it, and save it as a `.jpp` project.
 
 [Quick start](docs/QUICK_START.md) · [Options](docs/OPTIONS.md) · [Staff notation](docs/STAFF_NOTATION.md) · [Troubleshooting](docs/TROUBLESHOOTING.md)
 
-### Build from source
+### Build from source on Windows
 
 Install Visual Studio 2026 with the Desktop development with C++ workload, CMake 3.30+, PowerShell 7, and Python 3.12+.
 
@@ -51,11 +51,13 @@ pwsh -NoProfile -File scripts/build.ps1 -CoreOnly -Configuration Release
 
 All configurations use `build`. Open `build/SingLilt.slnx` in Visual Studio 2026. Optional audio-analysis components can be installed with `scripts/setup.ps1 -WithAnalysis`. See [building SingLilt](docs/BUILD.md) for details.
 
+For Ubuntu source builds and distribution packages, see [Linux development](docs/LINUX.md).
+
 ### Development and releases
 
 [Architecture](docs/ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md) · [Project format](docs/PROJECT_FORMAT.md) · [Release process](docs/RELEASING.md) · [Changelog](CHANGELOG.md)
 
-The CI workflow builds the core and runs desktop checks that do not need an audio device. A version tag builds the portable ZIP, installer, and SHA256 files, then creates a draft release for review before publication.
+CI builds and tests Windows and Ubuntu separately. A version tag builds the Windows installer/portable ZIP and Ubuntu tar archive with SHA256 files, then creates a draft release for review before publication.
 
 ### License
 
@@ -80,9 +82,9 @@ SingLilt 把简谱、五线谱图片、MusicXML 和音频整理成可反复练�
 
 ### 安装
 
-在 [Releases](https://github.com/herbertyeung/SingLilt/releases) 下载 Windows x64 安装程序，或解压便携 ZIP 后运行 `SingLilt.exe`。第一个开源版本尚未发布。
+在 [Releases](https://github.com/herbertyeung/SingLilt/releases) 下载 Windows x64 安装程序、便携 ZIP，或 Ubuntu 24.04 x64 tar 包。Windows ZIP 解压后运行 `SingLilt.exe`；Ubuntu 版先安装[运行依赖](docs/LINUX.md#prebuilt-archive-ubuntu-2404-x64)，解压后运行 `bin/singlilt`。
 
-安装包与便携包包含相同的程序和资源。core 版包含钢琴音源与本地五线谱识别组件，不依赖外部 Python 环境即可启动。卸载不会删除你的工程或练习记录。
+Windows core 包含钢琴音源与本地五线谱识别组件，不依赖外部 Python 环境即可启动。Ubuntu tar 包包含程序和 Qt，但音频、OCR 库及音源由系统提供；本地 OMR 和转录工具为可选组件，不包含在包内。卸载不会删除你的工程或练习记录。
 
 第一次打开可直接播放内置练习；使用自己的材料时，先导入，再核对，最后保存为 `.jpp`。
 
@@ -116,7 +118,7 @@ Linux 开发、后端差异与安装说明见 [Linux 构建说明](docs/LINUX.md
 
 [架构](docs/ARCHITECTURE.md) · [贡献指南](CONTRIBUTING.md) · [工程格式](docs/PROJECT_FORMAT.md) · [发布流程](docs/RELEASING.md) · [版本记录](CHANGELOG.md)
 
-PR 会运行核心测试和不依赖音频设备的桌面检查。带版本号的 tag 会生成便携包、安装程序和 SHA256 文件，并创建草稿 Release；维护者检查后再发布。
+PR 会分别运行 Windows 和 Ubuntu 测试。带版本号的 tag 会生成 Windows 安装程序与便携 ZIP、Ubuntu tar 包及 SHA256 文件，并创建草稿 Release；维护者检查后再发布。
 
 ### 许可
 
