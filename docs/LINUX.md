@@ -62,9 +62,24 @@ between incompatible hosts/generators. Debug and Release use the same multi-conf
   Supply compatible tools/models explicitly when using those features. The native OMR
   engine and its workers share a private process group for timeout/cancellation cleanup.
 
-## Install/package
+## Prebuilt archive (Ubuntu 24.04 x64)
 
-The GitHub Release archive `SingLilt-0.27.0-ubuntu-24.04-x64.tar.gz` is built and tested on Ubuntu 24.04 x64. Extract it without rearranging its `bin`, `lib` and `share` directories, then run the extracted `bin/singlilt`. Install the distribution packages listed above first; this is a tar archive, not a `.deb` or AppImage. For other Linux distributions, build from source and supply the corresponding system libraries.
+The GitHub Release archive `SingLilt-0.27.0-ubuntu-24.04-x64.tar.gz` contains the app and its Qt runtime. It uses Ubuntu's ALSA, FluidSynth, Tesseract and other system libraries. Install the runtime packages, then extract the archive without rearranging its `bin`, `lib` and `share` directories:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libasound2t64 libfluidsynth3 libtesseract5 \
+  tesseract-ocr-eng tesseract-ocr-chi-sim fluid-soundfont-gm ffmpeg \
+  fonts-dejavu-core libgl1 libxcb-cursor0 libxkbcommon-x11-0 \
+  libxcb-xinerama0 libxcb-icccm4 libxcb-keysyms1 libxcb-image0 libxcb-render-util0
+mkdir -p "$HOME/Applications"
+tar -xzf SingLilt-0.27.0-ubuntu-24.04-x64.tar.gz -C "$HOME/Applications"
+"$HOME/Applications/singlilt-0.27.0-Linux/bin/singlilt"
+```
+
+The desktop package is tested with X11/XWayland; it is a tar archive, not a `.deb` or AppImage. Other distributions need their own compatible system libraries or a source build.
+
+## Build from source and package locally
 
 ```bash
 build/tools/linux-env/bin/cmake --install build --config Release --prefix "$HOME/.local"
