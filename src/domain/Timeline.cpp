@@ -309,14 +309,17 @@ Timeline buildTimeline(const Score &score, int transpose)
     if (score.keyChanges.size() > MaximumScoreNotes)
         error(timeline, "messages.domain.key_change_range");
     std::int64_t previousKeyTick = -1;
+    int previousKeyTonic = -1;
     for (const auto &change : score.keyChanges)
     {
-        if (change.startTick < 0 || change.startTick >= sourceDuration || change.startTick <= previousKeyTick ||
+        if (change.startTick < 0 || change.startTick >= sourceDuration || change.startTick < previousKeyTick ||
+            (change.startTick == previousKeyTick && change.tonic != previousKeyTonic) ||
             change.tonic < 0 || change.tonic > 11 || change.sourceNoteIndex < -1 ||
             change.sourceNoteIndex >= int(sourceStarts.size()) ||
             (change.sourceNoteIndex >= 0 && sourceStarts[std::size_t(change.sourceNoteIndex)] != change.startTick))
             error(timeline, "messages.domain.key_change_range");
         previousKeyTick = change.startTick;
+        previousKeyTonic = change.tonic;
     }
 
     auto repeats = score.repeats;

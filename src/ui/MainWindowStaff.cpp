@@ -150,14 +150,20 @@ void MainWindow::selectStaffNote(int index)
         selectNote(guideIndex, false);
         if (selected_ != guideIndex || hasNoteDraft() || correctionMode_)
             return;
-        const auto event =
-            std::find_if(timeline_.events.begin(), timeline_.events.end(), [guideIndex](const TimelineEvent &entry)
-                         { return entry.sourceNoteIndex == std::size_t(guideIndex); });
+        const int verse = verseView_->currentData().toInt();
+        auto event = std::find_if(
+            timeline_.events.begin(), timeline_.events.end(), [guideIndex, verse](const TimelineEvent &entry)
+            { return entry.sourceNoteIndex == std::size_t(guideIndex) && entry.verseIndex == verse; });
+        if (event == timeline_.events.end())
+            event = std::find_if(timeline_.events.begin(), timeline_.events.end(),
+                                 [guideIndex](const TimelineEvent &entry)
+                                 { return entry.sourceNoteIndex == std::size_t(guideIndex); });
         if (event != timeline_.events.end())
             seekPracticeTick(event->startTick);
         const auto &notes = project_.staffPerformance->notes;
-        const auto current = std::find_if(notes.begin(), notes.end(), [guideIndex](const StaffPerformanceNote &note)
-                                          { return note.sourceNoteIndex == guideIndex; });
+        const auto current =
+            std::find_if(notes.begin(), notes.end(), [guideIndex](const StaffPerformanceNote &note)
+                         { return note.sourceNoteIndex == guideIndex; });
         if (current != notes.end() && (!player_.isPlaying() || !player_.practiceMix().melodyEnabled) &&
             !originalAudio_.isPlaying())
             auditionStaffNote(*current);

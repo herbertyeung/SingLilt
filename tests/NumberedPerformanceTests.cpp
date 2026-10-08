@@ -168,6 +168,11 @@ void numberedPerformanceTests()
     editable.repeats = {{0, 2, 2, -1}};
     const auto editableParts = buildNumberedPerformance(editable, {{0, 1, {}}});
     const auto metadata = correctedNumberedMetadata(editable, editableParts, 2, 3, 8);
+    auto duplicatedKeys = editable;
+    duplicatedKeys.keyChanges = {{480, 2, 1}, {480, 2, -1}};
+    check(buildTimeline(duplicatedKeys).valid(), "Both hands may report the same tonic change at the same tick");
+    duplicatedKeys.keyChanges[1].tonic = 3;
+    check(!buildTimeline(duplicatedKeys).valid(), "Conflicting same-tick tonic changes remain invalid");
     const auto metadataTimeline = buildTimeline(metadata.score);
     check(metadataTimeline.valid() && metadata.score.tonic == 2 && metadata.score.beatsPerBar == 3 &&
               metadata.score.beatUnit == 8 && metadata.score.writtenMeasures[0].beatsPerBar == 3 &&

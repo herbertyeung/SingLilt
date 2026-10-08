@@ -491,9 +491,11 @@ class WorkspaceProbe final : public QObject
                                  if (window_.player().voiceState().previewNoteOns > auditions)
                                      previewLoop.quit();
                              });
-            QTimer::singleShot(2000, &previewLoop, &QEventLoop::quit);
+            // Allow device initialization within the workspace diagnostic's 45-second limit.
+            QTimer::singleShot(10000, &previewLoop, &QEventLoop::quit);
             previewPoll.start(10);
             previewLoop.exec();
+            previewPoll.stop();
             const auto preview = window_.player().voiceState();
             check("Paused numbered-part audition uses the selected primary instrument and performed velocity",
                   preview.previewNoteOns > auditions && preview.previewProgram == 40 &&
@@ -528,6 +530,15 @@ class WorkspaceProbe final : public QObject
                   reopenedMetadata.score.tonic == 2 && reopenedMetadata.score.writtenMeasures[0].beatUnit == 8 &&
                       staffPerformanceToJson(*reopenedMetadata.staffPerformance) ==
                           staffPerformanceToJson(*metadata.staffPerformance));
+            auto repeating = metadata;
+            repeating.score.repeats = {{0, repeating.score.notes.size(), 2, -1}};
+            repeating.staffPerformance->timingFingerprint = staffTimingFingerprint(repeating.score);
+            window_.setProject(repeating);
+            practiceMode->click();
+            control<QComboBox>("verseSelector")->setCurrentIndex(control<QComboBox>("verseSelector")->findData(1));
+            clickGuide(0);
+            check("Numbered source clicks stay on the selected repeat pass",
+                  window_.player().positionTicks() == repeating.staffPerformance->durationTicks);
             window_.setProject(sample);
             check("Replacing project clears history",
                   !control<QAction>("menuUndo")->isEnabled() && !control<QAction>("menuRedo")->isEnabled());

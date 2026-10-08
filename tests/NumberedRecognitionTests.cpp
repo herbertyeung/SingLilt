@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "domain/NumberedPerformance.h"
+#include "i18n/LanguageManager.h"
 #include "recognition/CloudRecognizer.h"
 #include "recognition/WindowsOcr.h"
 #include "storage/ProjectStore.h"
@@ -256,10 +257,34 @@ int main(int argc, char **argv)
         check(reopenedKey.score.keyChanges.size() == 1 && reopenedKey.score.keyChanges[0].startTick == 480 &&
                   reopenedKey.score.keyChanges[0].tonic == 2 &&
                   reopenedKey.score.keyChanges[0].sourceNoteIndex == -1 &&
+                  staffPerformanceToJson(*reopenedKey.staffPerformance) ==
+                      staffPerformanceToJson(*timedProject.staffPerformance) &&
                   buildStaffPerformancePlan(reopenedKey.score, buildTimeline(reopenedKey.score),
                                             *reopenedKey.staffPerformance)
                       .valid(),
               "JPP preserves independently timed key changes and their performed pitches");
+        auto duplicateKeyJson = scoreToJson(timedProject.score);
+        duplicateKeyJson.insert(
+            "keyChanges", QJsonArray{QJsonObject{{"startTick", 480}, {"tonic", 2}, {"sourceNoteIndex", -1}},
+                                     QJsonObject{{"startTick", 480}, {"tonic", 2}, {"sourceNoteIndex", -1}}});
+        check(buildTimeline(scoreFromJson(duplicateKeyJson)).valid(),
+              "Cloud JSON accepts agreeing same-tick key changes");
+        for (const QJsonValue invalidTick :
+             {QJsonValue(-1), QJsonValue(1.5), QJsonValue(1000000001), QJsonValue("bad")})
+        {
+            auto badKeyJson = duplicateKeyJson;
+            badKeyJson.insert("keyChanges", QJsonArray{QJsonObject{{"startTick", invalidTick}, {"tonic", 2}}});
+            bool keySpecific = false;
+            try
+            {
+                scoreFromJson(badKeyJson);
+            }
+            catch (const std::runtime_error &error)
+            {
+                keySpecific = error.what() == trText("messages.domain.key_change_range").toStdString();
+            }
+            check(keySpecific, "Invalid key-change ticks report the key-specific error");
+        }
         auto payload = scoreToJson(braced.score);
         payload.insert("numberedLayout", "braced");
         payload.insert("staffPerformance", staffPerformanceToJson(performance));

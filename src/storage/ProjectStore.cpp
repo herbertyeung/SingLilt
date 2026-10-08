@@ -491,7 +491,11 @@ Score scoreFromJson(const QJsonObject &o)
         {
             require(entry.isObject(), "messages.domain.key_change_range");
             const auto change = entry.toObject();
-            s.keyChanges.push_back({tick(change, "startTick"), integer(change, "tonic", -1, true),
+            const auto start = change.value("startTick");
+            require(start.isDouble() && std::isfinite(start.toDouble()) && start.toDouble() >= 0 &&
+                        start.toDouble() <= 1000000000 && std::floor(start.toDouble()) == start.toDouble(),
+                    "messages.domain.key_change_range");
+            s.keyChanges.push_back({static_cast<std::int64_t>(start.toDouble()), integer(change, "tonic", -1, true),
                                     integer(change, "sourceNoteIndex", -1)});
         }
     }
