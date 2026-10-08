@@ -8,7 +8,7 @@
 4. Create a portable package and installer, then test installation, upgrade and uninstall.
 5. Review the Git diff before pushing.
 
-The current public release is v0.26.0. The next tag must match the version in CMake.
+The release tag must match the version in CMake.
 
 ## Local artifacts
 
