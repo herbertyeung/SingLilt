@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "MainWindow.h"
+#include "domain/NumberedPerformance.h"
 #include "AccompanimentPanel.h"
 #include "ClassroomDialog.h"
 #include "NotationRenderer.h"
@@ -710,14 +711,15 @@ void MainWindow::selectNote(int index, bool seek)
     lyricBEdit_->setDisabled(sharedLyric_->isChecked());
     tie_->setChecked(n.tieToNext);
     view_->setCurrent(index, false);
-    const bool editable = !project_.staffPerformance;
+    const bool editable = !project_.staffPerformance ||
+                          (!project_.staffImagePlayback && project_.notationStyle == NotationStyle::Numbered);
     for (QWidget *field : std::initializer_list<QWidget *>{degree_, octave_, accidental_, duration_, noteKey_,
                                                            lyricEdit_, lyricBEdit_, sharedLyric_, tie_})
         field->setEnabled(editable);
     if (auto *apply = findChild<QPushButton *>("applyNoteChanges"))
         apply->setEnabled(editable);
     if (auto *remove = findChild<QPushButton *>("removeNote"))
-        remove->setEnabled(editable);
+        remove->setEnabled(!project_.staffPerformance);
     if (seek)
     {
         const int verse = verseView_->currentData().toInt();
@@ -744,7 +746,9 @@ void MainWindow::selectNote(int index, bool seek)
 }
 void MainWindow::updateNote()
 {
-    if (project_.staffPerformance)
+    const bool numberedPerformance = project_.staffPerformance && !project_.staffImagePlayback &&
+                                     project_.notationStyle == NotationStyle::Numbered;
+    if (project_.staffPerformance && !numberedPerformance)
     {
         setStatus("ui.staff.guide_only");
         return;
@@ -752,7 +756,7 @@ void MainWindow::updateNote()
     if (selected_ < 0 || (!hasNoteDraft() && project_.score.notes[size_t(selected_)].confidence >= 1))
         return;
     const auto before = materialState();
-    auto &n = project_.score.notes[size_t(selected_)];
+    auto n = project_.score.notes[size_t(selected_)];
     n.degree = degree_->currentData().toInt();
     n.octave = octave_->value();
     n.accidental = accidental_->value();
@@ -774,6 +778,24 @@ void MainWindow::updateNote()
     n.lyric = legacyLines.join('\n').toStdString();
     n.tieToNext = tie_->isChecked();
     n.confidence = 1;
+    if (numberedPerformance)
+    {
+        try
+        {
+            auto corrected = correctedNumberedGuide(project_.score, *project_.staffPerformance,
+                                                    std::size_t(selected_), std::move(n));
+            project_.score = std::move(corrected.score);
+            project_.staffPerformance = std::move(corrected.performance);
+            selected_ = int(corrected.selectedNote);
+        }
+        catch (const std::exception &error)
+        {
+            showError(QString::fromUtf8(error.what()));
+            return;
+        }
+    }
+    else
+        project_.score.notes[std::size_t(selected_)] = std::move(n);
     commitMaterialEdit(before, "ui.product.update_note");
     rebuild(true);
     selectNote(selected_, false);

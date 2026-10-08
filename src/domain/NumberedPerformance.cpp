@@ -96,7 +96,6 @@ StaffPerformance buildNumberedPerformance(Score &score, const std::vector<Number
             const double right = bar == system.barlines.size() ? 1e12 : system.barlines[bar];
             const auto upper = columns(score, system.upperLine, left, right);
             const auto lower = columns(score, system.lowerLine, left, right);
-            const auto guideStart = guide.notes.size();
             std::int64_t durations[2]{};
             const std::vector<NumberedColumn> *hands[] = {&upper, &lower};
             for (int hand = 0; hand < 2; ++hand)
@@ -122,7 +121,8 @@ StaffPerformance buildNumberedPerformance(Score &score, const std::vector<Number
                         if (covered[index])
                             throw std::invalid_argument("messages.staff.invalid_performance");
                         covered[index] = true;
-                        guideIndices[index] = hand == 0 ? std::size_t(guideIndex) : guideStart;
+                        if (hand == 0)
+                            guideIndices[index] = std::size_t(guideIndex);
                         const auto &note = score.notes[index];
                         const auto key = std::prev(keyChanges.upper_bound(measureStart + durations[hand]));
                         const int pitch = midiPitch(note, key->second);
@@ -164,6 +164,11 @@ StaffPerformance buildNumberedPerformance(Score &score, const std::vector<Number
             measureStart += duration;
             ++measure;
         }
+        // Upper-row edge markers point at the first lower-row source index.
+        // Those are system boundaries, not positions inside the lower-hand clock.
+        for (std::size_t index = 0; index < score.notes.size(); ++index)
+            if (score.notes[index].line == system.lowerLine)
+                guideIndices[index] = guide.notes.size();
     }
     if (std::find(covered.begin(), covered.end(), false) != covered.end() || performance.notes.empty())
         throw std::invalid_argument("messages.staff.invalid_performance");
@@ -204,5 +209,202 @@ StaffPerformance buildNumberedPerformance(Score &score, const std::vector<Number
         throw std::invalid_argument("messages.staff.invalid_performance");
     score = std::move(guide);
     return performance;
+}
+
+NumberedGuideCorrection correctedNumberedGuide(const Score &score, const StaffPerformance &performance,
+                                               std::size_t noteIndex, Note replacement)
+{
+    const auto originalTimeline = buildTimeline(score);
+    if (noteIndex >= score.notes.size() || score.writtenMeasures.empty() ||
+        !buildStaffPerformancePlan(score, originalTimeline, performance).valid())
+        throw std::invalid_argument("messages.staff.invalid_performance");
+    if (replacement.durationTicks <= 0 || replacement.durationTicks > MaximumNoteDurationTicks)
+        throw std::invalid_argument("messages.domain.duration_range");
+    NumberedGuideCorrection corrected{score, performance, 0};
+    auto &guide = corrected.score;
+    auto &parts = corrected.performance;
+    guide.notes.clear();
+    guide.writtenMeasures.clear();
+    std::vector<std::int64_t> oldStarts{0};
+    for (const auto &note : score.notes)
+        oldStarts.push_back(oldStarts.back() + note.durationTicks);
+    std::vector<std::size_t> guideIndices(score.notes.size() + 1);
+    std::size_t nextNote = 0;
+    std::int64_t measureStart = 0;
+    std::size_t comparisons = 0;
+    for (const auto &written : score.writtenMeasures)
+    {
+        const auto oldEnd = written.startTick + written.durationTicks;
+        const auto first = guide.notes.size();
+        std::int64_t upperDuration = 0, otherDuration = 0;
+        std::optional<std::size_t> oldPadding;
+        while (nextNote < score.notes.size() && oldStarts[nextNote] < oldEnd)
+        {
+            auto note = nextNote == noteIndex ? replacement : score.notes[nextNote];
+            guideIndices[nextNote] = guide.notes.size();
+            const bool padding = nextNote != noteIndex && nextNote + 1 < oldStarts.size() &&
+                                 oldStarts[nextNote + 1] == oldEnd && note.degree == 0 && !note.hasImageAnchor &&
+                                 note.lyric.empty() && note.verseLyrics.empty() && !note.tieToNext &&
+                                 note.keyOverride < 0;
+            if (padding)
+                oldPadding = nextNote;
+            else
+            {
+                note.measure = written.number;
+                note.pageIndex = written.pageIndex;
+                guide.notes.push_back(std::move(note));
+                upperDuration += guide.notes.back().durationTicks;
+            }
+            ++nextNote;
+        }
+        for (const auto &note : performance.notes)
+        {
+            if (++comparisons > 20000000)
+                throw std::invalid_argument("messages.staff.performance_limit");
+            if (note.staff != performance.primaryStaff && note.startTick < oldEnd &&
+                note.startTick + note.durationTicks > written.startTick)
+                otherDuration = std::max(otherDuration, std::min(oldEnd, note.startTick + note.durationTicks) -
+                                                            written.startTick);
+        }
+        auto duration = std::max(upperDuration, otherDuration);
+        if (duration == 0)
+            duration = written.durationTicks;
+        if (duration > upperDuration)
+        {
+            if (duration - upperDuration > MaximumNoteDurationTicks)
+                throw std::invalid_argument("messages.domain.duration_range");
+            Note rest;
+            rest.degree = 0;
+            rest.durationTicks = int(duration - upperDuration);
+            rest.measure = written.number;
+            rest.pageIndex = written.pageIndex;
+            rest.line = first < guide.notes.size() ? guide.notes[first].line : score.notes[nextNote - 1].line;
+            rest.hasImageAnchor = false;
+            guide.notes.push_back(rest);
+        }
+        if (oldPadding)
+            guideIndices[*oldPadding] = duration > upperDuration ? guide.notes.size() - 1 : guide.notes.size();
+        auto measure = written;
+        measure.startTick = measureStart;
+        measure.durationTicks = duration;
+        guide.writtenMeasures.push_back(measure);
+        measureStart += duration;
+    }
+    guideIndices.back() = guide.notes.size();
+    for (auto &repeat : guide.repeats)
+    {
+        repeat.firstNote = guideIndices[repeat.firstNote];
+        repeat.endNote = guideIndices[repeat.endNote];
+        if (repeat.firstEndingNote >= 0)
+            repeat.firstEndingNote = int(guideIndices[std::size_t(repeat.firstEndingNote)]);
+    }
+    std::vector<std::int64_t> newStarts{0};
+    std::vector<int> oldKeys, newKeys;
+    int oldKey = score.tonic, newKey = guide.tonic;
+    for (const auto &note : score.notes)
+    {
+        if (note.keyOverride >= 0)
+            oldKey = note.keyOverride;
+        oldKeys.push_back(oldKey);
+    }
+    for (std::size_t index = 0; index < guide.notes.size(); ++index)
+    {
+        auto &note = guide.notes[index];
+        note.id = int(index);
+        newStarts.push_back(newStarts.back() + note.durationTicks);
+        if (note.keyOverride >= 0)
+            newKey = note.keyOverride;
+        newKeys.push_back(newKey);
+    }
+    const auto guideAt = [](const std::vector<std::int64_t> &starts, std::int64_t tick)
+    { return std::size_t(std::upper_bound(starts.begin(), starts.end(), tick) - starts.begin() - 1); };
+    const auto measureTick = [&](std::int64_t tick)
+    {
+        if (tick == oldStarts.back())
+            return newStarts.back();
+        const auto after = std::upper_bound(score.writtenMeasures.begin(), score.writtenMeasures.end(), tick,
+                                            [](std::int64_t position, const WrittenMeasure &measure)
+                                            { return position < measure.startTick; });
+        const auto index = std::size_t(after - score.writtenMeasures.begin() - 1);
+        return guide.writtenMeasures[index].startTick + tick - score.writtenMeasures[index].startTick;
+    };
+    parts.notes.clear();
+    std::vector<int> linked(guide.notes.size(), -1);
+    for (auto note : performance.notes)
+    {
+        if (note.sourceNoteIndex >= int(score.notes.size()))
+            throw std::invalid_argument("messages.staff.invalid_performance");
+        const auto oldGuide = guideAt(oldStarts, note.startTick);
+        const auto newGuide = guideIndices[oldGuide];
+        if (note.staff == performance.primaryStaff)
+        {
+            if (newGuide >= guide.notes.size())
+                throw std::invalid_argument("messages.staff.invalid_performance");
+            note.startTick = newStarts[newGuide] + note.startTick - oldStarts[oldGuide];
+            if (note.durationTicks == score.notes[oldGuide].durationTicks)
+                note.durationTicks = guide.notes[newGuide].durationTicks;
+        }
+        else
+        {
+            const auto end = note.tieStart ? measureTick(note.startTick + note.durationTicks) : 0;
+            note.startTick = measureTick(note.startTick);
+            if (note.tieStart)
+                note.durationTicks = end - note.startTick;
+        }
+        const auto pitchGuide = guideAt(newStarts, note.startTick);
+        if (pitchGuide >= newKeys.size())
+            throw std::invalid_argument("messages.staff.invalid_performance");
+        note.midiPitch += score.tonic - performance.sourceTonic + newKeys[pitchGuide] - oldKeys[oldGuide];
+        if (note.sourceNoteIndex >= 0)
+        {
+            const auto index = guideIndices[std::size_t(note.sourceNoteIndex)];
+            const auto &source = guide.notes[index];
+            if (source.degree == 0)
+                continue;
+            note.sourceNoteIndex = int(index);
+            note.startTick = newStarts[index];
+            note.durationTicks = source.durationTicks;
+            note.midiPitch = midiPitch(source, newKeys[index]);
+            note.tieStart = false;
+            note.tieStop = false;
+            linked[index] = int(parts.notes.size());
+        }
+        parts.notes.push_back(std::move(note));
+    }
+    const auto selected = guideIndices[noteIndex];
+    const auto &edited = guide.notes[selected];
+    if (edited.degree != 0 && linked[selected] < 0)
+    {
+        StaffPerformanceNote note;
+        note.startTick = newStarts[selected];
+        note.durationTicks = edited.durationTicks;
+        note.midiPitch = midiPitch(edited, newKeys[selected]);
+        note.staff = performance.primaryStaff;
+        note.sourceNoteIndex = int(selected);
+        note.velocity = guide.baseVelocity;
+        note.source = edited.source;
+        note.pageIndex = edited.pageIndex;
+        note.hasImageAnchor = edited.hasImageAnchor;
+        linked[selected] = int(parts.notes.size());
+        parts.notes.push_back(note);
+    }
+    for (std::size_t index = 0; index + 1 < guide.notes.size(); ++index)
+        if (guide.notes[index].tieToNext && linked[index] >= 0 && linked[index + 1] >= 0)
+        {
+            auto &before = parts.notes[std::size_t(linked[index])];
+            auto &after = parts.notes[std::size_t(linked[index + 1])];
+            if (before.midiPitch == after.midiPitch && before.staff == after.staff && before.voice == after.voice)
+            {
+                before.tieStart = true;
+                after.tieStop = true;
+            }
+        }
+    parts.durationTicks = newStarts.back();
+    parts.sourceTonic = guide.tonic;
+    parts.timingFingerprint = staffTimingFingerprint(guide);
+    corrected.selectedNote = selected;
+    if (!buildStaffPerformancePlan(guide, buildTimeline(guide), parts).valid())
+        throw std::invalid_argument("messages.staff.invalid_performance");
+    return corrected;
 }
 } // namespace singlilt

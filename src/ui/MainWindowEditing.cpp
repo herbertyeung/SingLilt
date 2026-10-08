@@ -224,6 +224,7 @@ bool MainWindow::resolveNoteDraft()
         if (project_.staffImagePlayback && project_.staffPerformance)
             return applyStaffInspectorNote();
         updateNote();
+        return !hasNoteDraft();
     }
     else
     {

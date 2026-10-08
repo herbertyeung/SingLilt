@@ -132,6 +132,12 @@ void MainWindow::selectStaffNote(int index)
     if (!project_.staffPerformance || index < 0 || index >= int(project_.staffPerformance->notes.size()) ||
         busy_ || audioLoading_ || notePreviewLoading_)
         return;
+    const int guideIndex = project_.staffPerformance->notes[std::size_t(index)].sourceNoteIndex;
+    if (!project_.staffImagePlayback && project_.notationStyle == NotationStyle::Numbered && guideIndex >= 0)
+    {
+        selectNote(guideIndex, !correctionMode_);
+        return;
+    }
     if (project_.staffImagePlayback && !loadingNote_ && hasNoteDraft())
     {
         if (index == selectedStaffNote_)

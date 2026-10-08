@@ -31,6 +31,27 @@ singlilt::Note note(int line, double x, int degree, int duration, double y = -1)
 void numberedPerformanceTests()
 {
     using namespace singlilt;
+    Score upperRepeat;
+    upperRepeat.notes = {note(0, 20, 1, 480), note(0, 60, 2, 480), note(1, 20, 3, 960), note(2, 20, 4, 480),
+                         note(3, 20, 5, 480)};
+    // noteAfter() at the upper row's right edge points at the first lower-row source note.
+    upperRepeat.repeats = {{0, 2, 2, -1}};
+    const auto upperRepeatParts = buildNumberedPerformance(upperRepeat, {{0, 1, {}}, {2, 3, {}}});
+    const auto upperRepeatPlan =
+        buildStaffPerformancePlan(upperRepeat, buildTimeline(upperRepeat), upperRepeatParts);
+    check(upperRepeatPlan.valid() && upperRepeat.repeats[0].endNote == 2 &&
+              upperRepeatPlan.durationTicks == 2400 && upperRepeatPlan.events.size() == 8,
+          "A closing repeat at the upper row's edge includes both complete hands");
+    Score interiorRepeat;
+    interiorRepeat.notes = {note(0, 20, 1, 480), note(0, 60, 2, 480), note(0, 120, 3, 480), note(0, 160, 4, 480),
+                            note(1, 20, 5, 1920)};
+    interiorRepeat.repeats = {{0, 2, 2, -1}};
+    const auto interiorParts = buildNumberedPerformance(interiorRepeat, {{0, 1, {}}});
+    const auto interiorPlan =
+        buildStaffPerformancePlan(interiorRepeat, buildTimeline(interiorRepeat), interiorParts);
+    check(interiorPlan.valid() && interiorRepeat.repeats[0].endNote == 2 && interiorPlan.durationTicks == 2880,
+          "An interior upper-row repeat boundary must not become a full-system boundary");
+
     Score score;
     score.notes = {note(0, 20, 1, 480), note(0, 60, 2, 480), note(1, 20, 3, 960), note(2, 20, 4, 480),
                    note(3, 20, 5, 480)};
@@ -110,6 +131,68 @@ void numberedPerformanceTests()
     check(mixedParts.durationTicks == 960 && mixedParts.notes[0].startTick == 0 &&
               mixedParts.notes[1].startTick == 480 && mixedParts.notes[2].startTick == 480,
           "Unbraced systems stay sequential alongside braced systems");
+
+    Score editable;
+    editable.notes = {note(0, 20, 1, 480), note(0, 60, 4, 480), note(1, 20, 3, 960)};
+    editable.repeats = {{0, 2, 2, -1}};
+    const auto editableParts = buildNumberedPerformance(editable, {{0, 1, {}}});
+    auto replacement = editable.notes[0];
+    replacement.degree = 4;
+    replacement.durationTicks = 240;
+    replacement.lyric = "corrected";
+    replacement.verseLyrics = {"corrected", "second verse"};
+    replacement.tieToNext = true;
+    const auto corrected = correctedNumberedGuide(editable, editableParts, 0, replacement);
+    plan = buildStaffPerformancePlan(corrected.score, buildTimeline(corrected.score), corrected.performance);
+    check(plan.valid() && corrected.score.notes.size() == 3 && corrected.score.repeats[0].endNote == 3 &&
+              corrected.score.notes[2].degree == 0 && corrected.score.notes[2].durationTicks == 240 &&
+              !corrected.score.notes[2].hasImageAnchor,
+          "Duration corrections retain the other hand and remap repeats across the padding rest");
+    check(corrected.performance.notes[0].midiPitch == 65 && corrected.performance.notes[0].durationTicks == 240 &&
+              corrected.performance.notes[0].tieStart && corrected.performance.notes[1].tieStop &&
+              corrected.performance.notes[1].startTick == 240 &&
+              corrected.performance.notes[2].durationTicks == 960,
+          "Numbered pitch, duration and tie corrections update the performed notes without stretching the lower "
+          "hand");
+    check(corrected.score.notes[0].verseLyrics == replacement.verseLyrics &&
+              corrected.score.notes[0].lyric == "corrected",
+          "Numbered correction retains lyrics in the editable guide");
+    replacement = corrected.score.notes[0];
+    replacement.durationTicks = 480;
+    const auto restoredTiming = correctedNumberedGuide(corrected.score, corrected.performance, 0, replacement);
+    check(restoredTiming.score.notes.size() == 2 && restoredTiming.score.repeats[0].endNote == 2 &&
+              restoredTiming.performance.notes[1].startTick == 480,
+          "Restoring duration removes only generated padding and keeps repeat indexes current");
+
+    replacement = editable.notes[0];
+    replacement.degree = 0;
+    const auto silenced = correctedNumberedGuide(editable, editableParts, 0, replacement);
+    check(silenced.performance.notes.size() == 2 && silenced.score.notes[0].degree == 0,
+          "Correcting a guide note to a rest removes its performed pitch");
+    replacement.degree = 5;
+    const auto sounded = correctedNumberedGuide(silenced.score, silenced.performance, 0, replacement);
+    check(sounded.performance.notes.size() == 3 && sounded.performance.notes.back().sourceNoteIndex == 0 &&
+              sounded.performance.notes.back().midiPitch == 67,
+          "Correcting a printed rest to a sounding note creates its linked performed event");
+
+    replacement = upperRepeat.notes[0];
+    replacement.durationTicks = 960;
+    const auto longer = correctedNumberedGuide(upperRepeat, upperRepeatParts, 0, replacement);
+    check(longer.performance.notes[2].durationTicks == 960 && longer.performance.notes[3].startTick == 1440 &&
+              longer.performance.notes[4].startTick == 1440 && longer.score.writtenMeasures[1].startTick == 1440,
+          "Longer guide notes shift later systems without stretching written lower-hand notes");
+    replacement = editable.notes[0];
+    replacement.durationTicks = 0;
+    try
+    {
+        correctedNumberedGuide(editable, editableParts, 0, replacement);
+        throw std::runtime_error("An invalid numbered correction must be rejected");
+    }
+    catch (const std::invalid_argument &)
+    {
+        check(editable.notes[0].durationTicks == 480 && editableParts.notes[0].durationTicks == 480,
+              "Rejected corrections preserve the guide and performed notes");
+    }
 
     Score invalid;
     invalid.notes = {note(0, 20, 1, 480), note(1, 20, 3, 480)};

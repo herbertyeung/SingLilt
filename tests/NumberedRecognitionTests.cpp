@@ -3,6 +3,7 @@
 // Author: Herbert Yeung
 // SPDX-License-Identifier: MIT
 
+#include "domain/NumberedPerformance.h"
 #include "recognition/CloudRecognizer.h"
 #include "recognition/WindowsOcr.h"
 #include "storage/ProjectStore.h"
@@ -171,6 +172,21 @@ int main(int argc, char **argv)
                   reopened.staffPerformance &&
                   staffPerformanceToJson(*reopened.staffPerformance) == staffPerformanceToJson(performance),
               "JPP round trip must retain both hands and the numbered view");
+        auto replacement = project.score.notes[0];
+        replacement.degree = 6;
+        replacement.durationTicks /= 2;
+        replacement.verseLyrics = {"corrected"};
+        auto correction = correctedNumberedGuide(project.score, *project.staffPerformance, 0, replacement);
+        project.score = std::move(correction.score);
+        project.staffPerformance = std::move(correction.performance);
+        saveProject(path, project);
+        const auto reopenedEdit = loadProject(path);
+        check(reopenedEdit.notationStyle == NotationStyle::Numbered && reopenedEdit.score.notes[0].degree == 6 &&
+                  reopenedEdit.score.notes[0].verseLyrics[0] == "corrected" && reopenedEdit.staffPerformance &&
+                  buildStaffPerformancePlan(reopenedEdit.score, buildTimeline(reopenedEdit.score),
+                                            *reopenedEdit.staffPerformance)
+                      .valid(),
+              "Edited numbered guide and synchronized performance survive JPP save/reload");
         auto payload = scoreToJson(braced.score);
         payload.insert("staffPerformance", staffPerformanceToJson(performance));
         const auto cloud = cloudResult(image, payload);

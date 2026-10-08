@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "ProductWorkspaceCheck.h"
+#include "domain/NumberedPerformance.h"
 #include "i18n/LanguageManager.h"
 #include "storage/ProjectStore.h"
 #include "ui/MainWindow.h"
@@ -28,6 +29,7 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScrollBar>
@@ -388,6 +390,80 @@ class WorkspaceProbe final : public QObject
                 name_ = locale + " correction";
                 screenshot(locale + "-correction-980x700");
             }
+            Project braced = sample;
+            braced.image = QImage(420, 280, QImage::Format_RGB32);
+            braced.image.fill(Qt::white);
+            braced.generatedNotation = false;
+            Note upper;
+            upper.source = {120, 120, 18, 24};
+            Note next = upper;
+            next.degree = 4;
+            next.source.x = 180;
+            Note lower = upper;
+            lower.degree = 3;
+            lower.octave = -1;
+            lower.line = 1;
+            lower.durationTicks = 960;
+            lower.source.y = 210;
+            braced.score.notes = {upper, next, lower};
+            braced.score.repeats.clear();
+            braced.staffPerformance = buildNumberedPerformance(braced.score, {{0, 1, {}}});
+            braced.practiceMix.accompanimentEnabled = true;
+            window_.setProject(braced);
+            correctionMode->click();
+            check("Braced numbered guide keeps its correction fields enabled",
+                  control<QComboBox>("noteDegree")->isEnabled() &&
+                      control<QPushButton>("applyNoteChanges")->isEnabled());
+            auto *bracedView = control<QGraphicsView>("scoreView");
+            const auto clickGuide = [&](int index)
+            {
+                const auto &box = window_.project().score.notes[std::size_t(index)].source;
+                const auto point =
+                    bracedView->mapFromScene(QPointF(box.x + box.width / 2, box.y + box.height / 2));
+                const auto global = bracedView->viewport()->mapToGlobal(point);
+                QMouseEvent press(QEvent::MouseButtonPress, QPointF(point), QPointF(global), Qt::LeftButton,
+                                  Qt::LeftButton, Qt::NoModifier);
+                QMouseEvent release(QEvent::MouseButtonRelease, QPointF(point), QPointF(global), Qt::LeftButton,
+                                    Qt::NoButton, Qt::NoModifier);
+                QApplication::sendEvent(bracedView->viewport(), &press);
+                QApplication::sendEvent(bracedView->viewport(), &release);
+            };
+            clickGuide(1);
+            check("Braced performance hit opens the matching numbered guide inspector",
+                  control<QComboBox>("noteDegree")->currentData().toInt() == 4 &&
+                      control<QPushButton>("applyNoteChanges")->isEnabled());
+            clickGuide(0);
+            control<QComboBox>("noteDegree")->setCurrentIndex(4);
+            control<QDoubleSpinBox>("noteDuration")->setValue(.5);
+            control<QLineEdit>("lyricAEditor")->setText("corrected numbered lyric");
+            control<QCheckBox>("noteTie")->setChecked(true);
+            control<QPushButton>("applyNoteChanges")->click();
+            const auto numberedEdit = window_.project();
+            const auto editedParts = staffPerformanceToJson(*numberedEdit.staffPerformance);
+            check("Numbered inspector synchronizes pitch, duration, lyrics, ties and both-hand timing",
+                  numberedEdit.score.notes[0].degree == 4 && numberedEdit.score.notes[0].durationTicks == 240 &&
+                      numberedEdit.score.notes[0].lyric == "corrected numbered lyric" &&
+                      numberedEdit.staffPerformance->notes[0].tieStart &&
+                      numberedEdit.staffPerformance->notes[1].tieStop &&
+                      numberedEdit.staffPerformance->notes[2].durationTicks == 960 &&
+                      buildStaffPerformancePlan(numberedEdit.score, buildTimeline(numberedEdit.score),
+                                                *numberedEdit.staffPerformance)
+                          .valid());
+            action("menuUndo");
+            check("Numbered correction Undo restores the complete original performance",
+                  window_.project().score.notes[0].degree == 1 &&
+                      staffPerformanceToJson(*window_.project().staffPerformance) ==
+                          staffPerformanceToJson(*braced.staffPerformance));
+            action("menuRedo");
+            check("Numbered correction Redo restores synchronized performance",
+                  staffPerformanceToJson(*window_.project().staffPerformance) == editedParts);
+            const QString numberedPath = folder_ + "/numbered-corrected.jpp";
+            saveProject(numberedPath, window_.project());
+            const auto reopenedNumbered = loadProject(numberedPath);
+            check("Saved numbered correction retains the guide, both hands and numbered view",
+                  reopenedNumbered.notationStyle == NotationStyle::Numbered &&
+                      reopenedNumbered.score.notes[0].lyric == "corrected numbered lyric" &&
+                      staffPerformanceToJson(*reopenedNumbered.staffPerformance) == editedParts);
             window_.setProject(sample);
             check("Replacing project clears history",
                   !control<QAction>("menuUndo")->isEnabled() && !control<QAction>("menuRedo")->isEnabled());

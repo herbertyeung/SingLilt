@@ -496,6 +496,7 @@ QWidget *MainWindow::createInspector()
     form->addRow(sharedLyric_);
     QObject::connect(sharedLyric_, &QCheckBox::toggled, lyricBEdit_, &QWidget::setDisabled);
     tie_ = checkBox("ui.inspector.tie");
+    tie_->setObjectName("noteTie");
     form->addRow(tie_);
     side->addLayout(form);
     auto *noteButtons = new QHBoxLayout;
