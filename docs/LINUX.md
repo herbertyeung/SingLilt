@@ -64,6 +64,8 @@ between incompatible hosts/generators. Debug and Release use the same multi-conf
 
 ## Install/package
 
+The GitHub Release archive `SingLilt-0.27.0-ubuntu-24.04-x64.tar.gz` is built and tested on Ubuntu 24.04 x64. Extract it without rearranging its `bin`, `lib` and `share` directories, then run the extracted `bin/singlilt`. Install the distribution packages listed above first; this is a tar archive, not a `.deb` or AppImage. For other Linux distributions, build from source and supply the corresponding system libraries.
+
 ```bash
 build/tools/linux-env/bin/cmake --install build --config Release --prefix "$HOME/.local"
 "$HOME/.local/bin/singlilt" --version --language en_US

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.27.0
+
+- Add the Ubuntu 24.04 x64 desktop build and a relocatable Linux archive.
+- Bundle the matching Qt runtime while keeping ALSA, FluidSynth, Tesseract and sound banks as system dependencies on Linux.
+- Fix cancellation and source selection during asynchronous original-audio loading and preview.
+- Publish Linux and Windows packages together from the release workflow.
+
 ## 0.26.0
 
 - Keep CI language and project-package checks independent of audio hardware while retaining local playback checks.
