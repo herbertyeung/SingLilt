@@ -200,6 +200,35 @@ class SettingsProductProbe final : public QObject
 
     void checkEnhancement()
     {
+        AppSettings outputSettings;
+        check("Sampled output enhancement is enabled by default", outputSettings.outputBoost);
+        OptionsDialog outputDialog(outputSettings, {});
+        auto *output = field<QCheckBox>(outputDialog, "optionsOutputBoost");
+        check("Output enhancement is offered for the sampled backend", output->isEnabled() && output->isChecked());
+        field<QComboBox>(outputDialog, "optionsAudioBackend")->setCurrentIndex(1);
+        check("System MIDI does not advertise sampled output enhancement", !output->isEnabled());
+        field<QComboBox>(outputDialog, "optionsAudioBackend")->setCurrentIndex(0);
+        output->setChecked(false);
+        int outputCommits = 0;
+        outputDialog.applyChanges = [&](const AppSettings &settings, const OptionsContext &)
+        {
+            saveAppSettings(settings);
+            ++outputCommits;
+            return true;
+        };
+        field<QDialogButtonBox>(outputDialog, "optionsButtons")->button(QDialogButtonBox::Apply)->click();
+        check("Output enhancement off survives settings reload",
+              outputCommits == 1 && !loadAppSettings().outputBoost);
+        output->setChecked(true);
+        field<QDialogButtonBox>(outputDialog, "optionsButtons")->button(QDialogButtonBox::Apply)->click();
+        check("Output enhancement on survives settings reload",
+              outputCommits == 2 && loadAppSettings().outputBoost);
+        outputDialog.selectPage(1);
+        outputDialog.show();
+        QApplication::processEvents();
+        check("Sampled enhancement audio options screenshot saved",
+              outputDialog.grab().save(QFileInfo(args_.value("report")).absolutePath() +
+                                       "/output-gain-options.png"));
         for (bool separate : {false, true})
             for (bool enhance : {false, true})
             {

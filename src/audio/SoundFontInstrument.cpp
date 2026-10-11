@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "SoundFontInstrument.h"
+#include "OutputLevel.h"
 #include "i18n/LanguageManager.h"
 
 #include <QCoreApplication>
@@ -13,6 +14,7 @@
 #include <fluidsynth.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <limits>
 #ifdef Q_OS_LINUX
@@ -77,6 +79,26 @@ struct SoundFontInstrument::Impl {
     QString activeGmPath;
     QString label;
     QString error;
+    std::atomic<bool> outputBoost{true};
+    std::atomic<bool> renderFailed{false};
+    OutputLevel outputLevel;
+
+    static int renderAudio(void *data, int frames, int, float *[], int channels, float *out[])
+    {
+        auto &instrument = *static_cast<Impl *>(data);
+        if (channels != 2 || frames <= 0)
+            return FLUID_FAILED;
+        const int rendered = fluid_synth_write_float(instrument.synth.get(), frames, out[0], 0, 1, out[1], 0, 1);
+        if (rendered != FLUID_OK)
+            return rendered;
+        if (!instrument.outputLevel.process(out[0], out[1], frames, 1,
+                                            instrument.outputBoost.load(std::memory_order_relaxed)))
+        {
+            instrument.renderFailed.store(true, std::memory_order_relaxed);
+            return FLUID_FAILED;
+        }
+        return FLUID_OK;
+    }
 
     bool fail(const QString& message)
     {
@@ -122,6 +144,8 @@ bool SoundFontInstrument::open(bool realtime)
         return impl_->fail(trText("messages.audio.close_before_mode_change"));
     }
     impl_->release();
+    impl_->outputLevel.reset();
+    impl_->renderFailed.store(false, std::memory_order_relaxed);
     impl_->error.clear();
     impl_->label.clear();
     impl_->path = defaultPianoPath();
@@ -140,8 +164,7 @@ bool SoundFontInstrument::open(bool realtime)
     auto* settings = impl_->settings.get();
     const bool configured =
         fluid_settings_setnum(settings, "synth.sample-rate", 48000.0) == FLUID_OK &&
-        // Output gain, not key velocity: raise loudness without changing sample layers.
-        // 0.5 retains headroom in the full-volume/velocity-127 dense-note regression.
+        // Keep synth headroom; final enhancement and limiting run after stereo mixing.
         fluid_settings_setnum(settings, "synth.gain", 0.5) == FLUID_OK &&
         fluid_settings_setint(settings, "synth.polyphony", 128) == FLUID_OK &&
         fluid_settings_setint(settings, "synth.threadsafe-api", 1) == FLUID_OK &&
@@ -212,7 +235,7 @@ bool SoundFontInstrument::open(bool realtime)
         return false;
     }
     if (realtime) {
-        impl_->driver.reset(new_fluid_audio_driver(settings, synth));
+        impl_->driver.reset(new_fluid_audio_driver2(settings, Impl::renderAudio, impl_.get()));
         if (!impl_->driver) {
             impl_->release();
             return impl_->fail(trText("messages.audio.output_open_failed").arg(audioDriver));
@@ -310,6 +333,11 @@ bool SoundFontInstrument::setChannelVolume(int channel, double volume)
     return impl_->check(fluid_synth_cc(impl_->synth.get(), channel, 7, value), "messages.audio.op.volume");
 }
 
+void SoundFontInstrument::setOutputBoost(bool enabled)
+{
+    impl_->outputBoost.store(enabled, std::memory_order_relaxed);
+}
+
 bool SoundFontInstrument::silenceChannel(int channel)
 {
     if (!impl_->channelReady(channel))
@@ -338,11 +366,19 @@ bool SoundFontInstrument::render(float* interleaved, int frames)
         return impl_->fail(trText("messages.audio.offline_requires_mode"));
     if (!interleaved || frames <= 0 || frames > std::numeric_limits<int>::max() / 2)
         return impl_->fail(trText("messages.audio.invalid_render_buffer"));
-    return impl_->check(fluid_synth_write_float(impl_->synth.get(), frames,
-        interleaved, 0, 2, interleaved, 1, 2), "messages.audio.op.render");
+    if (!impl_->check(fluid_synth_write_float(impl_->synth.get(), frames,
+        interleaved, 0, 2, interleaved, 1, 2), "messages.audio.op.render"))
+        return false;
+    if (!impl_->outputLevel.process(interleaved, interleaved + 1, frames, 2,
+                                    impl_->outputBoost.load(std::memory_order_relaxed)))
+        return impl_->fail(trText("messages.audio.wave_nonfinite"));
+    return true;
 }
 
-QString SoundFontInstrument::errorString() const { return impl_->error; }
+QString SoundFontInstrument::errorString() const
+{
+    return impl_->renderFailed.load(std::memory_order_relaxed) ? trText("messages.audio.wave_nonfinite") : impl_->error;
+}
 QString SoundFontInstrument::deviceName() const
 {
     if (impl_->label.isEmpty())

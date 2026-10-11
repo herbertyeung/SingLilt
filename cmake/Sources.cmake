@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MIT
 
 set(CORE_FILES
+    src/audio/OutputLevel.h src/audio/OutputLevel.cpp
     src/audio/PitchDetector.h src/audio/PitchDetector.cpp
     src/domain/Accompaniment.h src/domain/Accompaniment.cpp
     src/domain/AccompanimentTimeline.h src/domain/AccompanimentTimeline.cpp

@@ -407,6 +407,7 @@ WaveRenderResult renderWave(const Score &score, const Timeline &timeline, const 
     };
     if (!options.gmSoundFontPath.isNull())
         checkSampler(instrument.setGmSoundFontPath(options.gmSoundFontPath));
+    instrument.setOutputBoost(options.outputBoost);
     checkSampler(instrument.open(false));
     checkSampler(instrument.setChannelVolume(0, mix.melodyVolume));
     checkSampler(instrument.setChannelVolume(1, options.settings.originalStaff ? mix.melodyVolume

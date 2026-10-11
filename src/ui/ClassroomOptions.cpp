@@ -49,6 +49,7 @@ void ClassroomDialog::openOptions()
         if (s.gmSoundFontPath != previous.gmSoundFontPath)
             player_.setGmSoundFontPath(s.gmSoundFontPath);
         player_.setAudioBackend(s.audioBackend == 1 ? AudioBackend::WindowsMidi : AudioBackend::SampledPiano);
+        player_.setOutputBoost(s.outputBoost);
         const QSignalBlocker speedBlock(speed_), difficultyBlock(difficulty_), transposeBlock(transpose_);
         speed_->setValue(c.speed);
         transpose_->setValue(c.transpose);

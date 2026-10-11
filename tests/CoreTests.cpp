@@ -5,6 +5,7 @@
 
 #include "SingingTests.h"
 #include "NumberedPerformanceTests.h"
+#include "audio/OutputLevel.h"
 #include "domain/Accompaniment.h"
 #include "domain/AccompanimentTimeline.h"
 #include "domain/Score.h"
@@ -869,9 +870,59 @@ void writtenMeasuresAndMetronome()
 
 } // namespace
 
+namespace
+{
+void outputGainAndLimiter()
+{
+    using singlilt::OutputLevel;
+    OutputLevel level;
+    float quiet[]{0.1f, -0.05f, 0.2f, -0.1f};
+    check(level.process(quiet, quiet + 1, 2, 2, true), "Finite sampled output can be enhanced");
+    check(std::abs(quiet[0] - 0.1f * OutputLevel::EnhancedGain) < 1e-6f &&
+              std::abs(quiet[1] / quiet[0] + 0.5f) < 1e-6f,
+          "+6 dB scales quiet samples without changing stereo balance");
+    float loud[]{2.0f, -1.0f};
+    check(level.process(loud, loud + 1, 1, 2, true) &&
+              std::abs(loud[0] - OutputLevel::PeakCeiling) < 1e-6f &&
+              std::abs(loud[1] / loud[0] + 0.5f) < 1e-6f,
+          "Dense peaks are stereo-linked and stay below PCM saturation");
+    float plain[]{0.1f, -0.2f};
+    check(level.process(plain, plain + 1, 1, 2, false) && plain[0] == 0.1f && plain[1] == -0.2f,
+          "Disabling enhancement preserves the legacy output exactly");
+    std::vector<float> whole(9600), split;
+    for (std::size_t i = 0; i < whole.size(); i += 2)
+    {
+        whole[i] = i == 0 ? 2.0f : 0.1f;
+        whole[i + 1] = whole[i] * -0.5f;
+    }
+    split = whole;
+    OutputLevel contiguous, chunked;
+    check(contiguous.process(whole.data(), whole.data() + 1, 4800, 2, true) &&
+              chunked.process(split.data(), split.data() + 1, 17, 2, true) &&
+              chunked.process(split.data() + 34, split.data() + 35, 4783, 2, true) && whole == split,
+          "Limiter state is independent of audio-driver buffer boundaries");
+    check(whole.back() < whole[3], "Limiter releases gradually after a loud peak");
+    float left[]{0.1f, 0.2f}, right[]{-0.05f, -0.1f};
+    level.reset();
+    check(level.process(left, right, 2, 1, true) && left[1] == 0.2f * OutputLevel::EnhancedGain,
+          "Realtime planar buffers use the same gain as offline interleaved buffers");
+    float invalid[]{std::numeric_limits<float>::infinity(), 0.1f};
+    check(!level.process(invalid, invalid + 1, 1, 2, true) && invalid[0] == 0 && invalid[1] == 0,
+          "Non-finite input reports failure without sending non-finite audio");
+    float extreme[]{std::numeric_limits<float>::max(), -std::numeric_limits<float>::max()};
+    check(level.process(extreme, extreme + 1, 1, 2, true) && std::isfinite(extreme[0]) &&
+              std::abs(extreme[0]) <= OutputLevel::PeakCeiling + 1e-6f,
+          "Extreme finite samples do not overflow during enhancement");
+    float silent[]{0.0f, 0.0f};
+    check(level.process(silent, silent + 1, 1, 2, true) && silent[0] == 0 && silent[1] == 0,
+          "Muted output remains silent");
+}
+} // namespace
+
 int main()
 {
     const std::vector<std::pair<const char *, void (*)()>> tests{
+        {"sampled output gain and peak limiter", outputGainAndLimiter},
         {"braced numbered performance", numberedPerformanceTests},
         {"continuous singing pitch", singingPitchTests},
         {"singing assessment", singingAssessmentTests},

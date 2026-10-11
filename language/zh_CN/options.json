@@ -1,4 +1,7 @@
 {
+  "ui.options.output_boost": "采样播放音量增强（+6 dB）",
+  "ui.options.output_boost_help": "在采样简谱/五线谱输出端提升音量，并限制双声道峰值；保留音符力度和左右手平衡，不影响原音播放及系统 MIDI。",
+  "cli.no_output_boost": "导出时关闭采样音量增强",
   "ui.menu.file": "文件",
   "ui.menu.edit": "编辑",
   "ui.menu.practice": "练习",
