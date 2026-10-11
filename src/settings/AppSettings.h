@@ -31,6 +31,7 @@ struct AppSettings
     bool showMarkers = true;
     QString lessonDirectory;
     int audioBackend = 0;
+    bool outputBoost = true;
     QString gmSoundFontPath;
     double melodyVolume = 0.9;
     double accompanimentVolume = 0.55;

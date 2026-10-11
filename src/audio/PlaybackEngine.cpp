@@ -1041,6 +1041,12 @@ void PlaybackEngine::setMetronomeVolume(double volume)
         impl_->check(impl_->instrument.setChannelVolume(9, impl_->clickVolume));
 }
 
+void PlaybackEngine::setOutputBoost(bool enabled)
+{
+    std::lock_guard lock(impl_->mutex);
+    impl_->instrument.setOutputBoost(enabled);
+}
+
 void PlaybackEngine::setProgram(int program)
 {
     std::lock_guard lock(impl_->mutex);

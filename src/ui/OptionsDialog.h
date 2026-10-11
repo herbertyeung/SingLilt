@@ -45,7 +45,7 @@ class OptionsDialog final : public QDialog
     QLineEdit *directory_, *gm_, *endpoint_, *model_, *key_, *whisper_;
     QCheckBox *startup_, *accent_, *metronome_, *separate_, *recognize_, *currentAccent_, *melody_,
         *accompaniment_;
-    QCheckBox *markers_, *enhance_;
+    QCheckBox *markers_, *enhance_, *outputBoost_;
     QDoubleSpinBox *melodyVolume_, *accompanimentVolume_, *originalVolume_, *originalSpeed_, *tolerance_,
         *practiceSpeed_, *tempo_, *speed_, *currentMelodyVolume_, *currentAccompanimentVolume_,
         *currentOriginalSpeed_, *currentOriginalVolume_;

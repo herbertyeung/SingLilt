@@ -31,6 +31,7 @@ public:
     QString gmSoundFontPath() const;
     QString effectiveGmSoundFontPath() const;
     bool setChannelVolume(int channel, double volume);
+    void setOutputBoost(bool enabled);
     bool silenceChannel(int channel);
     bool allNotesOff();
     // The caller owns a buffer of at least frames * 2 floats. 48 kHz stereo.

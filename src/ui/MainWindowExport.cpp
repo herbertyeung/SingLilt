@@ -47,6 +47,7 @@ void MainWindow::exportWaveFile()
         AccompanimentPlan plan;
         plan.durationTicks = timeline.durationTicks;
         WaveRenderOptions options;
+        options.outputBoost = settings_.outputBoost;
         options.maxSeconds = 600.0;
         options.metronome = metronome_->isChecked();
         options.transpose = player_.transpose();

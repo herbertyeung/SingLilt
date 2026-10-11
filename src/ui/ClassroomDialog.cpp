@@ -51,6 +51,7 @@ ClassroomDialog::ClassroomDialog(LanguageManager &languages, AudioBackend backen
     preferences_ = loadAppSettings();
     createUi();
     player_.setAudioBackend(backend);
+    player_.setOutputBoost(preferences_.outputBoost);
     try
     {
         history_.load();

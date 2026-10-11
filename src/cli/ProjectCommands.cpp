@@ -14,6 +14,7 @@
 #include "recognition/LocalStaffRecognizer.h"
 #include "recognition/StaffPageSplitter.h"
 #include "storage/ProjectStore.h"
+#include "settings/AppSettings.h"
 #include "ui/NotationRenderer.h"
 #include "ui/PracticeScore.h"
 #include <QApplication>
@@ -432,6 +433,7 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
             plan.durationTicks = timeline.durationTicks;
         }
         WaveRenderOptions options;
+        options.outputBoost = loadAppSettings().outputBoost && !args.isSet("no-output-boost");
         options.maxSeconds = numericOption(args, "render-seconds", 1, 600);
         options.metronome = args.isSet("metronome");
         const double transpose = numericOption(args, "transpose", -24, 24);
@@ -451,7 +453,7 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
         if (args.isSet("gm-soundfont"))
             options.gmSoundFontPath = args.value("gm-soundfont");
         const bool legacyRender =
-            options.maxSeconds <= 120 && !project.staffPerformance && !project.accompaniment &&
+            options.outputBoost && options.maxSeconds <= 120 && !project.staffPerformance && !project.accompaniment &&
             project.practiceMix.melodyEnabled && !project.practiceMix.accompanimentEnabled &&
             project.practiceMix.melodyVolume == 0.9 && !args.isSet("practice-mix") &&
             !args.isSet("melody-volume") && !args.isSet("accompaniment-volume") && !args.isSet("transpose") &&
@@ -472,6 +474,7 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
         report.insert("practice", accompanimentJson(project, timeline));
         report.insert("transpose", options.transpose);
         report.insert("speed", options.speed);
+        report.insert("outputBoost", options.outputBoost);
         report.insert("musicFrames", result.musicFrames);
         report.insert("startSeconds", result.startSeconds);
         report.insert("endSeconds", result.endSeconds);
