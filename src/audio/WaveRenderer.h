@@ -37,6 +37,7 @@ struct WaveRenderOptions
     double startSeconds = 0.0;
     double endSeconds = -1.0;
     bool metronome = false;
+    bool outputBoost = true;
     int transpose = 0;
     double speed = 1.0;
     PracticeMix mix;
@@ -48,7 +49,7 @@ struct WaveRenderOptions
 // Offline sampled audio: stereo 48 kHz, signed 16-bit little-endian PCM WAV.
 // maxSeconds must be 1..120. Music is capped there, then a 1.5-second release
 // tail is appended, so output never exceeds maxSeconds + 1.5 seconds.
-// Peak/RMS/clippedSamples describe raw sampler output before PCM saturation.
+// Peak/RMS/clippedSamples describe processed sampled output before PCM quantization.
 // Throws std::runtime_error on invalid input, sampler, or atomic-file failure.
 WaveRenderResult renderWave(const Score &score, const QString &output, double maxSeconds = 30.0,
                             bool metronome = false);

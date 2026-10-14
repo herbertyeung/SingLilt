@@ -90,6 +90,7 @@ AppSettings loadAppSettings()
     s.showMarkers = store.value("ui/showMarkers", true).toBool();
     s.lessonDirectory = store.value("practice/lessonDirectory", defaultLessonDirectory()).toString();
     s.audioBackend = store.value("audio/backend", 0).toInt();
+    s.outputBoost = store.value("audio/outputBoost", true).toBool();
     s.gmSoundFontPath = store.value("audio/gmSoundFontPath").toString();
     s.melodyVolume = store.value("audio/defaultMelodyVolume", 0.9).toDouble();
     s.accompanimentVolume = store.value("audio/defaultAccompanimentVolume", 0.55).toDouble();
@@ -201,6 +202,7 @@ void saveAppSettings(const AppSettings &s, const AppSettings *previous)
     store.setValue("ui/showMarkers", s.showMarkers);
     store.setValue("practice/lessonDirectory", s.lessonDirectory);
     store.setValue("audio/backend", s.audioBackend);
+    store.setValue("audio/outputBoost", s.outputBoost);
     store.setValue("audio/gmSoundFontPath", s.gmSoundFontPath);
     store.setValue("audio/defaultMelodyVolume", s.melodyVolume);
     store.setValue("audio/defaultAccompanimentVolume", s.accompanimentVolume);

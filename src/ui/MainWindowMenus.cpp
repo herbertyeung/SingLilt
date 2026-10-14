@@ -281,6 +281,7 @@ bool MainWindow::applyOptions(const AppSettings &s, const OptionsContext &c)
             throw SettingsValidationError("optionsGmPath", player_.errorString());
         if (!player_.setAudioBackend(backend))
             throw SettingsValidationError("optionsAudioBackend", player_.errorString());
+        player_.setOutputBoost(s.outputBoost);
         if (staffProgramsChanged && !player_.setAccompanimentSettings(newStaffSettings))
             throw SettingsValidationError("optionsCurrentProgramA", player_.errorString());
         saveAppSettings(s, &old);
@@ -292,6 +293,7 @@ bool MainWindow::applyOptions(const AppSettings &s, const OptionsContext &c)
         if (s.gmSoundFontPath != old.gmSoundFontPath)
             player_.setGmSoundFontPath(old.gmSoundFontPath);
         player_.setAudioBackend(old.audioBackend == 1 ? AudioBackend::WindowsMidi : AudioBackend::SampledPiano);
+        player_.setOutputBoost(old.outputBoost);
         throw;
     }
     settings_ = s;

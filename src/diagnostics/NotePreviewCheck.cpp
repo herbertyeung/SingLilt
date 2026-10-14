@@ -161,6 +161,31 @@ class NotePreviewProbe final : public QObject
                         sampler.noteOff(0, 60);
                     }
                     check("All38 actual presets render nonzero sampled audio", audible);
+                    if (!sampler.silenceChannel(0) || !sampler.render(samples.data(), 48000) ||
+                        !sampler.setProgram(0, 0) || !sampler.setProgram(1, 0) ||
+                        !sampler.setChannelVolume(0, 1.0) || !sampler.setChannelVolume(1, 1.0))
+                        throw std::runtime_error(sampler.errorString().toStdString());
+                    sampler.setOutputBoost(true);
+                    for (int pitch = 48; pitch < 84; ++pitch)
+                        if (!sampler.noteOn(pitch % 2, pitch, 127))
+                            throw std::runtime_error(sampler.errorString().toStdString());
+                    double densePeak = 0;
+                    bool denseFinite = true;
+                    for (int frame = 0; frame < 48000; frame += 512)
+                    {
+                        const int count = std::min(512, 48000 - frame);
+                        if (!sampler.render(samples.data(), count))
+                            throw std::runtime_error(sampler.errorString().toStdString());
+                        for (int sample = 0; sample < count * 2; ++sample)
+                        {
+                            denseFinite &= std::isfinite(samples[std::size_t(sample)]);
+                            densePeak = std::max(densePeak, double(std::abs(samples[std::size_t(sample)])));
+                        }
+                    }
+                    check("Enhanced 36-note fortissimo stereo output stays finite below PCM saturation",
+                          denseFinite && densePeak > 0.01 && densePeak <= 0.980001);
+                    instruments_.append(QJsonObject{{"densePeak", densePeak}, {"outputBoost", true}});
+                    sampler.allNotesOff();
                 }
                 window_.setProject(makePracticeScore());
                 check("External lesson opts out of beat accents", !window_.project().score.accentBeats);

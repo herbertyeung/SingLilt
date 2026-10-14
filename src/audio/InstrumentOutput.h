@@ -27,6 +27,7 @@ public:
     bool setGmSoundFontPath(const QString &path);
     QString gmSoundFontPath() const;
     bool setChannelVolume(int channel, double volume);
+    void setOutputBoost(bool enabled);
     bool silenceChannel(int channel);
     bool allNotesOff();
     QString errorString() const;

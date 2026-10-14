@@ -1,4 +1,7 @@
 {
+  "ui.options.output_boost": "Louder sampled playback (+6 dB)",
+  "ui.options.output_boost_help": "Boosts sampled notation output with stereo peak limiting. Note velocity and hand balance stay unchanged. Original recordings and system MIDI are unaffected.",
+  "cli.no_output_boost": "Render sampled audio without output enhancement",
   "ui.menu.file": "File",
   "ui.menu.edit": "Edit",
   "ui.menu.practice": "Practice",

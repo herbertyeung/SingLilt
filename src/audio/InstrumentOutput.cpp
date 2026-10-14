@@ -87,6 +87,11 @@ bool InstrumentOutput::silenceChannel(int channel)
     return backend_ == AudioBackend::SampledPiano ? sampled_.silenceChannel(channel) : midi_.silenceChannel(channel);
 }
 
+void InstrumentOutput::setOutputBoost(bool enabled)
+{
+    sampled_.setOutputBoost(enabled);
+}
+
 bool InstrumentOutput::allNotesOff()
 {
     return backend_ == AudioBackend::SampledPiano ? sampled_.allNotesOff() : midi_.allNotesOff();

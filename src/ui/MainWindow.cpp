@@ -323,6 +323,7 @@ MainWindow::MainWindow(LanguageManager &languageManager, ThemeManager &themes, Q
                 scheduleStaffEditRecovery();
             });
     metronome_->setChecked(settings_.metronome);
+    player_.setOutputBoost(settings_.outputBoost);
     view_->showUncertain(settings_.showMarkers);
     const QString gmPath = settings_.gmSoundFontPath;
     if (!gmPath.isEmpty() && !player_.setGmSoundFontPath(gmPath))

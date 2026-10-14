@@ -205,6 +205,11 @@ OptionsDialog::OptionsDialog(const AppSettings &s, const OptionsContext &c, QWid
     audio->addRow(caption("ui.options.gm_help"));
     pianoStatus_ = capabilityRow(audio, "ui.capabilities.piano", "optionsPianoStatus");
     gmStatus_ = capabilityRow(audio, "ui.capabilities.gm", "optionsGmStatus");
+    outputBoost_ = toggle(audio, "ui.options.output_boost", "optionsOutputBoost", s.outputBoost);
+    outputBoost_->setToolTip(trText("ui.options.output_boost_help"));
+    outputBoost_->setEnabled(s.audioBackend == 0);
+    connect(backend_, &QComboBox::currentIndexChanged, this,
+            [this](int index) { outputBoost_->setEnabled(index == 0); });
     melodyVolume_ = number(audio, "ui.accompaniment.melody_volume", "optionsMelodyVolume", s.melodyVolume, 0, 1);
     accompanimentVolume_ =
         number(audio, "ui.accompaniment.volume", "optionsAccompanimentVolume", s.accompanimentVolume, 0, 1);
@@ -370,6 +375,7 @@ bool OptionsDialog::commit()
     s.showMarkers = markers_->isChecked();
     s.lessonDirectory = directory_->text().trimmed();
     s.audioBackend = backend_->currentIndex();
+    s.outputBoost = outputBoost_->isChecked();
     s.gmSoundFontPath = gm_->text().trimmed();
     s.melodyVolume = selectedNumber(melodyVolume_, s.melodyVolume);
     s.accompanimentVolume = selectedNumber(accompanimentVolume_, s.accompanimentVolume);
@@ -518,6 +524,7 @@ void OptionsDialog::changeEvent(QEvent *event)
 }
 void OptionsDialog::retranslate()
 {
+    outputBoost_->setToolTip(trText("ui.options.output_boost_help"));
     setWindowTitle(trText("ui.options.title"));
     const char *names[] = {"ui.options.general", "ui.options.audio", "ui.options.microphone", "ui.options.ai",
                            "ui.options.current"};

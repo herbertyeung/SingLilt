@@ -71,6 +71,7 @@ public:
     bool setTranspose(int semitones); // Rejects values outside -24..24 or MIDI range.
     void setMetronome(bool enabled);
     void setVolume(double volume); // Melody only, 0..1.
+    void setOutputBoost(bool enabled); // Sampled output only; MIDI velocity and mix stay unchanged.
     void setMetronomeVolume(double volume); // 0..1.
     // Explicit global override until the next load. Normal playback uses each
     // timeline event's program, including after seek and pause/resume.

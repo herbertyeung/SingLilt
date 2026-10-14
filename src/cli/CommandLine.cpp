@@ -79,6 +79,7 @@ void addCommandLineOptions(QCommandLineParser &args)
     args.addOption({"smoke", trText("cli.smoke")});
     args.addOption({"audio-backend", trText("cli.audio_backend"), "backend"});
     args.addOption({"render-wave", trText("cli.render_wave"), "file"});
+    args.addOption({"no-output-boost", trText("cli.no_output_boost")});
     args.addOption({"render-seconds", trText("cli.render_seconds"), "seconds", "20"});
     args.addOption({"velocity", trText("cli.velocity"), "value"});
     args.addOption({"uniform", trText("cli.uniform")});
