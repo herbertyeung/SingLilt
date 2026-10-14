@@ -1,3 +1,4 @@
+#include "DiagnosticAudio.h"
 // Asynchronous vision-request and cancellation regressions.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -152,7 +153,7 @@ class AsyncRecognitionCheck final : public QObject
         auto original = fixtureProject("Original request project", QColor(245, 228, 210), QSize(96, 96));
         requestImage_ = original.image;
         window_.setProject(original);
-        if (!check(window_.player().setAudioBackend(AudioBackend::WindowsMidi), "system_audio_selected"))
+        if (!check(window_.player().setAudioBackend(diagnosticAudioBackend()), "system_audio_selected"))
             return;
         if (scenario_ == "success" && !check(window_.player().play(), "playback_started_before_request"))
             return;

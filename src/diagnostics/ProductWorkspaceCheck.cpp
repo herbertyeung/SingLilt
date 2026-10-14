@@ -20,6 +20,8 @@
 #include <QDir>
 #include <QDoubleSpinBox>
 #include <QEventLoop>
+#include <QElapsedTimer>
+#include <QThread>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -207,6 +209,13 @@ class WorkspaceProbe final : public QObject
         window_.setProject(sample);
         auto *playback = control<QComboBox>("playbackSource");
         playback->setCurrentIndex(playback->findData(1));
+        QElapsedTimer loading;
+        loading.start();
+        while (window_.originalAudioPlayer().isLoading() && loading.elapsed() < 5000)
+        {
+            QApplication::processEvents();
+            QThread::msleep(5);
+        }
         check("Original-volume fixture opens through the real source control",
               playback->currentData().toInt() == 1 && window_.originalAudioPlayer().isOpen());
         control<QSlider>("outputVolume")->setValue(40);

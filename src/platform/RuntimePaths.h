@@ -5,6 +5,7 @@
 #pragma once
 
 #include <QtGlobal>
+#include <QString>
 
 namespace singlilt
 {
@@ -15,4 +16,8 @@ inline constexpr char SeparatorPythonPath[] = "/tools/separation/python/python.e
 inline constexpr char NativeExecutableSuffix[] = "";
 inline constexpr char SeparatorPythonPath[] = "/tools/separation/python/bin/python3";
 #endif
+
+QString runtimeResourceDirectory(const QString &executableDirectory);
+QString runtimeResourceDirectory();
+QString helperExecutableName(const QString &baseName);
 } // namespace singlilt

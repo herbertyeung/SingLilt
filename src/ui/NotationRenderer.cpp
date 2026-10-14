@@ -1,3 +1,4 @@
+#include "PlatformFonts.h"
 // Numbered-notation images and note layout.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -143,9 +144,9 @@ QImage renderNumberedScore(Score &score)
     QFont numberFont("Times New Roman");
     numberFont.setPixelSize(42);
     numberFont.setWeight(QFont::Bold);
-    QFont lyricFont("Microsoft YaHei UI");
+    QFont lyricFont(notationTextFontFamily());
     lyricFont.setPixelSize(19);
-    QFont smallFont("Microsoft YaHei UI");
+    QFont smallFont(notationTextFontFamily());
     smallFont.setPixelSize(17);
     const QFontMetricsF numbers(numberFont);
     const QFontMetricsF lyrics(lyricFont);
@@ -261,7 +262,7 @@ QImage renderNumberedScore(Score &score)
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setRenderHint(QPainter::TextAntialiasing);
     painter.setPen(Ink);
-    QFont titleFont("Microsoft YaHei UI");
+    QFont titleFont(notationTextFontFamily());
     titleFont.setPixelSize(32);
     titleFont.setWeight(QFont::DemiBold);
     painter.setFont(titleFont);

@@ -75,3 +75,7 @@ ALSA and Tesseract are distribution-managed libraries, not copied into the TGZ.
 
 Distribution GM banks remain at their installed system paths and are not redistributed
 in the Linux TGZ. Optional recognition tools/models retain their own existing terms.
+
+## macOS native build
+
+macOS uses dynamically linked native Qt and FluidSynth, Qt Multimedia for audio, and Apple Vision for OCR. It does not redistribute Windows runtimes or `gm.dls`. The bundle includes GeneralUser GS for GM instruments. Actual versions, corresponding-source locations and native build provenance are recorded in the generated `MACOS-DEPENDENCIES.md` and runtime SBOM/receipt files. The current local build uses Qt 6.11.2 and FluidSynth 2.6.1. CrispEmbed v0.17.12 macOS arm64 uses the same verified CC-BY-4.0 Transcoda weights as Windows; its native notices accompany the tool. Whisper and Python separation are not bundled in the baseline Mac app.

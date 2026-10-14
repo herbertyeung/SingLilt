@@ -1,3 +1,7 @@
+if(APPLE)
+    include(cmake/DeployMacRuntime.cmake)
+    return()
+endif()
 # Runtime libraries, sound banks, and optional tool deployment.
 # Copyright (c) 2026 Herbert Yeung
 # Author: Herbert Yeung

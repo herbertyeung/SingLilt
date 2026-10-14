@@ -40,6 +40,38 @@
       "cacheVariables": {
         "SINGLILT_BUILD_APP": "OFF"
       }
+    },
+    {
+      "name": "macos",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "26.0",
+        "SINGLILT_BUILD_APP": "ON",
+        "SINGLILT_TEST_AUDIO_OUTPUT": "OFF"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "macos-core",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "13.0",
+        "SINGLILT_BUILD_APP": "OFF",
+        "SINGLILT_TEST_AUDIO_OUTPUT": "OFF"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
     }
   ],
   "buildPresets": [
@@ -128,6 +160,14 @@
       "targets": [
         "SingLiltCoreTests"
       ]
+    },
+    {
+      "name": "macos-release",
+      "configurePreset": "macos"
+    },
+    {
+      "name": "macos-core-release",
+      "configurePreset": "macos-core"
     }
   ],
   "testPresets": [
@@ -189,6 +229,20 @@
       },
       "environment": {
         "QT_QPA_PLATFORM": "offscreen"
+      }
+    },
+    {
+      "name": "macos-release",
+      "configurePreset": "macos",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "macos-core-release",
+      "configurePreset": "macos-core",
+      "output": {
+        "outputOnFailure": true
       }
     }
   ]

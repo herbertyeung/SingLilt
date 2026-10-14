@@ -1,3 +1,5 @@
+macOS native builds and local distribution are documented in [MACOS.md](MACOS.md). The Windows instructions below remain applicable on Windows.
+
 # Building SingLilt
 
 ## Requirements

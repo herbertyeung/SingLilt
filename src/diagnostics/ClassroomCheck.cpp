@@ -1,3 +1,5 @@
+#include "DiagnosticAudio.h"
+#include "platform/RuntimePaths.h"
 // Lesson playback, recording, and assessment integration checks.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -77,7 +79,7 @@ class ClassroomProbe final : public QObject
     }
     void fixtureChecks()
     {
-        const QString original = QApplication::applicationDirPath() + "/assets/lessons";
+        const QString original = runtimeResourceDirectory() + "/assets/lessons";
         const auto lessons = loadSingingLessons(original, "zh_CN");
         check("Eight external course files", lessons.size() == 8);
         for (const auto &lesson : lessons)
@@ -118,7 +120,7 @@ class ClassroomProbe final : public QObject
         entries.append("09-custom.json");
         index.insert("lessons", entries);
         write(fixture + "/index.json", index);
-        classroom_ = new ClassroomDialog(languages_, AudioBackend::WindowsMidi, original, historyPath_, &window_);
+        classroom_ = new ClassroomDialog(languages_, diagnosticAudioBackend(), original, historyPath_, &window_);
         classroom_->show();
         classroom_->reloadLessons(fixture);
         check("Adding a lesson file needs no compilation", classroom_->lessons().size() == 9);

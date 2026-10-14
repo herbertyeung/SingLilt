@@ -1,3 +1,4 @@
+#include "DiagnosticAudio.h"
 // Interactive staff-note inspector and gesture checks.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -329,7 +330,8 @@ void modalOperation(MainWindow &window, const std::function<void()> &open,
                     const std::function<void(StaffNoteDialog &)> &operate)
 {
     QTimer timer;
-    timer.setSingleShot(true);
+    // Cocoa can finish presenting the context menu after the first timer tick.
+    // Keep polling until the production dialog is visible, then operate once.
     QString error;
     bool seen = false;
     QObject::connect(&timer, &QTimer::timeout, &window,
@@ -338,9 +340,9 @@ void modalOperation(MainWindow &window, const std::function<void()> &open,
                          auto *base = window.findChild<QDialog *>("staffNoteAddDialog");
                          if (!base || !base->isVisible())
                          {
-                             error = "The production staff-note dialog did not open";
                              return;
                          }
+                         timer.stop();
                          seen = true;
                          try
                          {
@@ -354,6 +356,7 @@ void modalOperation(MainWindow &window, const std::function<void()> &open,
                      });
     timer.start(20);
     open();
+    timer.stop();
     if (!seen || !error.isEmpty())
         throw std::runtime_error(error.isEmpty() ? "The production staff-note dialog was not observed"
                                                  : error.toStdString());
@@ -481,8 +484,8 @@ void runStaffSmartNoteCheck(MainWindow &window, const QCommandLineParser &args, 
                       oneClickPractice && correctionMode->isChecked() && !practiceMode->isChecked() &&
                           !window.findChild<QComboBox *>("workspaceMode") && pitchMode->isChecked() &&
                           pitchMode->isEnabled() && timingMode->isChecked() && timingMode->isEnabled());
-                check("Audition explicitly selects the tested Windows MIDI backend",
-                      window.player().setAudioBackend(AudioBackend::WindowsMidi));
+                check("Audition explicitly selects the platform audio backend",
+                      window.player().setAudioBackend(diagnosticAudioBackend()));
                 const auto notes = window.project().staffPerformance->notes;
                 const auto first = std::find_if(notes.begin(), notes.end(), [](const auto &note)
                                                 { return note.staff == 1 && note.hasImageAnchor; });

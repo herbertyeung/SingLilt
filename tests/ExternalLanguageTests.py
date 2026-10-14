@@ -15,7 +15,7 @@ def main():
     executable = Path(sys.argv[1]).resolve()
     output = Path(sys.argv[2]).resolve()
     output.mkdir(parents=True, exist_ok=True)
-    directory = executable.parent / "language"
+    directory = (executable.parent.parent / "Resources" if executable.parent.name == "MacOS" else executable.parent) / "language"
     config = json.loads((directory / "config.json").read_text(encoding="utf-8"))
     pack = directory / "fr_FR"
     if pack.exists():

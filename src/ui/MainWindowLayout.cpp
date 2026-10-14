@@ -639,7 +639,9 @@ void MainWindow::createTransport(QVBoxLayout *layout)
     audioSource_ = new QComboBox;
     audioSource_->setObjectName("audioBackend");
     addTranslatedItem(audioSource_, "ui.transport.source_piano", 0);
+#ifndef Q_OS_MACOS
     addTranslatedItem(audioSource_, "ui.transport.source_midi", 1);
+#endif
     voiceLayout->addWidget(audioSource_);
     voiceSettings->hide();
     QObject::connect(audioSource_, &QComboBox::currentIndexChanged, this,

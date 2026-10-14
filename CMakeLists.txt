@@ -44,11 +44,13 @@ source_group("Tests" FILES tests/CoreTests.cpp tests/SingingTests.h tests/Singin
 if(NOT SINGLILT_BUILD_APP)
     return()
 endif()
-if(NOT WIN32 AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    message(FATAL_ERROR "Desktop support requires Windows or Linux. Use -DSINGLILT_BUILD_APP=OFF for core tests.")
+if(NOT WIN32 AND NOT APPLE AND NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    message(FATAL_ERROR "Desktop support requires Windows, Linux or macOS. Use -DSINGLILT_BUILD_APP=OFF for core tests.")
 endif()
 if(WIN32)
     enable_language(RC)
+elseif(APPLE)
+    enable_language(OBJCXX)
 endif()
 include(cmake/Dependencies.cmake)
 
@@ -65,7 +67,20 @@ set_tests_properties(SingLiltNumberedRecognition PROPERTIES LABELS "ci" TIMEOUT 
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
-add_executable(SingLilt WIN32 ${APP_FILES} ${CORE_FILES})
+if(APPLE)
+    add_executable(SingLilt MACOSX_BUNDLE ${APP_FILES} ${CORE_FILES})
+    set_target_properties(SingLilt PROPERTIES MACOSX_BUNDLE_INFO_PLIST "${CMAKE_SOURCE_DIR}/resources/branding/Info.plist.in"
+        MACOSX_BUNDLE_ICON_FILE "singlilt.icns")
+    add_custom_command(OUTPUT "${CMAKE_BINARY_DIR}/generated/singlilt.icns"
+        COMMAND bash "${CMAKE_SOURCE_DIR}/scripts/generate-macos-icon.sh"
+            "${CMAKE_SOURCE_DIR}/resources/branding/singlilt-icon.png" "${CMAKE_BINARY_DIR}/generated/singlilt.icns"
+        DEPENDS resources/branding/singlilt-icon.png scripts/generate-macos-icon.sh VERBATIM)
+    target_sources(SingLilt PRIVATE "${CMAKE_BINARY_DIR}/generated/singlilt.icns")
+    set_source_files_properties("${CMAKE_BINARY_DIR}/generated/singlilt.icns" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+else()
+    add_executable(SingLilt WIN32 ${APP_FILES} ${CORE_FILES})
+endif()
+
 add_dependencies(SingLiltNumberedRecognitionTests SingLilt)
 configure_file(resources/branding/Version.h.in "${CMAKE_BINARY_DIR}/generated/Version.h" @ONLY)
 if(WIN32)
@@ -88,6 +103,8 @@ target_compile_definitions(SingLilt PRIVATE QT_NO_KEYWORDS SINGLILT_VERSION="${P
 if(WIN32)
     target_link_libraries(SingLilt PRIVATE winmm windowsapp mfplat mfreadwrite mfuuid ole32)
     target_compile_definitions(SingLilt PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+elseif(APPLE)
+    target_link_libraries(SingLilt PRIVATE Qt6::Multimedia "-framework Vision" "-framework Foundation" "-framework CoreGraphics")
 else()
     target_link_libraries(SingLilt PRIVATE Qt6::Multimedia ALSA::ALSA PkgConfig::Tesseract)
 endif()
@@ -106,7 +123,7 @@ source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}/src" PREFIX "Source" FILES ${APP_
 include(cmake/DeployRuntime.cmake)
 add_executable(SingLiltAudioDecoderTests tests/AudioDecoderProcessTests.cpp
     src/recognition/linux/AudioDecoder.h src/recognition/linux/AudioDecoder.cpp
-    src/i18n/LanguageManager.h src/i18n/LanguageManager.cpp)
+    src/i18n/LanguageManager.h src/i18n/LanguageManager.cpp src/platform/RuntimePaths.cpp)
 target_include_directories(SingLiltAudioDecoderTests PRIVATE src)
 target_link_libraries(SingLiltAudioDecoderTests PRIVATE Qt6::Core)
 set_target_properties(SingLiltAudioDecoderTests PROPERTIES FOLDER "Tests")
@@ -116,7 +133,7 @@ endif()
 add_test(NAME SingLiltAudioDecoderProcess COMMAND SingLiltAudioDecoderTests)
 set_tests_properties(SingLiltAudioDecoderProcess PROPERTIES LABELS "ci" TIMEOUT 30
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>")
-if(WIN32)
+if(WIN32 OR APPLE)
     include(cmake/Tests.cmake)
 else()
     include(cmake/LinuxTests.cmake)

@@ -529,6 +529,7 @@ class StaffRecognitionProbe final : public QObject
                                                           midiPitch(task.result()->score.notes[0], 0) == 48);
         auto numbered = fixture;
         numbered.remove("notation");
+        numbered.insert("numberedLayout", "single");
         auto notes = numbered.value("notes").toArray();
         for (int index = 0; index < notes.size(); ++index)
         {

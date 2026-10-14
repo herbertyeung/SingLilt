@@ -67,3 +67,23 @@ jobs:
             build/**/*report.json
           if-no-files-found: ignore
           retention-days: 7
+
+  macos:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare native dependencies
+        run: ./scripts/setup-macos.sh
+      - name: Build native desktop and core
+        run: |
+          cmake --preset macos -DCMAKE_OSX_DEPLOYMENT_TARGET="$(sw_vers -productVersion)" -DPython3_EXECUTABLE="$(brew --prefix python@3.12)/bin/python3.12"
+          cmake --build --preset macos-release --parallel 3
+      - name: Deploy and sign locally
+        run: ./scripts/deploy-macos.sh
+      - name: Test native app
+        run: |
+          ctest --preset macos-release --output-on-failure
+          python3 tests/MacBundleTests.py build/bin/Release/SingLilt.app

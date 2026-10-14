@@ -1,3 +1,4 @@
+#include "platform/RuntimePaths.h"
 // Translation catalogs, language selection, and message lookup.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -348,7 +349,7 @@ LanguageManager::LanguageManager(const QString &directory, QObject *parent)
 
 QString LanguageManager::catalogDirectory()
 {
-    return QCoreApplication::applicationDirPath() + QStringLiteral("/language");
+    return runtimeResourceDirectory() + QStringLiteral("/language");
 }
 
 QString LanguageManager::configuredDefaultLanguage()

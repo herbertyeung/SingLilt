@@ -3,6 +3,7 @@
 // Author: Herbert Yeung
 // SPDX-License-Identifier: MIT
 
+#include "platform/FileOpenHandler.h"
 #include "cli/CommandLine.h"
 #include "cli/JsonReport.h"
 #include "cli/ProjectCommands.h"
@@ -18,6 +19,7 @@
 #include <QImageReader>
 #include <QJsonObject>
 #include <QSettings>
+#include <QPointer>
 #include <QSignalBlocker>
 #include <QStyleFactory>
 #include <QTextStream>
@@ -28,6 +30,7 @@ using namespace singlilt;
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
+    FileOpenHandler nativeDocuments(app);
     app.setOrganizationName("SingLilt");
     app.setApplicationName("SingLilt");
     app.setApplicationVersion(SINGLILT_VERSION);
@@ -113,8 +116,10 @@ int main(int argc, char **argv)
             window.openFile(args.positionalArguments().first());
         if (args.isSet("gm-soundfont") && !window.player().setGmSoundFontPath(args.value("gm-soundfont")))
             throw std::runtime_error(window.player().errorString().toStdString());
+        const bool nativeDocumentPending = nativeDocuments.hasPendingFiles();
+        nativeDocuments.setHandler([target = QPointer<MainWindow>(&window)](const QString &path) { if (target) target->openFile(path); });
         window.show();
-        if (args.isSet("classroom") || (app.arguments().size() == 1 && window.appSettings().startupClassroom))
+        if (args.isSet("classroom") || (!nativeDocumentPending && app.arguments().size() == 1 && window.appSettings().startupClassroom))
             window.openClassroom();
         runWindowDiagnostics(window, languages, themes, args, app);
         return app.exec();

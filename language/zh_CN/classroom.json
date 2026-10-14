@@ -122,5 +122,6 @@
   "ui.classroom.feedback_ready": "判读完成",
   "cli.classroom": "直接打开唱歌课堂",
   "ui.classroom.note_preview": "音符短音试听 · 均匀力度；不开始整首播放",
-  "cli.note_preview_check": "验证点击音符试听"
+  "cli.note_preview_check": "验证点击音符试听",
+  "messages.mic.permission_denied": "麦克风访问被拒绝。请在系统设置 → 隐私与安全性 → 麦克风中允许 SingLilt。"
 }

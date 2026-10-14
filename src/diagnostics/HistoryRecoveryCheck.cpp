@@ -1,3 +1,4 @@
+#include "DiagnosticAudio.h"
 // Practice-history write failure and recovery checks.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -52,7 +53,7 @@ void runHistoryRecoveryCheck(MainWindow &window, LanguageManager &languages, con
                     throw std::runtime_error("History blocker could not be created");
                 blocker.close();
                 const QString historyPath = blockedParent + "/history.json";
-                auto classroom = std::make_unique<ClassroomDialog>(languages, AudioBackend::WindowsMidi,
+                auto classroom = std::make_unique<ClassroomDialog>(languages, diagnosticAudioBackend(),
                                                                    defaultLessonDirectory(), historyPath, &window);
                 classroom->setAttribute(Qt::WA_DeleteOnClose, false);
                 classroom->show();

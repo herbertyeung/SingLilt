@@ -14,6 +14,10 @@
 #include <QJsonDocument>
 #include <QStandardPaths>
 #include <QTemporaryDir>
+#include <QProcess>
+#ifdef Q_OS_UNIX
+#include <signal.h>
+#endif
 #include <chrono>
 #include <stdexcept>
 #include <thread>
@@ -38,7 +42,11 @@ void writeFixture(const QString &path, const QByteArray &bytes)
 
 QString literal(QString text)
 {
+    #ifdef Q_OS_WIN
     return "'" + text.replace("'", "''") + "'";
+#else
+    return "'" + text.replace("'", "'\"'\"'") + "'";
+#endif
 }
 
 bool processEnded(int processId, const QString &procRoot = "/proc")
@@ -76,8 +84,16 @@ bool processEnded(int processId, const QString &procRoot = "/proc")
     }
     return false;
 #else
-    Q_UNUSED(processId);
-    return true;
+    if (processId <= 0) return false;
+    for (int i=0;i<300;++i) {
+        if (::kill(processId,0)!=0) return true;
+        QProcess status;
+        status.start("/bin/ps", {"-o", "stat=", "-p", QString::number(processId)});
+        status.waitForFinished(1000);
+        if (status.readAllStandardOutput().trimmed().startsWith('Z')) return true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    return false;
 #endif
 }
 } // namespace
@@ -136,7 +152,7 @@ QJsonObject checkNativeStaffProcess()
                           "[0])\n";
             writeFixture(scriptPath, script.toUtf8());
             options.engineArgumentsPrefix = {scriptPath};
-#else
+#elif defined(Q_OS_WIN)
             options.engineExecutable =
                 qEnvironmentVariable("SystemRoot") + "/System32/WindowsPowerShell/v1.0/powershell.exe";
             options.modelPath = root + "/model.gguf";
@@ -164,6 +180,20 @@ QJsonObject checkNativeStaffProcess()
             writeFixture(scriptPath, script.toUtf8());
             options.engineArgumentsPrefix = {"-NoProfile", "-NonInteractive", "-ExecutionPolicy",
                                              "Bypass",     "-File",           scriptPath};
+#else
+            options.engineExecutable = "/bin/sh";
+            options.modelPath = root + "/model.gguf";
+            options.timeoutSeconds = mode == "timeout" ? 5 : 15;
+            const auto scriptPath = root + '/' + mode + ".sh";
+            QString script = "#!/bin/sh\n";
+            if (mode == "cancel" || mode == "timeout")
+                script += "sleep 60 &\nprintf '%s' \"$!\" > " + literal(root + '/' + mode + ".pid.tmp") +
+                          "\nmv " + literal(root + '/' + mode + ".pid.tmp") + " " + literal(root + '/' + mode + ".pid") + "\nwait\n";
+            else if (mode == "nonzero") script += "echo 'native fixture error' >&2\nexit 9\n";
+            else if (mode == "invalid") script += "echo 'invalid notation'\n";
+            else if (mode != "empty") script += "printf '%s' " + literal(notation) + "\n";
+            writeFixture(scriptPath, script.toUtf8());
+            options.engineArgumentsPrefix = {scriptPath};
 #endif
             return options;
         };

@@ -1,3 +1,4 @@
+#include "platform/RuntimePaths.h"
 // Application preferences, validation, and persistence.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -74,7 +75,7 @@ const char *SettingsValidationError::field() const
 
 QString defaultLessonDirectory()
 {
-    return QCoreApplication::applicationDirPath() + "/assets/lessons";
+    return runtimeResourceDirectory() + "/assets/lessons";
 }
 
 AppSettings loadAppSettings()
@@ -90,6 +91,9 @@ AppSettings loadAppSettings()
     s.showMarkers = store.value("ui/showMarkers", true).toBool();
     s.lessonDirectory = store.value("practice/lessonDirectory", defaultLessonDirectory()).toString();
     s.audioBackend = store.value("audio/backend", 0).toInt();
+#ifdef Q_OS_MACOS
+    s.audioBackend = 0;
+#endif
     s.gmSoundFontPath = store.value("audio/gmSoundFontPath").toString();
     s.melodyVolume = store.value("audio/defaultMelodyVolume", 0.9).toDouble();
     s.accompanimentVolume = store.value("audio/defaultAccompanimentVolume", 0.55).toDouble();

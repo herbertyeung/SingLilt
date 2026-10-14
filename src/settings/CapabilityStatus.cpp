@@ -1,3 +1,4 @@
+#include "platform/RuntimePaths.h"
 // Local runtime, model, and sound-bank readiness checks.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -6,7 +7,6 @@
 #include "CapabilityStatus.h"
 #include "AppSettings.h"
 #include "i18n/LanguageManager.h"
-#include "platform/RuntimePaths.h"
 #include "recognition/AudioTranscriber.h"
 #include <QCoreApplication>
 #include <QDir>
@@ -31,7 +31,7 @@ namespace
 {
 QString applicationDirectory(const QString &directory)
 {
-    return directory.isEmpty() ? QCoreApplication::applicationDirPath() : directory;
+    return directory.isEmpty() ? runtimeResourceDirectory() : directory;
 }
 
 void checkFile(CapabilityFileStatus &status, const QString &path)
@@ -62,8 +62,7 @@ QString systemGmPath()
 CapabilityFileStatus whisperStatus(const QString &directory, const QString &executable, const QString &model)
 {
     CapabilityFileStatus status;
-    checkFile(status, executable.isEmpty() ? directory + "/tools/whisper/whisper-cli" + NativeExecutableSuffix
-                                           : executable);
+    checkFile(status, executable.isEmpty() ? directory + "/tools/whisper/" + helperExecutableName("whisper-cli") : executable);
     checkFile(status, model.isEmpty() ? directory + "/models/ggml-base.bin" : model);
     return status;
 }

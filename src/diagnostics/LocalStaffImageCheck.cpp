@@ -1,3 +1,4 @@
+#include "platform/RuntimePaths.h"
 // Local recognition checks using an explicit score image.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -303,7 +304,7 @@ class LocalStaffImageProbe final : public QObject
         options.settings.originalStaff = true;
         options.settings.chordProgram = 40;
         options.settings.bassProgram = 35;
-        options.gmSoundFontPath = QApplication::applicationDirPath() + "/assets/soundfonts/GeneralUser-GS.sf2";
+        options.gmSoundFontPath = runtimeResourceDirectory() + "/assets/soundfonts/GeneralUser-GS.sf2";
         check("An explicit real GM bank is available", QFileInfo(options.gmSoundFontPath).isFile());
         const auto changedPath = QDir(folder_).filePath("local-staff-violin-bass.wav");
         const auto pianoPath = QDir(folder_).filePath("local-staff-piano-comparison.wav");

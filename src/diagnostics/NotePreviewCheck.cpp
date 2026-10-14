@@ -1,3 +1,4 @@
+#include "platform/RuntimePaths.h"
 // Instrument selection and note-audition checks.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -286,7 +287,7 @@ class NotePreviewProbe final : public QObject
                       player.positionTicks() == savedTick &&
                           player.durationTicks() == window_.timeline().durationTicks);
                 classroom_ = new ClassroomDialog(languages_, player.audioBackend(),
-                                                 QApplication::applicationDirPath() + "/assets/lessons",
+                                                 runtimeResourceDirectory() + "/assets/lessons",
                                                  folder_ + "/history.json", &window_);
                 classroom_->show();
                 nextAt_ = elapsed_.elapsed() + 100;

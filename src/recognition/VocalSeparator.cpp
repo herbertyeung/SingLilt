@@ -1,3 +1,4 @@
+#include "platform/RuntimePaths.h"
 // Local vocal separation and stem-cache validation.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -219,7 +220,7 @@ VocalSeparationResult separateVocals(const QString &path, const VocalSeparationO
         checkCancellation(cancellation);
         if (result.originalPath.isEmpty() || !QFileInfo(result.originalPath).isFile())
             fail("messages.audio_source.missing_file", path);
-        const auto appDirectory = QCoreApplication::applicationDirPath();
+        const auto appDirectory = runtimeResourceDirectory();
         QString python = options.pythonExecutable;
         if (python.isEmpty())
             python = qEnvironmentVariable("JIANPU_SEPARATOR_PYTHON");

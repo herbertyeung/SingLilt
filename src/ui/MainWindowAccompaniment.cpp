@@ -1,3 +1,4 @@
+#include "platform/RuntimePaths.h"
 // Arrangement selection, audition, and practice mixing.
 // Copyright (c) 2026 Herbert Yeung
 // Author: Herbert Yeung
@@ -95,7 +96,7 @@ void MainWindow::createPracticeControls(QVBoxLayout *layout)
     };
     connect(system, &QPushButton::clicked, this, [setPath] { setPath({}); });
     connect(generalUser, &QPushButton::clicked, this,
-            [setPath] { setPath(QApplication::applicationDirPath() + "/assets/soundfonts/GeneralUser-GS.sf2"); });
+            [setPath] { setPath(runtimeResourceDirectory() + "/assets/soundfonts/GeneralUser-GS.sf2"); });
     connect(choose, &QPushButton::clicked, this, [this] { chooseGmSoundFont(); });
     connect(generate, &QPushButton::clicked, this, [this] { generatePracticeAccompaniment(); });
     connect(accompanimentPattern_, &QComboBox::currentIndexChanged, this,
