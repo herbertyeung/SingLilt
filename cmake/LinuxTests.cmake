@@ -13,7 +13,8 @@ add_executable(SingLiltLinuxMediaTests tests/LinuxMediaTests.cpp
     src/recognition/linux/AudioDecoder.h src/recognition/linux/AudioDecoder.cpp
     src/recognition/linux/TextOcr.cpp src/audio/linux/OriginalAudioPlayer.cpp
     src/audio/linux/MicrophoneCapture.cpp src/audio/linux/MidiInstrument.cpp
-    src/audio/SoundFontInstrument.cpp src/i18n/LanguageManager.cpp)
+    src/audio/SoundFontInstrument.cpp src/audio/OutputLevel.h src/audio/OutputLevel.cpp
+    src/i18n/LanguageManager.cpp)
 target_include_directories(SingLiltLinuxMediaTests PRIVATE src)
 target_link_libraries(SingLiltLinuxMediaTests PRIVATE Qt6::Widgets Qt6::Multimedia ALSA::ALSA
     PkgConfig::Tesseract FluidSynthRuntime)

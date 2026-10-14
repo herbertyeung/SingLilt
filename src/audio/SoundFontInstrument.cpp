@@ -80,7 +80,6 @@ struct SoundFontInstrument::Impl {
     QString label;
     QString error;
     std::atomic<bool> outputBoost{true};
-    std::atomic<bool> renderFailed{false};
     OutputLevel outputLevel;
 
     static int renderAudio(void *data, int frames, int, float *[], int channels, float *out[])
@@ -91,12 +90,9 @@ struct SoundFontInstrument::Impl {
         const int rendered = fluid_synth_write_float(instrument.synth.get(), frames, out[0], 0, 1, out[1], 0, 1);
         if (rendered != FLUID_OK)
             return rendered;
-        if (!instrument.outputLevel.process(out[0], out[1], frames, 1,
-                                            instrument.outputBoost.load(std::memory_order_relaxed)))
-        {
-            instrument.renderFailed.store(true, std::memory_order_relaxed);
-            return FLUID_FAILED;
-        }
+        // OutputLevel mutes invalid frames; keep the live driver running so the next buffer can recover.
+        instrument.outputLevel.process(out[0], out[1], frames, 1,
+                                       instrument.outputBoost.load(std::memory_order_relaxed));
         return FLUID_OK;
     }
 
@@ -145,7 +141,6 @@ bool SoundFontInstrument::open(bool realtime)
     }
     impl_->release();
     impl_->outputLevel.reset();
-    impl_->renderFailed.store(false, std::memory_order_relaxed);
     impl_->error.clear();
     impl_->label.clear();
     impl_->path = defaultPianoPath();
@@ -375,10 +370,7 @@ bool SoundFontInstrument::render(float* interleaved, int frames)
     return true;
 }
 
-QString SoundFontInstrument::errorString() const
-{
-    return impl_->renderFailed.load(std::memory_order_relaxed) ? trText("messages.audio.wave_nonfinite") : impl_->error;
-}
+QString SoundFontInstrument::errorString() const { return impl_->error; }
 QString SoundFontInstrument::deviceName() const
 {
     if (impl_->label.isEmpty())

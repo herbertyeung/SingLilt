@@ -19,10 +19,7 @@ bool OutputLevel::process(float *left, float *right, int frames, int stride, boo
     if (!left || !right || frames < 0 || (stride != 1 && stride != 2))
         return false;
     if (!enhanced)
-    {
         reset();
-        return true;
-    }
     // Immediate peak protection; a 100 ms release avoids per-channel balance changes.
     constexpr float release = 0.999791688f;
     bool finite = true;
@@ -34,6 +31,8 @@ bool OutputLevel::process(float *left, float *right, int frames, int stride, boo
             finite = false;
             continue;
         }
+        if (!enhanced)
+            continue;
         const double boostedLeft = double(*left) * EnhancedGain;
         const double boostedRight = double(*right) * EnhancedGain;
         const double peak = std::max(std::abs(boostedLeft), std::abs(boostedRight));
