@@ -911,10 +911,12 @@ void outputGainAndLimiter()
           "Non-finite input reports failure without sending non-finite audio");
     float mixed[]{std::numeric_limits<float>::quiet_NaN(), 0.1f, 0.2f, -0.1f};
     check(!level.process(mixed, mixed + 1, 2, 2, true) && mixed[0] == 0 && mixed[1] == 0 &&
-              mixed[2] == 0.2f * OutputLevel::EnhancedGain,
+              mixed[2] == 0.2f * OutputLevel::EnhancedGain && mixed[3] == -0.1f * OutputLevel::EnhancedGain,
           "Invalid stereo frames are muted without discarding valid frames in the same buffer");
     float recovered[]{0.1f, -0.05f};
-    check(level.process(recovered, recovered + 1, 1, 2, true) && recovered[0] == 0.1f * OutputLevel::EnhancedGain,
+    check(level.process(recovered, recovered + 1, 1, 2, true) &&
+              recovered[0] == 0.1f * OutputLevel::EnhancedGain &&
+              recovered[1] == -0.05f * OutputLevel::EnhancedGain,
           "Sampled output resumes normally in the buffer after a non-finite frame");
     float plainInvalid[]{std::numeric_limits<float>::infinity(), 0.1f, 0.2f, -0.1f};
     check(!level.process(plainInvalid, plainInvalid + 1, 2, 2, false) && plainInvalid[0] == 0 &&
