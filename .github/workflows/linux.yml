@@ -31,7 +31,7 @@ jobs:
             fonts-dejavu-core libgl1-mesa-dev libxcb-cursor0 libxkbcommon-x11-0 libxcb-xinerama0 \
             libxcb-icccm4 libxcb-keysyms1 libxcb-image0 libxcb-render-util0 patchelf
       - name: Cache pinned Qt runtime
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: build/_deps/Qt/6.8.3/gcc_64
           key: ${{ runner.os }}-qt-6.8.3-gcc64-icu-declarative-multimedia
