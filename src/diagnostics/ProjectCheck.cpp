@@ -36,6 +36,7 @@
 #include <QSpinBox>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QKeyEvent>
 #include <QUuid>
 #include <QtEndian>
 #include <cmath>
@@ -134,6 +135,18 @@ class ProjectProbe final : public QObject
         auto *action = window_.findChild<QAction *>(name);
         if (!action)
             throw std::runtime_error("File menu action missing");
+        QTimer acceptNewScore;
+        if (QByteArray(name) == "menuNew")
+        {
+            connect(&acceptNewScore, &QTimer::timeout, this,
+                    []
+                    {
+                        auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+                        if (dialog && dialog->objectName() == "newScoreDialog")
+                            dialog->accept();
+                    });
+            acceptNewScore.start(5);
+        }
         action->trigger();
     }
     void dialogAction(const char *name, const std::function<void(QDialog *)> &test)
@@ -400,11 +413,9 @@ class ProjectProbe final : public QObject
             auto *view = dynamic_cast<ScoreView *>(window_.findChild<QGraphicsView *>("scoreView"));
             if (!view)
                 throw std::runtime_error("Score viewport missing");
-            const QPoint point = view->mapFromScene(QPointF(100, 100));
-            QMouseEvent doubleClick(QEvent::MouseButtonDblClick, QPointF(point),
-                                    QPointF(view->viewport()->mapToGlobal(point)), Qt::LeftButton, Qt::LeftButton,
-                                    Qt::NoModifier);
-            QApplication::sendEvent(view->viewport(), &doubleClick);
+            QKeyEvent noteKey(QEvent::KeyPress, Qt::Key_1, Qt::NoModifier);
+            QApplication::sendEvent(view, &noteKey);
+            view->noteClicked(0);
             // A click starts asynchronous audition; wait with an event-loop timer before save.
             QTimer::singleShot(1500, this, [this] { uiFinish(); });
         }

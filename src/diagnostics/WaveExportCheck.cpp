@@ -147,6 +147,24 @@ class WaveExportProbe final : public QObject
               pcmRms(metronome, 0.0, 0.70) == 0.0 && pcmRms(metronome, 0.76, 0.80) > 1e-5);
         artifacts_.append(metronome);
         check("renderer never mutates source score", scoreToJson(score) == originalScore);
+        auto variableTempo = timeline;
+        variableTempo.setTempoChanges({{TicksPerQuarter, 120}});
+        WaveRenderOptions mixedTempo;
+        mixedTempo.speed = 2;
+        mixedTempo.startSeconds = 0.375;
+        mixedTempo.endSeconds = 0.625;
+        const auto fragment = output("mixed-tempo-fragment");
+        const auto mixedTempoResult = renderWave(score, variableTempo, plan, fragment, mixedTempo);
+        check("2x fragment across a tempo boundary uses exact frames and preserves the tied note",
+              mixedTempoResult.musicFrames == SampleRate / 4 && pcmRms(fragment, 0.01, 0.22) > 1e-5);
+        artifacts_.append(fragment);
+        auto retrigger = variableTempo;
+        retrigger.events[1].attack = true;
+        const auto untiedFragment = output("mixed-tempo-retrigger");
+        renderWave(score, retrigger, plan, untiedFragment, mixedTempo);
+        check("A retrigger at the tempo boundary differs from an uninterrupted held note",
+              std::abs(pcmRms(fragment, 0.135, 0.17) - pcmRms(untiedFragment, 0.135, 0.17)) > 1e-5);
+        artifacts_.append(untiedFragment);
         const QString invalid = output("invalid-range");
         for (const auto &range : {std::pair{-1.0, 1.0}, std::pair{0.0, 3.0}, std::pair{1.0, 0.5},
                                   std::pair{2.0, 2.0}, std::pair{std::numeric_limits<double>::quiet_NaN(), 1.0}})

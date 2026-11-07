@@ -13,12 +13,14 @@
 #include "recognition/LocalStaffRecognitionTask.h"
 #include "settings/AppSettings.h"
 #include "storage/ProjectStore.h"
+#include "NotationRenderer.h"
 #include <QFutureWatcher>
 #include <QMainWindow>
 #include <QPointer>
 #include <QStringList>
 #include <QUndoStack>
 #include <functional>
+#include <memory>
 class QBoxLayout;
 class QLabel;
 class QPushButton;
@@ -36,6 +38,7 @@ class QCommandLineParser;
 class QAction;
 class QMenu;
 class QTimer;
+class QLockFile;
 class QTabWidget;
 class QStackedWidget;
 namespace singlilt
@@ -48,6 +51,12 @@ class ThemeManager;
 class AccompanimentPanel;
 class ClassroomDialog;
 class StaffNoteEditor;
+class ScorePropertiesPanel;
+class NumberedEditorToolbar;
+class WorkspaceHeader;
+enum class VoiceAction;
+class PianoKeyboard;
+enum class NumberedEditAction;
 class MainWindow : public QMainWindow
 {
   public:
@@ -70,7 +79,8 @@ class MainWindow : public QMainWindow
         return localStaffTask_;
     }
     void setNotationStyle(NotationStyle style);
-    void setProject(Project project, bool modified = false);
+    void setProject(Project project, bool modified = false,
+                    std::optional<NumberedScoreLayout> preparedLayout = std::nullopt);
     void openStaffCorrection();
     void confirmStaffTempo();
     void applyStaffCorrection(Project corrected);
@@ -128,6 +138,9 @@ class MainWindow : public QMainWindow
     void dropEvent(QDropEvent *event) override;
 
   private:
+    friend void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, QApplication &app);
+    friend void runNumberedReviewCheck(MainWindow &window, const QCommandLineParser &args, QApplication &app);
+    friend void runNumberedEditorCheck(MainWindow &window, const QCommandLineParser &args, QApplication &app);
     friend void runHistoryRecoveryCheck(MainWindow &window, LanguageManager &languages,
                                         const QCommandLineParser &args, QApplication &app);
     void retranslateUi();
@@ -144,6 +157,22 @@ class MainWindow : public QMainWindow
     QString chooseFile(bool saving, bool projectOnly = false);
     void showMessage(const QString &text, const char *titleKey, bool warning);
     void createUi();
+    void createNumberedEditor(QVBoxLayout *layout);
+    void refreshNumberedEditor();
+    void applyAuthoredMetadataControls();
+    bool numberedEditorActive() const;
+    bool commitNumberedScore(Score score, const char *key, int selection, bool resolveDraft = true);
+    bool commitNumberedComposition(Score score, NumberedComposition composition, int active, int selection,
+                                   const char *key);
+    NumberedComposition currentNumberedComposition() const;
+    void editNumberedStructure(bool repeat);
+    bool selectNumberedVoice(int id);
+    void numberedVoiceAction(VoiceAction action);
+    void setNumberedDynamic(int level);
+    void numberedAction(NumberedEditAction action);
+    void inputNumberedPitch(int degree, int octave, int accidental);
+    void selectNumberedInput(std::int64_t tick);
+    void editNumberedLyrics();
     void refreshNotationControls();
     void updateNumberedMetadata();
     void selectStaffNote(int index);
@@ -164,6 +193,10 @@ class MainWindow : public QMainWindow
     void scheduleStaffEditRecovery();
     bool saveStaffEditRecoverySnapshot();
     void recoverStaffEdits();
+    void scheduleNumberedDraft();
+    void saveNumberedDraft();
+    bool clearNumberedDraft();
+    void recoverNumberedDraft();
     void createHeader(QVBoxLayout *layout);
     void createMenus();
     void startCloudRecognition();
@@ -171,6 +204,7 @@ class MainWindow : public QMainWindow
     void createScoreOptions(QVBoxLayout *layout);
     QWidget *createInspector();
     void createScorePane(QVBoxLayout *layout);
+    void refreshZoomControls();
     void createTransport(QVBoxLayout *layout);
     void createPracticeControls(QVBoxLayout *layout);
     void generatePracticeAccompaniment();
@@ -213,8 +247,9 @@ class MainWindow : public QMainWindow
     void discardCloudResult();
     void selectNote(int index, bool seek = true);
     void updateNote();
-    void rebuild(bool preservePosition);
+    void rebuild(bool preservePosition, bool renderNotation = true);
     void updatePlayback();
+    void refreshSynthPosition(std::int64_t tick);
     void togglePlayback();
     void seekVerse(int verse);
     void updateVersePrograms();
@@ -236,6 +271,9 @@ class MainWindow : public QMainWindow
         std::uint64_t loopRevision = 0;
         std::optional<Project> staffProject;
         int selectedStaffNote = -1;
+        std::optional<Score> numberedScore;
+        std::optional<NumberedComposition> numberedComposition;
+        int activeVoice = 1;
     };
     MaterialState materialState() const;
     void commitMaterialEdit(const MaterialState &before, const char *key, bool anchorOnly = false);
@@ -291,6 +329,9 @@ class MainWindow : public QMainWindow
     QString staffRecoverySession_;
     QString staffRecoveryPath_;
     bool staffRecoveryPending_ = false;
+    QTimer *numberedDraftTimer_ = nullptr;
+    QString numberedDraftPath_;
+    std::unique_ptr<QLockFile> numberedDraftLock_;
     QString debugText_;
     int selected_ = -1;
     int selectedStaffNote_ = -1;
@@ -326,7 +367,23 @@ class MainWindow : public QMainWindow
     QString playingLyric_;
     int64_t loopStart_ = 0, loopEnd_ = 0;
     std::uint64_t loopEditRevision_ = 0;
+    QDoubleSpinBox *zoomPercent_ = nullptr;
     ScoreView *view_ = nullptr;
+    WorkspaceHeader *workspaceHeader_ = nullptr;
+    QWidget *scoreContextToolbar_ = nullptr;
+    NumberedEditorToolbar *editorToolbar_ = nullptr;
+    ScorePropertiesPanel *scoreProperties_ = nullptr;
+    PianoKeyboard *pianoKeyboard_ = nullptr;
+    QWidget *keyboardHost_ = nullptr;
+    QTabWidget *editorInspectorTabs_ = nullptr;
+    NumberedScoreLayout numberedLayout_;
+    std::int64_t numberedInputTick_ = 0;
+    int inputDuration_ = TicksPerQuarter;
+    int inputOctave_ = 0;
+    int inputAccidental_ = 0;
+    int activeNumberedVoice_ = 1;
+    int inputDynamic_ = 0;
+    bool inputAccent_ = false, inputStaccato_ = false;
     ScoreView *staffSourceView_ = nullptr;
     QTabWidget *staffScoreTabs_ = nullptr;
     QStackedWidget *noteInspectorStack_ = nullptr;

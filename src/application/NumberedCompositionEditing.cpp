@@ -1,0 +1,114 @@
+// Validated, copy-based composition structure edits.
+// Copyright (c) 2026 Herbert Yeung
+// Author: Herbert Yeung
+// SPDX-License-Identifier: MIT
+#include "NumberedCompositionEditing.h"
+#include "domain/NumberedEditing.h"
+#include <algorithm>
+#include <limits>
+#include <stdexcept>
+namespace singlilt
+{
+int addNumberedVoice(NumberedComposition &composition, std::string name)
+{
+    if (composition.voices.size() >= MaximumNumberedVoices ||
+        composition.nextId == std::numeric_limits<int>::max())
+        throw std::invalid_argument("ui.editor.voice_limit");
+    if (name.empty() || name.size() > 256)
+        throw std::invalid_argument("ui.editor.invalid_composition");
+    const int id = composition.nextId;
+    composition.voices.push_back({id, std::move(name), {}});
+    ++composition.nextId;
+    return id;
+}
+void removeNumberedVoice(NumberedComposition &composition, int id)
+{
+    if (composition.voices.size() <= 1)
+        throw std::invalid_argument("ui.editor.last_voice");
+    numberedVoice(composition, id);
+    std::erase_if(composition.voices, [id](const auto &voice) { return voice.id == id; });
+}
+void moveNumberedVoice(NumberedComposition &composition, int id, int direction)
+{
+    for (std::size_t i = 0; i < composition.voices.size(); ++i)
+        if (composition.voices[i].id == id)
+        {
+            const auto target = std::int64_t(i) + direction;
+            if (target >= 0 && target < std::int64_t(composition.voices.size()))
+                std::swap(composition.voices[i], composition.voices[std::size_t(target)]);
+            return;
+        }
+    throw std::invalid_argument("ui.editor.invalid_composition");
+}
+void editCompositionMeasure(Score &metadata, NumberedComposition &composition, int measure, bool remove)
+{
+    auto candidate = composition;
+    const int count = compositionBars(metadata, composition);
+    if (!candidate.structure.measures.empty())
+    {
+        const auto measures = numberedMeasures(metadata, candidate);
+        if (measure < 0 || measure > count || (remove && measure == count) ||
+            (!remove && count >= MaximumEditorBars))
+            throw std::invalid_argument("ui.editor.invalid_structure");
+        auto &structure = candidate.structure;
+        while (structure.measures.size() < measures.size())
+        {
+            if (structure.nextId == std::numeric_limits<int>::max())
+                throw std::invalid_argument("ui.editor.invalid_structure");
+            structure.measures.push_back({structure.nextId++});
+        }
+        const auto start = measure == count ? measures.back().end : measures[measure].start;
+        const auto &meter = measures[std::size_t(remove ? measure : std::max(0, measure - 1))];
+        const int length = int(meter.end - meter.start);
+        if (remove)
+        {
+            const int id = structure.measures[measure].id;
+            for (const auto &repeat : structure.repeats)
+                if (id == repeat.first || id == repeat.last || id == repeat.firstEnding)
+                    throw std::invalid_argument("ui.editor.structure_repeat_boundary");
+            structure.measures.erase(structure.measures.begin() + measure);
+            if (measure < int(structure.measures.size()))
+            {
+                auto &next = structure.measures[measure];
+                const auto &resolved = measures[measure + 1];
+                next.beats = resolved.beats;
+                next.unit = resolved.unit;
+                next.bpm = resolved.bpm;
+                next.tonic = resolved.tonic;
+            }
+        }
+        else
+        {
+            if (structure.nextId == std::numeric_limits<int>::max())
+                throw std::invalid_argument("ui.editor.invalid_structure");
+            structure.measures.insert(structure.measures.begin() + measure,
+                                      NumberedMeasure{structure.nextId++, meter.beats, meter.unit});
+        }
+        for (auto &voice : candidate.voices)
+        {
+            auto score = metadata;
+            score.notes = std::move(voice.notes);
+            if (remove)
+                removeNumberedTime(score, start, length);
+            else if (!insertNumberedTime(score, start, length))
+                throw std::invalid_argument("ui.editor.invalid_structure");
+            voice.notes = std::move(score.notes);
+        }
+        metadata.editorMinimumBars = std::max(1, count + (remove ? -1 : 1));
+        composition = std::move(candidate);
+        return;
+    }
+    for (auto &voice : candidate.voices)
+    {
+        auto score = metadata;
+        score.editorMinimumBars = count;
+        score.notes = voice.notes;
+        const bool changed = remove ? removeNumberedBar(score, measure) : insertNumberedBar(score, measure);
+        if (!changed)
+            throw std::invalid_argument("ui.editor.structure_unavailable");
+        voice.notes = std::move(score.notes);
+    }
+    metadata.editorMinimumBars = std::max(1, count + (remove ? -1 : 1));
+    composition = std::move(candidate);
+}
+} // namespace singlilt

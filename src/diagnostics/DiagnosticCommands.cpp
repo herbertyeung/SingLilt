@@ -4,6 +4,9 @@
 // SPDX-License-Identifier: MIT
 
 #include "DiagnosticCommands.h"
+#include "NumberedEditorCheck.h"
+#include "NumberedReviewCheck.h"
+#include "NumberedRhythmCheck.h"
 #include "LanguagePackCheck.h"
 #include "NativeStaffProcessCheck.h"
 #include "ThemeCheck.h"
@@ -65,8 +68,9 @@ bool configureDiagnosticSettings(const QStringList &rawArguments)
 {
     const auto hasOption = [&rawArguments](const QString &name)
     { return hasCommandLineOption(rawArguments, name); };
-    if (hasOption("--theme-check") || hasOption("--language-pack-check") || hasOption("--smoke") ||
-        hasOption("--ui-localization-check") || hasOption("--async-recognition-check") ||
+    if (hasOption("--numbered-rhythm-check") || hasOption("--numbered-review-check") ||
+        hasOption("--numbered-editor-check") || hasOption("--theme-check") || hasOption("--language-pack-check") ||
+        hasOption("--smoke") || hasOption("--ui-localization-check") || hasOption("--async-recognition-check") ||
         hasOption("--accompaniment-check") || hasOption("--accompaniment-preview-check") ||
         hasOption("--audio-cancellation-check") || hasOption("--whole-song-check") ||
         hasOption("--audio-task-check") || hasOption("--classroom-check") || hasOption("--note-preview-check") ||
@@ -96,9 +100,11 @@ bool configureDiagnosticSettings(const QStringList &rawArguments)
         QSettings::setDefaultFormat(QSettings::IniFormat);
         QSettings::setPath(QSettings::IniFormat, QSettings::UserScope,
                            QFileInfo(reportPath).absolutePath() + "/settings");
+        const auto reportFolder = QFileInfo(reportPath).absolutePath();
         if (qEnvironmentVariableIsEmpty("JIANPU_STAFF_RECOVERY_DIRECTORY"))
-            qputenv("JIANPU_STAFF_RECOVERY_DIRECTORY",
-                    (QFileInfo(reportPath).absolutePath() + "/recovery").toUtf8());
+            qputenv("JIANPU_STAFF_RECOVERY_DIRECTORY", (reportFolder + "/recovery").toUtf8());
+        if (qEnvironmentVariableIsEmpty("SINGLILT_NUMBERED_DRAFT_DIRECTORY"))
+            qputenv("SINGLILT_NUMBERED_DRAFT_DIRECTORY", (reportFolder + "/numbered-drafts").toUtf8());
     }
     return true;
 }
@@ -223,6 +229,12 @@ void runWindowDiagnostics(MainWindow &window, LanguageManager &languages, ThemeM
         runStaffRecognitionCheck(window, args, app);
     else if (args.isSet("menu-icons-check"))
         runMenuIconsCheck(window, languages, args, app);
+    else if (args.isSet("numbered-rhythm-check"))
+        runNumberedRhythmCheck(window, args, app);
+    else if (args.isSet("numbered-review-check"))
+        runNumberedReviewCheck(window, args, app);
+    else if (args.isSet("numbered-editor-check"))
+        runNumberedEditorCheck(window, args, app);
     else if (args.isSet("product-workspace-check"))
         runProductWorkspaceCheck(window, languages, args, app);
     else if (args.isSet("settings-product-check"))

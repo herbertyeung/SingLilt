@@ -140,7 +140,7 @@ void MainWindow::setStaffPage(int pageIndex, bool fit)
         staffNextPage_->setEnabled(pageIndex + 1 < int(project_.staffPages.size()));
     refreshStaffSourceView();
     if (fit)
-        displayedScoreView()->fitWidth();
+        displayedScoreView()->refitIfAutomatic();
 }
 ScoreView *MainWindow::displayedScoreView() const
 {
@@ -173,6 +173,6 @@ void MainWindow::refreshStaffSourceView()
     staffSourceView_->setToolTip(trText("ui.fidelity.original_help"));
     staffSourceView_->setScore(source, Score{}, staffPageIndex_);
     if (available)
-        staffSourceView_->fitWidth();
+        staffSourceView_->refitIfAutomatic();
 }
 } // namespace singlilt

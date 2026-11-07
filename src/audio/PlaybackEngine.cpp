@@ -118,7 +118,7 @@ struct PlaybackEngine::Impl
     std::vector<VerseMarker> verses;
     std::vector<Beat> beats;
     std::int64_t totalTicks = 0;
-    double bpm = 90.0;
+    Timeline clock;
     double rate = 1.0;
     PracticeMix mix;
     double clickVolume = 0.65;
@@ -168,15 +168,12 @@ struct PlaybackEngine::Impl
         instrument.close();
     }
 
-    double ticksPerSecond() const
-    {
-        return bpm * TicksPerQuarter * rate / 60.0;
-    }
-
     double position(Clock::time_point now) const
     {
-        const double elapsed = playing ? std::chrono::duration<double>(now - anchorTime).count() : 0.0;
-        return std::clamp(anchorTick + elapsed * ticksPerSecond(), 0.0, static_cast<double>(totalTicks));
+        if (!playing)
+            return anchorTick;
+        const double elapsed = std::chrono::duration<double>(now - anchorTime).count();
+        return clock.positionAtSeconds(clock.secondsAtPosition(anchorTick) + elapsed * rate);
     }
 
     void rebase(Clock::time_point now)
@@ -408,8 +405,8 @@ struct PlaybackEngine::Impl
 
     Clock::time_point timeAt(double tick) const
     {
-        return anchorTime + std::chrono::duration_cast<Clock::duration>(
-                                std::chrono::duration<double>((tick - anchorTick) / ticksPerSecond()));
+        return anchorTime + std::chrono::duration_cast<Clock::duration>(std::chrono::duration<double>(
+                                (clock.secondsAtPosition(tick) - clock.secondsAtPosition(anchorTick)) / rate));
     }
 
     void run(std::stop_token stop)
@@ -564,6 +561,7 @@ bool PlaybackEngine::load(const Score &score, const Timeline &timeline, const Ac
     impl_->assignAccompaniment({}, {});
     impl_->noteOns = {};
     impl_->totalTicks = 0;
+    impl_->clock = {};
     impl_->error.clear();
     if (!timeline.valid() || timeline.events.empty() || timeline.events.size() > 100000 ||
         timeline.durationTicks <= 0 || !std::isfinite(timeline.bpm) || timeline.bpm < MinimumScoreBpm ||
@@ -663,7 +661,7 @@ bool PlaybackEngine::load(const Score &score, const Timeline &timeline, const Ac
             group = end;
         }
     }
-    impl_->bpm = timeline.bpm;
+    impl_->clock = timeline.clockOnly();
     impl_->totalTicks = timeline.durationTicks;
     impl_->assignAccompaniment(plan, settings);
     impl_->loaded = true;

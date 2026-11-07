@@ -49,6 +49,12 @@ struct MetronomeBeat
     bool downbeat = false;
 };
 
+struct TempoChange
+{
+    std::int64_t tick;
+    double bpm;
+};
+
 struct Timeline
 {
     std::vector<TimelineEvent> events;
@@ -58,11 +64,24 @@ struct Timeline
 
     bool valid() const;
     double durationSeconds() const;
+    void setTempoChanges(const std::vector<TempoChange> &changes);
+    double secondsAtPosition(double tick) const;
+    double positionAtSeconds(double seconds) const;
+    Timeline clockOnly() const;
     double secondsAtTick(std::int64_t tick) const;
     std::int64_t tickAtSeconds(double seconds) const;
     std::int64_t clampTick(std::int64_t tick) const;
     std::optional<std::size_t> eventIndexAtTick(std::int64_t tick) const;
     std::vector<MetronomeBeat> metronomeBeats;
+
+  private:
+    struct TempoSegment
+    {
+        std::int64_t tick;
+        double seconds;
+        double bpm;
+    };
+    std::vector<TempoSegment> tempoSegments_;
 };
 
 Timeline buildTimeline(const Score &score, int transpose = 0);

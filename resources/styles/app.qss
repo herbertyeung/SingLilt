@@ -86,3 +86,33 @@ QStatusBar { background: palette(alternate-base); color: palette(placeholder-tex
 QToolTip { background: palette(tooltip-base); color: palette(tooltip-text); border: 1px solid palette(mid); padding: 4px; }
 QWidget#cloudTaskBanner { background: palette(alternate-base); border-radius: 6px; }
 QPushButton[modeSwitch="true"]:checked { background: palette(highlight); color: palette(highlighted-text); border-color: palette(highlight); }
+
+/* Notation authoring uses the shared palette; the paper and piano retain musical contrast. */
+QWidget#numberedEditorToolbar, QWidget#editorKeyboardHost { background: palette(base); }
+QLabel#editorHeading { font-size: 16px; font-weight: 600; }
+QLabel#editorPosition { color: palette(link); }
+QWidget#pianoKeyboard QPushButton { border-radius: 0; border: 1px solid #B7C6D3; background: #FFFFFF; color: #263C50; padding: 52px 0 0 0; font-size: 13px; }
+QWidget#pianoKeyboard QPushButton[pianoBlack="true"] { background: #1B2536; color: #FFFFFF; padding: 22px 0 0 0; border: 1px solid #101827; }
+QWidget#pianoKeyboard QPushButton:hover, QWidget#pianoKeyboard QPushButton:pressed { background: #DDF5EE; color: #075C51; }
+QWidget#pianoKeyboard QPushButton:focus { border: 2px solid #168577; }
+QWidget#pianoKeyboard QPushButton:disabled, QWidget#pianoKeyboard QPushButton[pianoBlack="true"]:disabled { background: palette(alternate-base); color: palette(placeholder-text); border: 1px solid palette(mid); }
+
+QWidget#numberedEditorToolbar QPushButton:checked { background: palette(highlight); color: palette(highlighted-text); border-color: palette(highlight); }
+
+/* A single document bar separates shared commands from notation tools. */
+QWidget#workspaceHeader { background: palette(base); border-bottom: 1px solid palette(mid); }
+QWidget#workspaceHeader QLabel#title { font-size: 17px; font-weight: 600; }
+QWidget#workspaceHeader QLabel#projectIdentity { font-size: 12px; color: palette(placeholder-text); }
+QToolBar#documentCommands { background: transparent; border: 0; spacing: 4px; }
+QToolBar#documentCommands QToolButton { background: transparent; border: 1px solid transparent; border-radius: 4px; padding: 5px 7px; }
+QToolBar#documentCommands QToolButton:hover { background: palette(highlight); color: palette(highlighted-text); }
+QToolBar#documentCommands QToolButton:disabled { color: palette(placeholder-text); }
+QToolBar#documentCommands QToolButton#editorSave { border-color: palette(mid); }
+QWidget#workspaceMode { background: palette(alternate-base); border-radius: 6px; }
+QWidget#workspaceMode QPushButton { border: 0; padding: 5px 14px; background: transparent; }
+QWidget#workspaceMode QPushButton:checked { background: palette(highlight); color: palette(highlighted-text); }
+QWidget#editorPanelToggles QPushButton { background: transparent; border: 1px solid transparent; padding: 3px 9px; }
+QWidget#editorPanelToggles QPushButton:checked { background: palette(alternate-base); color: palette(link); border-color: palette(mid); }
+QWidget#scoreZoomBar { background: palette(base); }
+QWidget#scoreZoomBar QPushButton { padding: 3px 8px; }
+QWidget#scoreZoomBar QPushButton:checked { background: palette(alternate-base); color: palette(link); border-color: palette(highlight); }

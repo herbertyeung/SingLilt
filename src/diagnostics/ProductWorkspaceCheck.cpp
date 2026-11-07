@@ -118,10 +118,9 @@ class WorkspaceProbe final : public QObject
         screenshots_.append(path);
         const QRect bounds = window_.centralWidget()->rect();
         for (const auto *controlName :
-             {"workspaceMode", "practiceModeButton", "correctionModeButton", "songPracticeTask", "classroomTask",
-              "earTrainingTask", "nextUncertainNote", "practiceSpeed", "transpose", "playbackSource",
-              "outputVolume", "melodyEnabled", "accompanimentEnabled", "accompanimentVolume", "metronome",
-              "programA", "programB", "practiceLoop"})
+             {"workspaceMode", "practiceModeButton", "correctionModeButton", "nextUncertainNote", "practiceSpeed",
+              "transpose", "playbackSource", "outputVolume", "melodyEnabled", "accompanimentEnabled",
+              "accompanimentVolume", "metronome", "programA", "programB", "practiceLoop"})
         {
             auto *widget = control<QWidget>(controlName);
             const QRect rectangle(widget->mapTo(window_.centralWidget(), QPoint()), widget->size());
@@ -255,9 +254,13 @@ class WorkspaceProbe final : public QObject
                   practiceMode->isChecked() && !correctionMode->isChecked() &&
                       !window_.findChild<QComboBox *>("workspaceMode") &&
                       !control<QWidget>("inspectorScroll")->isVisible());
-            check("Three task entries are present", control<QPushButton>("songPracticeTask")->isVisible() &&
-                                                        control<QPushButton>("classroomTask")->isVisible() &&
-                                                        control<QPushButton>("earTrainingTask")->isVisible());
+            check("Task navigation is available in menus instead of duplicate header buttons",
+                  control<QAction>("menuClassroom")->isEnabled() &&
+                      control<QAction>("menuEarTraining")->isEnabled() &&
+                      control<QAction>("menuPracticeMode")->isEnabled() &&
+                      !window_.findChild<QPushButton *>("songPracticeTask") &&
+                      !window_.findChild<QPushButton *>("classroomTask") &&
+                      !window_.findChild<QPushButton *>("earTrainingTask"));
             correctionMode->click();
             check("One-click correction reveals inspector and synchronizes the mode buttons",
                   correctionMode->isChecked() && !practiceMode->isChecked() &&
@@ -294,7 +297,8 @@ class WorkspaceProbe final : public QObject
             saveAs(saved);
             check("Saving sets undo clean and displays filename",
                   QFileInfo::exists(saved) && !window_.hasUnsavedChanges() &&
-                      control<QLabel>("projectIdentity")->text() == "workspace-edited.jpp");
+                      QFileInfo(control<QLabel>("projectIdentity")->toolTip()).fileName() ==
+                          "workspace-edited.jpp");
             action("menuUndo");
             check("Undo across saved boundary is dirty", window_.hasUnsavedChanges());
             action("menuRedo");
@@ -379,7 +383,8 @@ class WorkspaceProbe final : public QObject
             recentMenu->hide();
             check("Missing recent file is removed without losing project",
                   !QSettings().value("projects/recent").toStringList().contains(missing) &&
-                      control<QLabel>("projectIdentity")->text() == "workspace-edited.jpp");
+                      QFileInfo(control<QLabel>("projectIdentity")->toolTip()).fileName() ==
+                          "workspace-edited.jpp");
             for (const auto &locale : {QStringLiteral("en_US"), QStringLiteral("zh_CN")})
             {
                 languages_.setLanguage(locale);
@@ -571,8 +576,9 @@ class WorkspaceProbe final : public QObject
                 clickBox(later.source);
                 const int expectedIndex = duration == .5 ? 3 : 2;
                 const auto &parts = window_.project().staffPerformance->notes;
-                const auto selectedPart = std::find_if(parts.begin(), parts.end(), [&](const StaffPerformanceNote &note)
-                                                       { return note.source.y == later.source.y && note.staff == 1; });
+                const auto selectedPart =
+                    std::find_if(parts.begin(), parts.end(), [&](const StaffPerformanceNote &note)
+                                 { return note.source.y == later.source.y && note.staff == 1; });
                 check("Linked-note click reselects its source after padding insertion or removal",
                       control<QComboBox>("noteDegree")->currentData().toInt() == 6 &&
                           selectedPart != parts.end() && selectedPart->sourceNoteIndex == expectedIndex);

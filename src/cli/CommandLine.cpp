@@ -108,6 +108,9 @@ void addCommandLineOptions(QCommandLineParser &args)
     args.addOption({"whole-song-check", trText("cli.whole_song_check")});
     args.addOption({"classroom", trText("cli.classroom")});
     args.addOption({"project-package-check", trText("cli.project_check")});
+    args.addOption({"numbered-rhythm-check", trText("cli.numbered_rhythm_check")});
+    args.addOption({"numbered-review-check", trText("cli.numbered_review_check")});
+    args.addOption({"numbered-editor-check", trText("cli.numbered_editor_check")});
     args.addOption({"product-workspace-check", trText("cli.product_workspace_check")});
     args.addOption({"settings-product-check", trText("cli.settings_product_check")});
     args.addOption({"wave-export-check", trText("cli.wave_export_check")});

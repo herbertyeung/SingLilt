@@ -1,4 +1,4 @@
-# Portable project format (.jpp), schemas 4, 5 and 6
+# Portable project format (.jpp), schemas 4–8
 
 ## User workflow
 - File → New (Ctrl+N): blank numbered-score canvas; double-click to insert notes or import an image/audio from File.
@@ -26,6 +26,20 @@ Schema5 supports at most32 pages and67 resources, including optional audio. Indi
 ProjectStore validates domain/editor/practice metadata. ProjectPackage hashes and streams resources in bounded chunks and commits through QSaveFile. A failed write or integrity check does not publish partial content. The container stores the resources actually used; it does not record speculative AI results, API keys, default host settings or unconfirmed accompaniment drafts.
 
 New transcriptions record algorithm, selection parameters, suggested tempo/key, lyric model/language and separation model/version/hash/configuration from the actual separation manifest. Old projects retain only processing facts they originally had; absent provenance is not fabricated. Resource SHA256 is refreshed from the actual embedded bytes at each save.
+
+### Authored numbered compositions (schemas 7 and 8)
+
+Schema 7 adds `numberedComposition` for generated numbered scores. It stores `nextId` and an ordered list of
+voices (`id`, `name`, `notes`); the root guide mirrors the first voice. Dynamics, accent and staccato are
+stored on authored notes. Voices use a shared instrument and the voice performance remains authoritative
+even when a legacy accompaniment is present.
+
+Schema 8 additionally requires `numberedComposition.structure`: stable measure IDs, optional inherited
+meter/BPM/tonic overrides, and repeat ranges with pass count and optional first-ending start. The
+performed timeline is derived, not saved twice. Structured practice loop endpoints use performed ticks.
+Files without this structure retain schema 7 (or the older schema appropriate to the project).
+The JPP4 envelope is unchanged; older readers reject unsupported schema versions rather than dropping voices
+or measure directives. A binary rollback does not downgrade a newer project file.
 
 ## Verification
 

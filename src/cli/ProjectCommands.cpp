@@ -158,7 +158,16 @@ QJsonObject accompanimentJson(const Project &project, const Timeline &timeline)
     if (!project.accompaniment)
         return report;
     const auto &arrangement = *project.accompaniment;
-    const auto plan = buildAccompanimentPlan(project.score, timeline, arrangement);
+    // Arrangements are indexed by complete written notes, not the segmented performed guide.
+    const auto plan = project.numberedComposition
+                          ? buildAccompanimentPlan(
+                                project.score,
+                                buildNumberedWrittenTimeline(
+                                    project.score, numberedMeasures(project.score, *project.numberedComposition)),
+                                arrangement)
+                          : buildAccompanimentPlan(project.score, timeline, arrangement);
+    if (project.numberedComposition)
+        report.insert("writtenPreviewOnly", true);
     QJsonArray chords;
     for (const auto &chord : arrangement.chords)
         chords.append(QJsonObject{{"startTick", qint64(chord.startTick)},
@@ -418,12 +427,19 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
         if (args.isSet("uniform"))
             project.score.accentBeats = false;
         configurePractice(project, args);
-        const auto timeline = buildTimeline(project.score);
+        const auto playbackScore = project.numberedComposition
+                                       ? compositionPlaybackScore(project.score, *project.numberedComposition)
+                                       : project.score;
+        const auto timeline = project.numberedComposition
+                                  ? compositionTimeline(project.score, *project.numberedComposition)
+                                  : buildTimeline(playbackScore);
         if (project.staffPerformance && project.processing.value("tempoNeedsConfirmation").toBool())
             throw std::runtime_error(trText("messages.local_staff.tempo_needs_confirmation").toStdString());
         AccompanimentPlan plan;
         plan.durationTicks = timeline.durationTicks;
-        if (project.staffPerformance)
+        if (project.numberedComposition)
+            plan = compositionPlaybackPlan(project.score, *project.numberedComposition);
+        else if (project.staffPerformance)
             plan = buildStaffPerformancePlan(project.score, timeline, *project.staffPerformance);
         else if (project.accompaniment)
             plan = buildAccompanimentPlan(project.score, timeline, *project.accompaniment);
@@ -442,7 +458,12 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
         options.transpose = static_cast<int>(transpose);
         options.speed = numericOption(args, "speed", 0.25, 2);
         options.mix = project.practiceMix;
-        if (project.staffPerformance)
+        if (project.numberedComposition)
+        {
+            options.settings.originalStaff = true;
+            options.settings.chordProgram = options.settings.bassProgram = programForVerse(project.score, 0);
+        }
+        else if (project.staffPerformance)
         {
             options.settings.originalStaff = true;
             options.settings.chordProgram = project.staffPerformance->primaryProgram;
@@ -453,14 +474,15 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
         if (args.isSet("gm-soundfont"))
             options.gmSoundFontPath = args.value("gm-soundfont");
         const bool legacyRender =
-            options.outputBoost && options.maxSeconds <= 120 && !project.staffPerformance && !project.accompaniment &&
-            project.practiceMix.melodyEnabled && !project.practiceMix.accompanimentEnabled &&
-            project.practiceMix.melodyVolume == 0.9 && !args.isSet("practice-mix") &&
-            !args.isSet("melody-volume") && !args.isSet("accompaniment-volume") && !args.isSet("transpose") &&
-            !args.isSet("speed") && !args.isSet("metronome") && !args.isSet("gm-soundfont");
+            options.outputBoost && options.maxSeconds <= 120 && !project.numberedComposition &&
+            !project.staffPerformance && !project.accompaniment && project.practiceMix.melodyEnabled &&
+            !project.practiceMix.accompanimentEnabled && project.practiceMix.melodyVolume == 0.9 &&
+            !args.isSet("practice-mix") && !args.isSet("melody-volume") && !args.isSet("accompaniment-volume") &&
+            !args.isSet("transpose") && !args.isSet("speed") && !args.isSet("metronome") &&
+            !args.isSet("gm-soundfont");
         const auto result = legacyRender
                                 ? renderWave(project.score, args.value("render-wave"), options.maxSeconds)
-                                : renderWave(project.score, timeline, plan, args.value("render-wave"), options);
+                                : renderWave(playbackScore, timeline, plan, args.value("render-wave"), options);
         QJsonObject report{{"frames", result.frames},
                            {"sampleRate", result.sampleRate},
                            {"peak", result.peak},
@@ -496,7 +518,9 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
                        : args.positionalArguments().isEmpty() ? makePracticeScore()
                                                               : loadProject(args.positionalArguments().first());
         configurePractice(project, args);
-        const auto timeline = buildTimeline(project.score);
+        const auto timeline = project.numberedComposition
+                                  ? compositionTimeline(project.score, *project.numberedComposition)
+                                  : buildTimeline(project.score);
         QJsonObject report{{"valid", timeline.valid()},
                            {"notes", int(project.score.notes.size())},
                            {"bpm", project.score.bpm},
@@ -523,6 +547,12 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
                                       {"mappingCurrent", project.audioSource->timingFingerprint ==
                                                              audioTimingFingerprint(project.score)}});
         report.insert("generatedNotation", project.generatedNotation);
+        if (project.numberedComposition)
+        {
+            report.insert("voiceCount", int(project.numberedComposition->voices.size()));
+            report.insert("soundingEvents",
+                          int(compositionPlaybackPlan(project.score, *project.numberedComposition).events.size()));
+        }
         if (args.isSet("out"))
             saveProject(args.value("out"), project);
         if (args.isSet("timeline"))

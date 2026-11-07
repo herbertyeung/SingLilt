@@ -31,11 +31,9 @@ constexpr int ChunkFrames = 512;
 constexpr qint64 ReleaseFrames = SampleRate * 3 / 2;
 constexpr qint64 ClickFrames = SampleRate * 35 / 1000;
 
-qint64 frameAtTick(std::int64_t tick, double bpm)
+qint64 frameAtTick(std::int64_t tick, const Timeline &timeline, double speed = 1)
 {
-    // Convert each absolute tick boundary, never accumulate rounded durations.
-    return static_cast<qint64>(std::llround(static_cast<long double>(tick) * SampleRate * 60.0L /
-                                            (static_cast<long double>(bpm) * TicksPerQuarter)));
+    return std::llround(timeline.secondsAtTick(tick) * SampleRate / speed);
 }
 
 struct Click
@@ -45,7 +43,7 @@ struct Click
 };
 
 std::vector<Click> metronomeClicks(const Score &score, const Timeline &timeline, qint64 endFrame,
-                                   qint64 startFrame = 0)
+                                   qint64 startFrame = 0, double speed = 1)
 {
     std::vector<Click> clicks;
     if (!timeline.metronomeBeats.empty())
@@ -58,7 +56,7 @@ std::vector<Click> metronomeClicks(const Score &score, const Timeline &timeline,
             if (beat.startTick <= previous || beat.startTick < 0 || beat.startTick >= timeline.durationTicks)
                 throw std::runtime_error(trText("messages.audio.invalid_timeline").toStdString());
             previous = beat.startTick;
-            const auto frame = frameAtTick(beat.startTick, timeline.bpm);
+            const auto frame = frameAtTick(beat.startTick, timeline, speed);
             if (frame >= startFrame && frame < endFrame)
                 clicks.push_back({frame - startFrame, beat.downbeat});
         }
@@ -71,7 +69,7 @@ std::vector<Click> metronomeClicks(const Score &score, const Timeline &timeline,
     for (std::size_t first = 0; first < timeline.events.size();)
     {
         const auto &start = timeline.events[first];
-        if (frameAtTick(start.startTick, timeline.bpm) >= endFrame)
+        if (frameAtTick(start.startTick, timeline, speed) >= endFrame)
             break;
         std::size_t end = first + 1;
         while (end < timeline.events.size())
@@ -85,17 +83,17 @@ std::vector<Click> metronomeClicks(const Score &score, const Timeline &timeline,
         }
         const auto &last = timeline.events[end - 1];
         const auto endTick = last.startTick + last.durationTicks;
-        if (frameAtTick(endTick, timeline.bpm) <= startFrame)
+        if (frameAtTick(endTick, timeline, speed) <= startFrame)
         {
             first = end;
             continue;
         }
-        const auto estimatedTick = static_cast<std::int64_t>(static_cast<long double>(startFrame) * timeline.bpm *
-                                                             TicksPerQuarter / (SampleRate * 60.0L));
+        const auto estimatedTick =
+            static_cast<std::int64_t>(timeline.positionAtSeconds(double(startFrame) * speed / SampleRate));
         const auto skippedBeats = std::max<std::int64_t>(0, (estimatedTick - start.startTick) / beatTicks);
         for (auto tick = start.startTick + skippedBeats * beatTicks; tick < endTick; tick += beatTicks)
         {
-            const auto frame = frameAtTick(tick, timeline.bpm);
+            const auto frame = frameAtTick(tick, timeline, speed);
             if (frame >= endFrame)
                 break;
             if (frame >= startFrame)
@@ -138,7 +136,7 @@ WaveRenderResult renderWave(const Score &score, const QString &output, double ma
     if (timeline.events.empty() || timeline.durationTicks <= 0)
         throw std::runtime_error(trText("messages.audio.wave_no_timeline").toStdString());
 
-    const auto musicFrames = std::min(frameAtTick(timeline.durationTicks, timeline.bpm),
+    const auto musicFrames = std::min(frameAtTick(timeline.durationTicks, timeline),
                                       static_cast<qint64>(std::llround(maxSeconds * SampleRate)));
     const auto totalFrames = musicFrames + ReleaseFrames;
     const auto clicks = metronome ? metronomeClicks(score, timeline, musicFrames) : std::vector<Click>{};
@@ -156,7 +154,7 @@ WaveRenderResult renderWave(const Score &score, const QString &output, double ma
     result.musicFrames = musicFrames;
     result.sampleRate = SampleRate;
     result.endSeconds = double(musicFrames) / SampleRate;
-    result.fragment = musicFrames < frameAtTick(timeline.durationTicks, timeline.bpm);
+    result.fragment = musicFrames < frameAtTick(timeline.durationTicks, timeline);
     result.engine = instrument.deviceName();
     result.pianoPath = instrument.pianoPath();
     result.gmSoundFontPath = instrument.effectiveGmSoundFontPath();
@@ -235,7 +233,7 @@ WaveRenderResult renderWave(const Score &score, const QString &output, double ma
     };
     for (const auto &event : timeline.events)
     {
-        const auto start = frameAtTick(event.startTick, timeline.bpm);
+        const auto start = frameAtTick(event.startTick, timeline);
         if (start >= musicFrames)
             break;
         renderUntil(start);
@@ -251,7 +249,7 @@ WaveRenderResult renderWave(const Score &score, const QString &output, double ma
             checkSampler(instrument.noteOn(0, event.midiPitch, event.velocity));
             heldPitch = event.midiPitch;
         }
-        renderUntil(std::min(frameAtTick(event.startTick + event.durationTicks, timeline.bpm), musicFrames));
+        renderUntil(std::min(frameAtTick(event.startTick + event.durationTicks, timeline), musicFrames));
     }
     renderUntil(musicFrames);
     stopMelody();
@@ -315,8 +313,7 @@ WaveRenderResult renderWave(const Score &score, const Timeline &timeline, const 
     }
 
     // Scheduling uses exactly the supplied plans; no harmony generation occurs here.
-    const double bpm = timeline.bpm * options.speed;
-    const auto fullFrames = frameAtTick(timeline.durationTicks, bpm);
+    const auto fullFrames = frameAtTick(timeline.durationTicks, timeline, options.speed);
     const double fullSeconds = double(fullFrames) / SampleRate;
     if (!std::isfinite(options.startSeconds) || options.startSeconds < 0.0 ||
         options.startSeconds >= fullSeconds || !std::isfinite(options.endSeconds) ||
@@ -334,10 +331,8 @@ WaveRenderResult renderWave(const Score &score, const Timeline &timeline, const 
     if (musicFrames <= 0 || musicFrames > capFrames)
         throw std::runtime_error(trText("messages.export.invalid_range").toStdString());
     const auto totalFrames = musicFrames + ReleaseFrames;
-    auto clickTimeline = timeline;
-    clickTimeline.bpm = bpm;
-    const auto clicks =
-        options.metronome ? metronomeClicks(score, clickTimeline, endFrame, startFrame) : std::vector<Click>{};
+    const auto clicks = options.metronome ? metronomeClicks(score, timeline, endFrame, startFrame, options.speed)
+                                          : std::vector<Click>{};
     struct NoteCommand
     {
         qint64 frame;
@@ -351,8 +346,8 @@ WaveRenderResult renderWave(const Score &score, const Timeline &timeline, const 
     const auto appendSpan =
         [&](std::int64_t startTick, std::int64_t endTick, int channel, int pitch, int velocity, int program)
     {
-        const auto start = std::max(frameAtTick(startTick, bpm), startFrame) - startFrame;
-        const auto end = std::min(frameAtTick(endTick, bpm), endFrame) - startFrame;
+        const auto start = std::max(frameAtTick(startTick, timeline, options.speed), startFrame) - startFrame;
+        const auto end = std::min(frameAtTick(endTick, timeline, options.speed), endFrame) - startFrame;
         if (start >= musicFrames || end <= start)
             return;
         commands.push_back({start, channel, pitch + options.transpose, velocity, program, true});

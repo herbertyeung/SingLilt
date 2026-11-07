@@ -843,12 +843,17 @@ void MainWindow::refreshNotationControls()
         field->setEnabled(!fullScore);
     programA_->setEnabled(true);
     programB_->setEnabled(true);
+    programB_->setVisible(!project_.numberedComposition);
+    if (auto *label = findChild<QLabel *>("programBLabel"))
+        label->setVisible(!project_.numberedComposition);
     for (QWidget *field : std::initializer_list<QWidget *>{accentBeats_})
         field->setToolTip(fullScore ? trText("ui.staff.preserved_performance") : QString{});
     for (QWidget *field : std::initializer_list<QWidget *>{programA_, programB_})
         field->setToolTip(fullScore ? trText("ui.staff.instrument_tip") : QString{});
     if (auto *label = findChild<QLabel *>("programALabel"))
-        bindText(label, fullScore ? "ui.staff.primary_instrument" : "ui.transport.program_a");
+        bindText(label, project_.numberedComposition ? "ui.editor.shared_sound"
+                        : fullScore                  ? "ui.staff.primary_instrument"
+                                                     : "ui.transport.program_a");
     if (auto *label = findChild<QLabel *>("programBLabel"))
         bindText(label, fullScore ? "ui.staff.other_instrument" : "ui.transport.program_b");
     velocity_->setToolTip(trText(fullScore ? "ui.staff.preserved_performance" : "ui.option.velocity_tip"));
@@ -882,7 +887,9 @@ void MainWindow::refreshNotationControls()
         }
     }
     if (auto *repeats = findChild<QAction *>("menuRepeats"))
-        repeats->setEnabled(!fullScore);
+        repeats->setEnabled(!fullScore && !project_.numberedComposition);
+    if (auto *repeat = findChild<QPushButton *>("inspectorRepeats"))
+        repeat->setEnabled(!fullScore && !project_.numberedComposition);
     notationStyle_->setEnabled(project_.generatedNotation);
     notationStyle_->setCurrentIndex(project_.generatedNotation
                                         ? notationStyle_->findData(int(project_.notationStyle))
@@ -895,12 +902,18 @@ void MainWindow::refreshNotationControls()
     if (auto *action = findChild<QAction *>("menuNumberedView"))
         action->setEnabled(project_.generatedNotation && !project_.staffPerformance);
     if (auto *action = findChild<QAction *>("menuStaffView"))
-        action->setEnabled(project_.generatedNotation);
+        action->setEnabled(project_.generatedNotation && !project_.numberedComposition);
     notationStyle_->setToolTip(trText(project_.generatedNotation ? "ui.staff.view_tip" : "ui.staff.original_tip"));
 }
 
 void MainWindow::setNotationStyle(NotationStyle style)
 {
+    if (project_.numberedComposition)
+    {
+        setStatus("ui.editor.composition_numbered");
+        refreshNotationControls();
+        return;
+    }
     if (project_.staffImagePlayback || !project_.generatedNotation || busy_ || audioLoading_ ||
         notePreviewLoading_ || !resolveNoteDraft())
     {

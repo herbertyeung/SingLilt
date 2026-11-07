@@ -35,12 +35,16 @@ void MainWindow::exportWaveFile()
         return;
     }
     auto *action = findChild<QAction *>("menuExportWave");
-    if (busy_ || audioLoading_ || notePreviewLoading_ || project_.score.notes.empty() || !action ||
-        !action->isEnabled() || action->property("waveExportRunning").toBool() || !resolveNoteDraft())
+    if (busy_ || audioLoading_ || notePreviewLoading_ ||
+        (project_.numberedComposition ? compositionDuration(*project_.numberedComposition) == 0
+                                      : project_.score.notes.empty()) ||
+        !action || !action->isEnabled() || action->property("waveExportRunning").toBool() || !resolveNoteDraft())
         return;
     try
     {
-        const auto score = project_.score;
+        const auto score = project_.numberedComposition
+                               ? compositionPlaybackScore(project_.score, *project_.numberedComposition)
+                               : project_.score;
         const auto timeline = timeline_;
         if (!timeline.valid() || timeline.events.empty())
             throw std::runtime_error(trText("messages.audio.wave_no_timeline").toStdString());
@@ -54,7 +58,13 @@ void MainWindow::exportWaveFile()
         options.speed = player_.speed();
         options.mix = project_.practiceMix;
         options.gmSoundFontPath = player_.gmSoundFontPath();
-        if (project_.staffPerformance)
+        if (project_.numberedComposition)
+        {
+            plan = compositionPlaybackPlan(project_.score, *project_.numberedComposition);
+            options.settings.originalStaff = true;
+            options.settings.chordProgram = options.settings.bassProgram = programForVerse(score, 0);
+        }
+        else if (project_.staffPerformance)
         {
             plan = buildStaffPerformancePlan(score, timeline, *project_.staffPerformance);
             options.settings.originalStaff = true;
@@ -72,10 +82,11 @@ void MainWindow::exportWaveFile()
             throw std::runtime_error(trText("messages.audio.invalid_accompaniment").toStdString());
         const bool staleArrangement =
             project_.accompaniment && project_.accompaniment->melodyFingerprint != accompanimentFingerprint(score);
-        const char *arrangementKey = project_.staffPerformance ? "ui.staff.original_parts"
-                                     : staleArrangement        ? "ui.accompaniment.stale_confirmed"
-                                     : project_.accompaniment  ? "ui.export.confirmed"
-                                                               : "ui.export.none";
+        const char *arrangementKey = project_.numberedComposition ? "ui.editor.voices"
+                                     : project_.staffPerformance  ? "ui.staff.original_parts"
+                                     : staleArrangement           ? "ui.accompaniment.stale_confirmed"
+                                     : project_.accompaniment     ? "ui.export.confirmed"
+                                                                  : "ui.export.none";
 
         // The range belongs to the performed clock, including repeats and practice speed.
         const double fullSeconds = std::llround(timeline.durationSeconds() / options.speed * 48000.0) / 48000.0;

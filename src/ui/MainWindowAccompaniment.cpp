@@ -135,6 +135,8 @@ void MainWindow::chooseGmSoundFont()
 }
 AccompanimentPlan MainWindow::activeAccompanimentPlan() const
 {
+    if (project_.numberedComposition)
+        return compositionPlaybackPlan(project_.score, *project_.numberedComposition);
     if (project_.staffPerformance)
         return buildStaffPerformancePlan(project_.score, timeline_, *project_.staffPerformance);
     const auto &arrangement = auditionArrangement_ ? auditionArrangement_ : project_.accompaniment;
@@ -146,6 +148,11 @@ AccompanimentPlan MainWindow::activeAccompanimentPlan() const
 }
 void MainWindow::generatePracticeAccompaniment()
 {
+    if (project_.numberedComposition)
+    {
+        setStatus("ui.editor.shared_sound");
+        return;
+    }
     if (project_.staffPerformance)
     {
         setStatus("ui.staff.original_parts");
@@ -290,7 +297,7 @@ void MainWindow::refreshPracticeControls()
         melodyVolumeBlock(volume_), accompanimentVolumeBlock(accompanimentVolume_),
         patternBlock(accompanimentPattern_);
     melodyEnabled_->setChecked(mix.melodyEnabled);
-    accompanimentEnabled_->setChecked(mix.accompanimentEnabled);
+    accompanimentEnabled_->setChecked(!project_.numberedComposition && mix.accompanimentEnabled);
     if (!playbackSource_ || playbackSource_->currentData().toInt() == 0)
         volume_->setValue(int(mix.melodyVolume * 100));
     accompanimentVolume_->setValue(int(mix.accompanimentVolume * 100));
@@ -301,18 +308,21 @@ void MainWindow::refreshPracticeControls()
         accompanimentPattern_->setCurrentIndex(
             accompanimentPattern_->findData(int(arrangement->settings.pattern)));
     const bool stale = arrangement && arrangement->melodyFingerprint != accompanimentFingerprint(project_.score);
-    accompanimentPattern_->setEnabled(!project_.staffPerformance && !auditionArrangement_);
-    accompanimentEnabled_->setEnabled(project_.staffPerformance || (arrangement.has_value() && !stale));
+    accompanimentPattern_->setEnabled(!project_.staffPerformance && !project_.numberedComposition &&
+                                      !auditionArrangement_);
+    accompanimentEnabled_->setEnabled(!project_.numberedComposition &&
+                                      (project_.staffPerformance || (arrangement.has_value() && !stale)));
+    accompanimentVolume_->setEnabled(!project_.numberedComposition);
     bindText(melodyEnabled_,
              project_.staffPerformance ? "ui.staff.primary_parts" : "ui.accompaniment.melody_enabled");
     bindText(accompanimentEnabled_,
              project_.staffPerformance ? "ui.staff.other_parts" : "ui.accompaniment.accompaniment_enabled");
     if (auto *generate = findChild<QPushButton *>("generateAccompaniment"))
-        generate->setEnabled(!project_.staffPerformance);
+        generate->setEnabled(!project_.staffPerformance && !project_.numberedComposition);
     if (auto *generate = findChild<QPushButton *>("quickGenerateAccompaniment"))
-        generate->setEnabled(!project_.staffPerformance);
+        generate->setEnabled(!project_.staffPerformance && !project_.numberedComposition);
     if (auto *action = findChild<QAction *>("menuGenerateAccompaniment"))
-        action->setEnabled(!project_.staffPerformance);
+        action->setEnabled(!project_.staffPerformance && !project_.numberedComposition);
     accompanimentState_->setText(trText(project_.staffPerformance ? "ui.staff.original_parts"
                                         : stale                   ? "ui.accompaniment.stale_confirmed"
                                         : auditionArrangement_    ? "ui.accompaniment.auditioning"
@@ -321,7 +331,8 @@ void MainWindow::refreshPracticeControls()
 }
 void MainWindow::changeAccompanimentPattern()
 {
-    if (loading_ || audioLoading_ || auditionArrangement_ || !project_.accompaniment)
+    if (loading_ || audioLoading_ || auditionArrangement_ || !project_.accompaniment ||
+        project_.numberedComposition)
         return;
     auto changed = *project_.accompaniment;
     changed.settings.pattern = AccompanimentPattern(accompanimentPattern_->currentData().toInt());

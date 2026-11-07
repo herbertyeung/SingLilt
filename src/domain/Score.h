@@ -28,6 +28,7 @@ struct SourceRect
     double y = 0.0;
     double width = 0.0;
     double height = 0.0;
+    bool operator==(const SourceRect &) const = default;
 };
 
 struct StaffSpelling
@@ -35,6 +36,7 @@ struct StaffSpelling
     char step = 'C';
     int alter = 0;
     int octave = 4;
+    bool operator==(const StaffSpelling &) const = default;
 };
 
 struct WrittenMeasure
@@ -45,6 +47,7 @@ struct WrittenMeasure
     int beatsPerBar = 4;
     int beatUnit = 4;
     int pageIndex = 0;
+    bool operator==(const WrittenMeasure &) const = default;
 };
 
 struct KeyChange
@@ -52,6 +55,7 @@ struct KeyChange
     std::int64_t startTick = 0;
     int tonic = 0;
     int sourceNoteIndex = -1; // A guide-note onset, or -1 for an independently timed part.
+    bool operator==(const KeyChange &) const = default;
 };
 
 struct Note
@@ -75,6 +79,10 @@ struct Note
     std::optional<StaffSpelling> staffSpelling;
     int pageIndex = 0;
     bool hasImageAnchor = true;
+    int dynamicLevel = 0; // 0 inherits; 1..6 are pp, p, mp, mf, f, ff.
+    bool accent = false;
+    bool staccato = false;
+    bool operator==(const Note &) const = default;
 };
 
 // Half-open source-note interval. A first ending is played on the first pass
@@ -86,11 +94,17 @@ struct RepeatSection
     std::size_t endNote = 0;
     int count = 2;
     int firstEndingNote = -1;
+    bool operator==(const RepeatSection &) const = default;
 };
 
 struct Score
 {
     std::string title;
+    std::string subtitle;
+    std::string lyricist;
+    std::string composer;
+    // Trailing empty bars are layout, not silent playback events. Zero keeps legacy auto-layout.
+    int editorMinimumBars = 0;
     std::string imagePath;
     int tonic = 0;
     double bpm = 90.0; // Quarter notes per minute, including in compound meter.
@@ -104,6 +118,7 @@ struct Score
     bool accentBeats = true;
     std::vector<WrittenMeasure> writtenMeasures;
     std::vector<KeyChange> keyChanges;
+    bool operator==(const Score &) const = default;
 };
 
 int midiPitch(const Note &note, int tonic, int transpose = 0);

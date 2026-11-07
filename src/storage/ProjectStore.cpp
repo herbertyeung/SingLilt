@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "ProjectStore.h"
+#include "NumberedCompositionStore.h"
 #include "ProjectPackage.h"
 #include "StaffPagesStore.h"
 #include "domain/Timeline.h"
@@ -327,6 +328,12 @@ QJsonObject scoreToJson(const Score &s)
             object.insert("staffSpelling", QJsonObject{{"step", QString(QChar(n.staffSpelling->step))},
                                                        {"alter", n.staffSpelling->alter},
                                                        {"octave", n.staffSpelling->octave}});
+        if (n.dynamicLevel)
+            object.insert("dynamicLevel", n.dynamicLevel);
+        if (n.accent)
+            object.insert("accent", true);
+        if (n.staccato)
+            object.insert("staccato", true);
         notes.append(object);
     }
     for (const auto &r : s.repeats)
@@ -339,6 +346,10 @@ QJsonObject scoreToJson(const Score &s)
         {"beatsPerBar", s.beatsPerBar}, {"beatUnit", s.beatUnit},    {"notes", notes},
         {"repeats", repeats},           {"versePrograms", programs}, {"baseVelocity", s.baseVelocity},
         {"accentBeats", s.accentBeats}};
+    result.insert("subtitle", qs(s.subtitle));
+    result.insert("lyricist", qs(s.lyricist));
+    result.insert("composer", qs(s.composer));
+    result.insert("editorMinimumBars", s.editorMinimumBars);
     if (!s.writtenMeasures.empty())
     {
         for (const auto &measure : s.writtenMeasures)
@@ -361,11 +372,19 @@ QJsonObject scoreToJson(const Score &s)
     }
     return result;
 }
-Score scoreFromJson(const QJsonObject &o)
+Score scoreFromJson(const QJsonObject &o, bool deferTimelineValidation)
 {
     require(o.value("notes").isArray(), "messages.storage.missing_notes");
     Score s;
     s.title = o.value("title").toString(trText("messages.storage.untitled")).toStdString();
+    for (const char *key : {"subtitle", "lyricist", "composer"})
+        require(!o.contains(key) || (o.value(key).isString() && o.value(key).toString().size() <= 512),
+                "messages.storage.invalid_editor_metadata");
+    s.subtitle = o.value("subtitle").toString().toStdString();
+    s.lyricist = o.value("lyricist").toString().toStdString();
+    s.composer = o.value("composer").toString().toStdString();
+    s.editorMinimumBars = integer(o, "editorMinimumBars", 0);
+    require(s.editorMinimumBars >= 0 && s.editorMinimumBars <= 128, "messages.storage.invalid_editor_metadata");
     s.tonic = integer(o, "tonic", 0, true);
     s.bpm = number(o, "bpm", 90, true);
     s.beatsPerBar = integer(o, "beatsPerBar", 4, true);
@@ -399,6 +418,10 @@ Score scoreFromJson(const QJsonObject &o)
         note.octave = integer(n, "octave", 0);
         note.accidental = integer(n, "accidental", 0);
         note.durationTicks = integer(n, "durationTicks", 480, true);
+        note.dynamicLevel = integer(n, "dynamicLevel", 0);
+        require(note.dynamicLevel >= 0 && note.dynamicLevel <= 6, "ui.editor.invalid_composition");
+        note.accent = boolean(n, "accent", false, "ui.editor.invalid_composition");
+        note.staccato = boolean(n, "staccato", false, "ui.editor.invalid_composition");
         note.measure = integer(n, "measure", 0);
         note.pageIndex = integer(n, "pageIndex", 0);
         note.hasImageAnchor = boolean(n, "hasImageAnchor", true, "messages.storage.invalid_rectangle");
@@ -495,8 +518,8 @@ Score scoreFromJson(const QJsonObject &o)
             require(start.isDouble() && std::isfinite(start.toDouble()) && start.toDouble() >= 0 &&
                         start.toDouble() <= 1000000000 && std::floor(start.toDouble()) == start.toDouble(),
                     "messages.domain.key_change_range");
-            s.keyChanges.push_back({static_cast<std::int64_t>(start.toDouble()), integer(change, "tonic", -1, true),
-                                    integer(change, "sourceNoteIndex", -1)});
+            s.keyChanges.push_back({static_cast<std::int64_t>(start.toDouble()),
+                                    integer(change, "tonic", -1, true), integer(change, "sourceNoteIndex", -1)});
         }
     }
     for (const auto &v : o.value("repeats").toArray())
@@ -512,9 +535,10 @@ Score scoreFromJson(const QJsonObject &o)
                 s.bpm <= MaximumScoreBpm,
             "messages.storage.invalid_key_tempo");
     require(ticksPerBar(s) > 0, "messages.storage.invalid_meter");
-    const auto timeline = s.notes.empty() && s.repeats.empty() && s.writtenMeasures.empty() && s.keyChanges.empty()
-                              ? Timeline{}
-                              : buildTimeline(s);
+    if (deferTimelineValidation ||
+        (s.notes.empty() && s.repeats.empty() && s.writtenMeasures.empty() && s.keyChanges.empty()))
+        return s;
+    const auto timeline = buildTimeline(s);
     for (const auto &diagnostic : timeline.diagnostics)
         if (diagnostic.severity == DiagnosticSeverity::Error)
             throw std::runtime_error(localizeMessage(QString::fromStdString(diagnostic.message)).toStdString());
@@ -524,8 +548,20 @@ QJsonObject projectToJson(const Project &p)
 {
     require(p.notationStyle == NotationStyle::Numbered || p.notationStyle == NotationStyle::Staff,
             "messages.staff.invalid_view");
-    auto object = scoreToJson(p.score);
-    object.insert("schemaVersion", p.staffImagePlayback ? 6 : p.staffPages.empty() ? 4 : 5);
+    auto canonical = p.score;
+    if (p.numberedComposition)
+    {
+        validateNumberedComposition(p.score, *p.numberedComposition);
+        canonical.notes = p.numberedComposition->voices.front().notes;
+    }
+    auto object = scoreToJson(canonical);
+    object.insert("schemaVersion", p.numberedComposition
+                                       ? (p.numberedComposition->structure.measures.empty() ? 7 : 8)
+                                   : p.staffImagePlayback ? 6
+                                   : p.staffPages.empty() ? 4
+                                                          : 5);
+    if (p.numberedComposition)
+        object.insert("numberedComposition", numberedCompositionToJson(canonical, *p.numberedComposition));
     if (p.staffImagePlayback)
         object.insert("staffImagePlayback", true);
     if (!p.staffPages.empty())
@@ -576,7 +612,7 @@ QJsonObject projectToJson(const Project &p)
 Project projectFromJson(const QJsonObject &o, const QImage &image, const std::vector<StaffPage> &pages)
 {
     const int schema = integer(o, "schemaVersion", 0, true);
-    require(schema >= 1 && schema <= 6, "messages.storage.project_version");
+    require(schema >= 1 && schema <= 8, "messages.storage.project_version");
     Project p;
     p.staffImagePlayback = boolean(o, "staffImagePlayback", false, "messages.pages.invalid_project");
     require(p.staffImagePlayback == (schema == 6), "messages.pages.invalid_project");
@@ -591,7 +627,7 @@ Project projectFromJson(const QJsonObject &o, const QImage &image, const std::ve
                 require(entry.isObject() && entry.toObject().value("hasImageAnchor").isBool(),
                         "messages.pages.invalid_project");
     }
-    if (schema >= 5)
+    if (schema == 5 || schema == 6)
     {
         require(o.value("staffPages").isArray() && !pages.empty(), "messages.pages.invalid_project");
         validateStaffPageMetadata(o.value("staffPages").toArray(), pages);
@@ -599,7 +635,11 @@ Project projectFromJson(const QJsonObject &o, const QImage &image, const std::ve
     }
     else
         require(pages.empty() && !o.contains("staffPages"), "messages.pages.invalid_project");
-    p.score = scoreFromJson(o);
+    // Schema 8 validates the guide together with the authoritative measure keys below.
+    p.score = scoreFromJson(o, schema == 8);
+    require(schema >= 7 || std::none_of(p.score.notes.begin(), p.score.notes.end(), [](const Note &note)
+                                        { return note.dynamicLevel || note.accent || note.staccato; }),
+            "ui.editor.invalid_composition");
     if (o.contains("staffPerformance"))
     {
         require(o.value("staffPerformance").isObject(), "messages.staff.invalid_performance");
@@ -636,6 +676,24 @@ Project projectFromJson(const QJsonObject &o, const QImage &image, const std::ve
             require(o.value("audioSource").isObject(), "messages.storage.invalid_audio_source");
             p.audioSource = audioSourceFromJson(o.value("audioSource").toObject(), p.score);
         }
+    }
+    require(o.contains("numberedComposition") == (schema >= 7), "ui.editor.invalid_composition");
+    if (schema >= 7)
+    {
+        require(p.generatedNotation && p.notationStyle == NotationStyle::Numbered && !p.staffPerformance &&
+                    !p.audioSource && p.score.editorMinimumBars > 0 && o.value("numberedComposition").isObject(),
+                "ui.editor.invalid_composition");
+        p.numberedComposition = numberedCompositionFromJson(p.score, o.value("numberedComposition").toObject());
+        require((schema == 8) == !p.numberedComposition->structure.measures.empty(),
+                "ui.editor.invalid_structure");
+        auto canonical = p.score;
+        canonical.notes = p.numberedComposition->voices.front().notes;
+        require(scoreToJson(canonical) == scoreToJson(p.score), "ui.editor.invalid_composition");
+        for (const auto &voice : p.numberedComposition->voices)
+            for (const auto &note : voice.notes)
+                require(note.source.x + note.source.width <= image.width() + 2 &&
+                            note.source.y + note.source.height <= image.height() + 2,
+                        "messages.storage.note_outside");
     }
     p.image = image;
     require(!p.image.isNull() && p.image.width() <= 12000 && p.image.height() <= 20000 &&
@@ -682,15 +740,21 @@ Project projectFromJson(const QJsonObject &o, const QImage &image, const std::ve
                         s.originalSpeed >= .25 && s.originalSpeed <= 2 && s.originalVolume >= 0 &&
                         s.originalVolume <= 1 && s.playbackSource >= 0 && s.playbackSource <= 3 &&
                         s.loopStart >= 0 && s.loopEnd >= s.loopStart &&
-                        s.loopEnd <= (p.score.notes.empty() ? 0 : buildTimeline(p.score).durationTicks),
+                        s.loopEnd <= (p.numberedComposition
+                                          ? performedScoreMap(p.score, *p.numberedComposition).duration
+                                      : p.score.notes.empty() ? 0
+                                                              : buildTimeline(p.score).durationTicks),
                     "messages.package.invalid_metadata");
             require(s.playbackSource == 0 ||
                         (p.audioSource &&
                          (s.playbackSource == 1 || (s.playbackSource == 2 && !p.audioSource->vocalsPath.empty()) ||
                           (s.playbackSource == 3 && !p.audioSource->instrumentalPath.empty()))),
                     "messages.package.invalid_metadata");
-            require(p.score.notes.empty() || buildTimeline(p.score, s.transpose).valid(),
-                    "messages.package.invalid_metadata");
+            if (schema == 8)
+                validateNumberedComposition(p.score, *p.numberedComposition, s.transpose);
+            else
+                require(p.score.notes.empty() || buildTimeline(p.score, s.transpose).valid(),
+                        "messages.package.invalid_metadata");
             p.practiceSettings = s;
         }
     }
