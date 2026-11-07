@@ -279,8 +279,9 @@ void structuredNumberedPerformance()
     NumberedComposition dense{{{1, "Dense", nearLimit.notes}, {2, "Long", {note(3, 120000)}}}, 3};
     const auto densePlayback = compositionTimeline(nearLimit, dense);
     check(densePlayback.valid() && densePlayback.durationTicks == 120000 &&
-              !densePlayback.metronomeBeats.empty() && densePlayback.metronomeBeats.back().startTick == 119520,
-          "A near-limit guide preserves the longest voice and trailing metronome without exceeding note limits");
+              densePlayback.metronomeBeats.size() == 250 && densePlayback.metronomeBeats.front().startTick == 0 &&
+              densePlayback.metronomeBeats.back().startTick == 119520,
+          "A near-limit guide preserves uniform-meter clicks from the first note through the silent tail");
     auto high = note(7);
     high.octave = 4;
     score.tonic = 11;

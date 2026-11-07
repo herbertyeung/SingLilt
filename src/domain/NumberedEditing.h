@@ -11,6 +11,7 @@ namespace singlilt
 inline constexpr int MaximumEditorBars = 128;
 std::int64_t numberedDuration(const Score &score);
 int numberedBarCount(const Score &score);
+void clearNumberedRestTextAndTies(Score &score, std::size_t index);
 // Structural editing is limited to uniform-meter melody scores.
 bool canRestructureNumberedScore(const Score &score);
 bool insertNumberedBar(Score &score, int bar);

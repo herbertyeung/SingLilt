@@ -5,6 +5,7 @@
 
 #include "MainWindow.h"
 #include "domain/NumberedPerformance.h"
+#include "domain/NumberedEditing.h"
 #include "AccompanimentPanel.h"
 #include "ClassroomDialog.h"
 #include "NotationRenderer.h"
@@ -873,14 +874,9 @@ void MainWindow::updateNote()
     n.confidence = 1;
     if (project_.numberedComposition)
     {
-        if (n.degree == 0)
-        {
-            n.lyric.clear();
-            n.verseLyrics.clear();
-            n.tieToNext = false;
-        }
         auto score = project_.score;
         score.notes[std::size_t(selected_)] = std::move(n);
+        clearNumberedRestTextAndTies(score, std::size_t(selected_));
         commitNumberedScore(std::move(score), "ui.product.update_note", selected_, false);
         return;
     }
@@ -901,7 +897,11 @@ void MainWindow::updateNote()
         }
     }
     else
+    {
         project_.score.notes[std::size_t(selected_)] = std::move(n);
+        if (project_.notationStyle == NotationStyle::Numbered)
+            clearNumberedRestTextAndTies(project_.score, std::size_t(selected_));
+    }
     commitMaterialEdit(before, "ui.product.update_note");
     rebuild(true);
     selectNote(selected_, false);

@@ -166,8 +166,7 @@ Timeline compositionTimeline(const Score &metadata, const NumberedComposition &c
         {
             const auto beatTicks = ticksPerMetronomeBeat(score);
             const auto barTicks = ticksPerBar(score);
-            auto tick = (timeline.durationTicks + beatTicks - 1) / beatTicks * beatTicks;
-            for (; tick < end; tick += beatTicks)
+            for (std::int64_t tick = 0; tick < end; tick += beatTicks)
                 timeline.metronomeBeats.push_back({tick, tick % barTicks == 0});
             timeline.durationTicks = end;
         }

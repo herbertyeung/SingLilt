@@ -23,6 +23,18 @@ int numberedBarCount(const Score &score)
     return std::max({1, score.editorMinimumBars, int((numberedDuration(score) + ticks - 1) / ticks)});
 }
 
+void clearNumberedRestTextAndTies(Score &score, std::size_t index)
+{
+    auto &rest = score.notes[index];
+    if (rest.degree != 0)
+        return;
+    rest.lyric.clear();
+    rest.verseLyrics.clear();
+    rest.tieToNext = false;
+    if (index > 0)
+        score.notes[index - 1].tieToNext = false;
+}
+
 bool canRestructureNumberedScore(const Score &score)
 {
     return ticksPerBar(score) > 0 && score.repeats.empty() && score.writtenMeasures.empty() &&

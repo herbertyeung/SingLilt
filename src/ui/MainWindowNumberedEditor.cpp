@@ -300,12 +300,7 @@ void MainWindow::inputNumberedPitch(int degree, int octave, int accidental)
         note.octave = octave;
         note.accidental = accidental;
         note.confidence = 1;
-        if (degree == 0)
-        {
-            note.lyric.clear();
-            note.verseLyrics.clear();
-            note.tieToNext = false;
-        }
+        clearNumberedRestTextAndTies(score, std::size_t(selected_));
     }
     if (commitNumberedScore(std::move(score), "ui.editor.notes", selected_) && inserting)
         selectNumberedInput(numberedDuration(project_.score));

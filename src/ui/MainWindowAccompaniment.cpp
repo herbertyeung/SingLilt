@@ -297,7 +297,7 @@ void MainWindow::refreshPracticeControls()
         melodyVolumeBlock(volume_), accompanimentVolumeBlock(accompanimentVolume_),
         patternBlock(accompanimentPattern_);
     melodyEnabled_->setChecked(mix.melodyEnabled);
-    accompanimentEnabled_->setChecked(mix.accompanimentEnabled);
+    accompanimentEnabled_->setChecked(!project_.numberedComposition && mix.accompanimentEnabled);
     if (!playbackSource_ || playbackSource_->currentData().toInt() == 0)
         volume_->setValue(int(mix.melodyVolume * 100));
     accompanimentVolume_->setValue(int(mix.accompanimentVolume * 100));
@@ -310,7 +310,9 @@ void MainWindow::refreshPracticeControls()
     const bool stale = arrangement && arrangement->melodyFingerprint != accompanimentFingerprint(project_.score);
     accompanimentPattern_->setEnabled(!project_.staffPerformance && !project_.numberedComposition &&
                                       !auditionArrangement_);
-    accompanimentEnabled_->setEnabled(project_.staffPerformance || (arrangement.has_value() && !stale));
+    accompanimentEnabled_->setEnabled(!project_.numberedComposition &&
+                                      (project_.staffPerformance || (arrangement.has_value() && !stale)));
+    accompanimentVolume_->setEnabled(!project_.numberedComposition);
     bindText(melodyEnabled_,
              project_.staffPerformance ? "ui.staff.primary_parts" : "ui.accompaniment.melody_enabled");
     bindText(accompanimentEnabled_,

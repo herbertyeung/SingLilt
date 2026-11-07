@@ -12,6 +12,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QComboBox>
+#include <QCheckBox>
 #include <QCommandLineParser>
 #include <QDialog>
 #include <QDir>
@@ -129,6 +130,8 @@ void runNumberedReviewCheck(MainWindow &window, const QCommandLineParser &args, 
                               !pattern->isEnabled());
                         const auto originalPattern = window.project_.accompaniment->settings.pattern;
                         pattern->setCurrentIndex((pattern->currentIndex() + 1) % pattern->count());
+                        check("Legacy accompaniment mix is disabled for composed voices",
+                              !window.accompanimentEnabled_->isEnabled());
                         check("A retained arrangement cannot replace the composed voice plan",
                               window.project_.accompaniment->settings.pattern == originalPattern);
                         check("Shared instrument label survives refresh",
@@ -186,6 +189,38 @@ void runNumberedReviewCheck(MainWindow &window, const QCommandLineParser &args, 
                         const auto &rest = window.project_.score.notes.front();
                         check("Converting a sung note to rest clears both lyric forms",
                               rest.degree == 0 && rest.lyric.empty() && rest.verseLyrics.empty());
+                    });
+            attempt("rest breaks ties and lyrics in both editors",
+                    [&]
+                    {
+                        for (bool multi : {false, true})
+                        {
+                            auto project = fixture(multi);
+                            auto notes = project.score.notes;
+                            notes.front().tieToNext = true;
+                            notes.back().degree = notes.front().degree;
+                            notes.back().lyric = "held";
+                            notes.back().verseLyrics = {"held"};
+                            notes.back().tieToNext = true;
+                            project.score.notes = notes;
+                            if (multi)
+                                project.numberedComposition->voices.front().notes = notes;
+                            setup(project);
+                            window.selectNote(1, false);
+                            if (multi)
+                                window.inputNumberedPitch(0, 0, 0);
+                            else
+                            {
+                                window.degree_->setCurrentIndex(window.degree_->findData(0));
+                                window.updateNote();
+                            }
+                            const auto &updated = window.project_.score.notes;
+                            check(multi ? "Keyboard rest severs an incoming tie"
+                                        : "Single-voice inspector rest clears lyrics and ties",
+                                  updated.size() == 2 && !updated.front().tieToNext &&
+                                      updated.back().degree == 0 && updated.back().lyric.empty() &&
+                                      updated.back().verseLyrics.empty() && !updated.back().tieToNext);
+                        }
                     });
             attempt("playback exception boundary",
                     [&]
