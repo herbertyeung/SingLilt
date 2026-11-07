@@ -7,6 +7,7 @@
 #include "domain/Accompaniment.h"
 #include "domain/AudioSource.h"
 #include "domain/Score.h"
+#include "domain/NumberedComposition.h"
 #include "domain/StaffPerformance.h"
 #include <QImage>
 #include <QJsonObject>
@@ -63,6 +64,8 @@ struct Project
     std::optional<StaffPerformance> staffPerformance;
     std::vector<StaffPage> staffPages;
     bool staffImagePlayback = false;
+    // Authoritative voices; score.notes is the current UI guide.
+    std::optional<NumberedComposition> numberedComposition;
 };
 QJsonObject scoreToJson(const Score &score);
 QJsonObject staffPerformanceToJson(const StaffPerformance &performance);

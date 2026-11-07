@@ -8,6 +8,9 @@
 #include "MenuIcons.h"
 #include "ScoreView.h"
 #include "StaffNoteEditor.h"
+#include "ScorePropertiesPanel.h"
+#include "PianoKeyboard.h"
+#include "WorkspaceHeader.h"
 #include "i18n/LanguageManager.h"
 #include <QAction>
 #include <QApplication>
@@ -79,6 +82,7 @@ void MainWindow::createUi()
     createAudioControls(layout);
     createCloudTaskBanner(layout);
     createLocalStaffTaskBanner(layout);
+    createNumberedEditor(layout);
     createScorePane(layout);
     auto *audioSettings = new QWidget(root);
     audioSettings->setObjectName("legacyAudioSettings");
@@ -86,7 +90,22 @@ void MainWindow::createUi()
     createPracticeControls(audioLayout);
     audioSettings->hide();
     createTransport(layout);
+    keyboardHost_ = new QWidget;
+    keyboardHost_->setObjectName("editorKeyboardHost");
+    auto *keyboardLayout = new QVBoxLayout(keyboardHost_);
+    keyboardLayout->setContentsMargins(8, 6, 8, 6);
+    keyboardLayout->addWidget(label("ui.editor.keyboard_hint"));
+    pianoKeyboard_ = new PianoKeyboard;
+    pianoKeyboard_->noteRequested = [this](int degree, int octave, int accidental)
+    { inputNumberedPitch(degree, octave, accidental); };
+    keyboardLayout->addWidget(pianoKeyboard_);
+    layout->addWidget(keyboardHost_);
+    keyboardHost_->hide();
     createMenus();
+    workspaceHeader_->setActions(findChild<QAction *>("menuNew"), findChild<QAction *>("menuSave"), undoAction_,
+                                 redoAction_,
+                                 {findChild<QAction *>("menuOpenProject"), findChild<QAction *>("menuOpenScore"),
+                                  findChild<QAction *>("menuSaveAs")});
     status_ = label("ui.status.ready");
     status_->setObjectName("statusMessage");
     statusBar()->addWidget(status_, 1);
@@ -95,22 +114,19 @@ void MainWindow::createUi()
 
 void MainWindow::createHeader(QVBoxLayout *layout)
 {
-    auto *header = new QHBoxLayout;
-    title_ = new QLabel;
-    title_->setObjectName("title");
-    title_->setTextFormat(Qt::PlainText);
-    title_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    title_->setMaximumWidth(280);
+    workspaceHeader_ = new WorkspaceHeader;
+    layout->addWidget(workspaceHeader_);
+    title_ = workspaceHeader_->titleLabel();
+    projectIdentity_ = workspaceHeader_->identityLabel();
+    workspaceHeader_->modeRequested = [this](bool editing) { setCorrectionMode(editing); };
+    practiceModeButton_ = workspaceHeader_->previewButton();
+    correctionModeButton_ = workspaceHeader_->editButton();
+    // These backing controls still serve menu actions and language bindings, not the document bar.
+    auto *headerActions = new QWidget(centralWidget());
+    headerActions->hide();
+    auto *header = new QHBoxLayout(headerActions);
     subtitle_ = label("ui.subtitle.tagline");
     subtitle_->setObjectName("subtitle");
-    projectIdentity_ = new QLabel;
-    projectIdentity_->setObjectName("projectIdentity");
-    projectIdentity_->setTextFormat(Qt::PlainText);
-    projectIdentity_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    projectIdentity_->setMaximumWidth(280);
-    header->addWidget(title_, 1);
-    header->addWidget(projectIdentity_, 1);
-    header->addStretch();
     header->addWidget(subtitle_);
     import_ = button("ui.header.import", header);
     import_->setObjectName("import");
@@ -165,23 +181,10 @@ void MainWindow::createHeader(QVBoxLayout *layout)
     for (auto *widget :
          std::initializer_list<QWidget *>{import_, paste, sample, classroom, saveButton, languageSelector_})
         widget->hide();
-    layout->addLayout(header);
-    auto *tasks = new QHBoxLayout;
-    auto *song = button("ui.product.song_practice", tasks);
-    song->setObjectName("songPracticeTask");
-    auto *lesson = button("ui.classroom.open", tasks);
-    lesson->setObjectName("classroomTask");
-    auto *ear = button("ui.menu.ear", tasks);
-    ear->setObjectName("earTrainingTask");
-    QObject::connect(song, &QPushButton::clicked, this, [this] { setCorrectionMode(false); });
-    QObject::connect(lesson, &QPushButton::clicked, this, [this] { openClassroom(); });
-    QObject::connect(ear, &QPushButton::clicked, this,
-                     [this]
-                     {
-                         if (auto *action = findChild<QAction *>("menuEarTraining"))
-                             action->trigger();
-                     });
-    tasks->addStretch();
+    scoreContextToolbar_ = new QWidget;
+    scoreContextToolbar_->setObjectName("scoreContextToolbar");
+    auto *tasks = new QHBoxLayout(scoreContextToolbar_);
+    tasks->setContentsMargins(0, 0, 0, 0);
     staffPageToolbar_ = new QWidget;
     staffPageToolbar_->setObjectName("staffPageToolbar");
     auto *pageRow = new QHBoxLayout(staffPageToolbar_);
@@ -216,26 +219,6 @@ void MainWindow::createHeader(QVBoxLayout *layout)
     for (QWidget *control :
          std::initializer_list<QWidget *>{staffPreviousPage_, staffPageSelector_, staffNextPage_, staffAutoPage_})
         control->hide();
-    auto *modeSwitch = new QWidget;
-    modeSwitch->setObjectName("workspaceMode");
-    auto *modeLayout = new QHBoxLayout(modeSwitch);
-    modeLayout->setContentsMargins(0, 0, 0, 0);
-    modeLayout->setSpacing(2);
-    practiceModeButton_ = button("ui.product.practice_mode", modeLayout);
-    practiceModeButton_->setObjectName("practiceModeButton");
-    practiceModeButton_->setCheckable(true);
-    practiceModeButton_->setProperty("modeSwitch", true);
-    correctionModeButton_ = button("ui.product.correction_mode", modeLayout);
-    correctionModeButton_->setObjectName("correctionModeButton");
-    correctionModeButton_->setCheckable(true);
-    correctionModeButton_->setProperty("modeSwitch", true);
-    auto *modeGroup = new QButtonGroup(modeSwitch);
-    modeGroup->setExclusive(true);
-    modeGroup->addButton(practiceModeButton_, 0);
-    modeGroup->addButton(correctionModeButton_, 1);
-    practiceModeButton_->setChecked(true);
-    connect(modeGroup, &QButtonGroup::idClicked, this, [this](int id) { setCorrectionMode(id == 1); });
-    tasks->addWidget(modeSwitch);
     auto *staffAdd = button("ui.original_playback.add_note", tasks);
     staffAdd->setObjectName("staffImageAddNote");
     auto *staffDelete = button("ui.original_playback.delete_note", tasks);
@@ -284,7 +267,8 @@ void MainWindow::createHeader(QVBoxLayout *layout)
     auto *next = button("ui.product.next_review", tasks);
     next->setObjectName("nextUncertainNote");
     QObject::connect(next, &QPushButton::clicked, this, [this] { nextUncertainNote(); });
-    layout->addLayout(tasks);
+    tasks->insertStretch(0);
+    layout->addWidget(scoreContextToolbar_);
     layout->addWidget(staffPageToolbar_);
     staffPageToolbar_->hide();
     QObject::connect(import_, &QPushButton::clicked, this,
@@ -400,6 +384,11 @@ void MainWindow::createScoreOptions(QVBoxLayout *layout)
                      {
                          if (!loading_)
                          {
+                             if (project_.numberedComposition)
+                             {
+                                 applyAuthoredMetadataControls();
+                                 return;
+                             }
                              if (project_.staffPerformance && !project_.staffImagePlayback &&
                                  project_.notationStyle == NotationStyle::Numbered)
                              {
@@ -416,6 +405,11 @@ void MainWindow::createScoreOptions(QVBoxLayout *layout)
                      {
                          if (!loading_)
                          {
+                             if (project_.numberedComposition)
+                             {
+                                 applyAuthoredMetadataControls();
+                                 return;
+                             }
                              project_.score.bpm = v;
                              markModified();
                              rebuild(true);
@@ -425,6 +419,11 @@ void MainWindow::createScoreOptions(QVBoxLayout *layout)
     {
         if (!loading_)
         {
+            if (project_.numberedComposition)
+            {
+                applyAuthoredMetadataControls();
+                return;
+            }
             if (project_.staffPerformance && !project_.staffImagePlayback &&
                 project_.notationStyle == NotationStyle::Numbered)
             {
@@ -521,6 +520,7 @@ QWidget *MainWindow::createInspector()
     remove->setObjectName("removeNote");
     QObject::connect(remove, &QPushButton::clicked, this, [this] { removeNote(); });
     auto *repeat = button("ui.inspector.repeats", side);
+    repeat->setObjectName("inspectorRepeats");
     QObject::connect(repeat, &QPushButton::clicked, this, [this] { editRepeats(); });
     side->addSpacing(8);
     side->addWidget(label("ui.inspector.validation"));
@@ -564,8 +564,83 @@ void MainWindow::createScorePane(QVBoxLayout *layout)
     staffScoreTabs_->addTab(staffSourceView_, menuIcon(MenuIcon::ImportImage), trText("ui.fidelity.original"));
     staffScoreTabs_->setTabVisible(1, false);
     staffScoreTabs_->tabBar()->hide();
-    connect(staffScoreTabs_, &QTabWidget::currentChanged, this, [this](int) { displayedScoreView()->fitWidth(); });
-    body->addWidget(staffScoreTabs_);
+    connect(staffScoreTabs_, &QTabWidget::currentChanged, this,
+            [this](int)
+            {
+                displayedScoreView()->refitIfAutomatic();
+                refreshZoomControls();
+            });
+    auto *canvas = new QWidget;
+    auto *canvasLayout = new QVBoxLayout(canvas);
+    canvasLayout->setContentsMargins(0, 0, 0, 0);
+    canvasLayout->setSpacing(0);
+    canvasLayout->addWidget(staffScoreTabs_, 1);
+    auto *zoomBar = new QWidget;
+    zoomBar->setObjectName("scoreZoomBar");
+    bindText(zoomBar, "ui.editor.zoom_hint", "toolTip");
+    auto *zoomRow = new QHBoxLayout(zoomBar);
+    zoomRow->setContentsMargins(8, 5, 8, 5);
+    zoomRow->setSpacing(6);
+    zoomRow->addWidget(label("ui.editor.zoom"));
+    auto *zoomOut = new QPushButton("−");
+    zoomOut->setObjectName("scoreZoomOut");
+    zoomOut->setFixedWidth(32);
+    zoomOut->setFocusPolicy(Qt::NoFocus);
+    bindText(zoomOut, "ui.editor.zoom_out", "accessibleName");
+    bindText(zoomOut, "ui.editor.zoom_out", "toolTip");
+    zoomRow->addWidget(zoomOut);
+    zoomPercent_ = new QDoubleSpinBox;
+    zoomPercent_->setObjectName("scoreZoomPercent");
+    zoomPercent_->setRange(ScoreView::MinimumZoom * 100, ScoreView::MaximumZoom * 100);
+    zoomPercent_->setDecimals(1);
+    zoomPercent_->setSingleStep(10);
+    zoomPercent_->setSuffix("%");
+    zoomPercent_->setKeyboardTracking(false);
+    zoomPercent_->setMaximumWidth(100);
+    bindText(zoomPercent_, "ui.editor.zoom", "accessibleName");
+    zoomRow->addWidget(zoomPercent_);
+    auto *zoomIn = new QPushButton("+");
+    zoomIn->setObjectName("scoreZoomIn");
+    zoomIn->setFixedWidth(32);
+    zoomIn->setFocusPolicy(Qt::NoFocus);
+    bindText(zoomIn, "ui.editor.zoom_in", "accessibleName");
+    bindText(zoomIn, "ui.editor.zoom_in", "toolTip");
+    zoomRow->addWidget(zoomIn);
+    auto *resetZoom = new QPushButton("100%");
+    resetZoom->setObjectName("scoreZoomReset");
+    resetZoom->setFocusPolicy(Qt::NoFocus);
+    bindText(resetZoom, "ui.editor.zoom_reset", "accessibleName");
+    bindText(resetZoom, "ui.editor.zoom_reset", "toolTip");
+    zoomRow->addWidget(resetZoom);
+    auto *fitZoom = button("ui.option.fit", zoomRow);
+    fitZoom->setObjectName("scoreZoomFit");
+    fitZoom->setCheckable(true);
+    fitZoom->setFocusPolicy(Qt::NoFocus);
+    zoomRow->addStretch();
+    canvasLayout->addWidget(zoomBar);
+    body->addWidget(canvas);
+    connect(zoomOut, &QPushButton::clicked, this,
+            [this]
+            {
+                auto *view = displayedScoreView();
+                view->setZoom(view->zoom() / 1.15);
+            });
+    connect(zoomIn, &QPushButton::clicked, this,
+            [this]
+            {
+                auto *view = displayedScoreView();
+                view->setZoom(view->zoom() * 1.15);
+            });
+    connect(resetZoom, &QPushButton::clicked, this, [this] { displayedScoreView()->setZoom(1); });
+    connect(fitZoom, &QPushButton::clicked, this, [this] { displayedScoreView()->fitWidth(); });
+    connect(zoomPercent_, &QDoubleSpinBox::valueChanged, this,
+            [this](double percent) { displayedScoreView()->setZoom(percent / 100); });
+    for (auto *view : {view_, staffSourceView_})
+        view->zoomChanged = [this, view](double)
+        {
+            if (displayedScoreView() == view)
+                refreshZoomControls();
+        };
     auto *inspectorHost = new QWidget;
     inspectorHost->setObjectName("inspectorScroll");
     inspectorHost->setMinimumWidth(284);
@@ -580,7 +655,21 @@ void MainWindow::createScorePane(QVBoxLayout *layout)
     legacyScroll->setFrameShape(QFrame::NoFrame);
     legacyScroll->setWidgetResizable(true);
     legacyScroll->setWidget(createInspector());
-    noteInspectorStack_->addWidget(legacyScroll);
+    editorInspectorTabs_ = new QTabWidget;
+    editorInspectorTabs_->setObjectName("editorInspectorTabs");
+    auto *propertiesScroll = new QScrollArea;
+    propertiesScroll->setWidgetResizable(true);
+    propertiesScroll->setFrameShape(QFrame::NoFrame);
+    scoreProperties_ = new ScorePropertiesPanel;
+    propertiesScroll->setWidget(scoreProperties_);
+    scoreProperties_->edited = [this]
+    {
+        if (!loading_ && numberedEditorActive() && resolveNoteDraft())
+            commitNumberedScore(scoreProperties_->editedScore(project_.score), "ui.editor.properties", selected_);
+    };
+    editorInspectorTabs_->addTab(propertiesScroll, trText("ui.editor.properties"));
+    editorInspectorTabs_->addTab(legacyScroll, trText("ui.editor.notes"));
+    noteInspectorStack_->addWidget(editorInspectorTabs_);
     staffNoteEditor_ = new StaffNoteEditor;
     staffNoteEditor_->setObjectName("staffNoteInspector");
     auto *staffScroll = new QScrollArea;
@@ -618,8 +707,21 @@ void MainWindow::createScorePane(QVBoxLayout *layout)
     body->setStretchFactor(1, 0);
     body->setSizes({940, 350});
     layout->addWidget(body, 1);
+    refreshZoomControls();
     view_->noteClicked = [this](int i) { selectNote(i); };
     view_->emptyDoubleClicked = [this](QPointF position) { insertNote(position); };
+}
+
+void MainWindow::refreshZoomControls()
+{
+    if (!zoomPercent_)
+        return;
+    const auto *view = displayedScoreView();
+    const QSignalBlocker block(zoomPercent_);
+    zoomPercent_->setValue(view->zoom() * 100);
+    findChild<QPushButton *>("scoreZoomOut")->setEnabled(view->zoom() > ScoreView::MinimumZoom + 1e-6);
+    findChild<QPushButton *>("scoreZoomIn")->setEnabled(view->zoom() < ScoreView::MaximumZoom - 1e-6);
+    findChild<QPushButton *>("scoreZoomFit")->setChecked(view->isFittingWidth());
 }
 
 void MainWindow::createTransport(QVBoxLayout *layout)
@@ -854,8 +956,13 @@ void MainWindow::createTransport(QVBoxLayout *layout)
     auto *generate = button("ui.product.accompaniment", mix);
     generate->setObjectName("quickGenerateAccompaniment");
     QObject::connect(generate, &QPushButton::clicked, this, [this] { generatePracticeAccompaniment(); });
-    layout->addLayout(mix);
-    layout->addWidget(accompanimentState_);
+    auto *practiceMix = new QWidget;
+    practiceMix->setObjectName("practiceMixControls");
+    auto *practiceMixLayout = new QVBoxLayout(practiceMix);
+    practiceMixLayout->setContentsMargins(0, 0, 0, 0);
+    practiceMixLayout->addLayout(mix);
+    practiceMixLayout->addWidget(accompanimentState_);
+    layout->addWidget(practiceMix);
     accompanimentState_->show();
     connect(playbackSource_, &QComboBox::currentIndexChanged, this, [this] { refreshSourceControls(); });
 }

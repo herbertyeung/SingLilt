@@ -6,6 +6,7 @@
 #pragma once
 #include "domain/Score.h"
 #include "domain/StaffPerformance.h"
+#include "NotationRenderer.h"
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QImage>
@@ -22,6 +23,26 @@ class ScoreView : public QGraphicsView
     void setScore(const QImage &image, const Score &score, int pageIndex = 0, bool requireImageAnchor = false);
     void setCurrent(int index, bool follow);
     void fitWidth();
+    void refitIfAutomatic();
+    void setZoom(double factor);
+    double zoom() const
+    {
+        return transform().m11();
+    }
+    bool isFittingWidth() const
+    {
+        return fitWidth_;
+    }
+    static constexpr double MinimumZoom = 0.15;
+    static constexpr double MaximumZoom = 5.0;
+    std::function<void(double)> zoomChanged;
+    void setNumberedEditor(const NumberedScoreLayout &layout, std::int64_t tick, bool enabled, int voice = 0,
+                           bool append = false);
+    std::function<void(std::int64_t)> numberedInputSelected;
+    std::function<void()> numberedBarsRequested;
+    std::function<void(int, int)> numberedVoiceNoteSelected;
+    std::function<void(int, std::int64_t)> numberedVoiceInputSelected;
+    std::function<bool(int)> numberedKeyPressed;
     void showUncertain(bool enabled);
     void setStaffPerformance(const StaffPerformance *performance);
     void setAnchorEditingEnabled(bool enabled);
@@ -55,8 +76,12 @@ class ScoreView : public QGraphicsView
     void contextMenuEvent(QContextMenuEvent *event) override;
     void focusOutEvent(QFocusEvent *event) override;
     void wheelEvent(QWheelEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
   private:
+    void applyZoom(double factor, const QPoint &anchor);
+    bool fitWidth_ = true;
+    bool refitPending_ = false;
     bool acceptsAnchor(const SourceRect &anchor, bool hasImageAnchor) const;
     void refreshSelectedStaffCursor();
     void cancelAnchorGesture();
@@ -76,6 +101,12 @@ class ScoreView : public QGraphicsView
         bool timingEditing = false;
     };
     QGraphicsScene scene_;
+    NumberedScoreLayout numberedLayout_;
+    bool numberedEditing_ = false;
+    std::int64_t numberedTick_ = -1;
+    int numberedVoice_ = 0;
+    bool numberedAppend_ = false;
+    QGraphicsItemGroup *numberedInputLayer_ = nullptr;
     Score score_;
     QGraphicsRectItem *cursor_ = nullptr;
     std::vector<QGraphicsRectItem *> uncertain_;

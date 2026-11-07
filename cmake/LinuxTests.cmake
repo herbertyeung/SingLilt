@@ -49,3 +49,10 @@ set_tests_properties(SingLiltVersion SingLiltCli SingLiltExternalLanguage SingLi
     SingLiltNativeStaffProcess SingLiltLinux-project-package SingLiltLinux-musicxml
     SingLiltLinux-staff-renderer SingLiltLinux-settings-product SingLiltLinux-audio-cancellation
     PROPERTIES RUN_SERIAL TRUE)
+
+add_test(NAME SingLiltNumberedEditor COMMAND SingLilt --numbered-editor-check --audio-backend system
+    --diagnostic-no-audio --language zh_CN --report "${CMAKE_BINARY_DIR}/numbered-editor/$<CONFIG>/report.json")
+add_test(NAME SingLiltNumberedReview COMMAND SingLilt --numbered-review-check --audio-backend system
+    --diagnostic-no-audio --language zh_CN --report "${CMAKE_BINARY_DIR}/numbered-review/$<CONFIG>/report.json")
+set_tests_properties(SingLiltNumberedEditor SingLiltNumberedReview PROPERTIES LABELS "ci" TIMEOUT 120
+    RUN_SERIAL TRUE ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

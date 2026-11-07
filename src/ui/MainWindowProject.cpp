@@ -5,6 +5,7 @@
 
 #include "MainWindow.h"
 #include "ScoreView.h"
+#include "NewScoreDialog.h"
 #include "i18n/LanguageManager.h"
 #include "storage/StaffEditRecovery.h"
 #include <QCheckBox>
@@ -65,16 +66,21 @@ void MainWindow::restoreProjectPractice()
 }
 void MainWindow::newProject()
 {
-    if (busy_ || audioLoading_ || notePreviewLoading_ || audioTask_.isRunning() || !confirmDiscard())
+    if (busy_ || audioLoading_ || notePreviewLoading_ || audioTask_.isRunning())
+        return;
+    NewScoreDialog dialog(this);
+    if (dialog.exec() != QDialog::Accepted || !confirmDiscard())
         return;
     Project project;
-    project.score.title = trText("messages.storage.untitled").toStdString();
+    project.score = dialog.score();
     project.image = QImage(1000, 700, QImage::Format_RGB32);
     project.image.fill(Qt::white);
     project.generatedNotation = true;
     try
     {
-        setProject(std::move(project), true);
+        NumberedScoreLayout layout;
+        project.image = renderNumberedScore(project.score, &layout);
+        setProject(std::move(project), true, std::move(layout));
     }
     catch (const std::exception &error)
     {
@@ -82,7 +88,7 @@ void MainWindow::newProject()
         return;
     }
     setCorrectionMode(true);
-    setStatus("ui.status.new_project");
+    setStatus("ui.editor.new_ready");
 }
 void MainWindow::save(bool saveAs)
 {

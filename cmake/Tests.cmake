@@ -147,3 +147,12 @@ endif()
 add_test(NAME SingLiltMigration COMMAND SingLiltMigrationTests)
 set_tests_properties(SingLiltMigration PROPERTIES LABELS "ci" TIMEOUT 30
     ENVIRONMENT_MODIFICATION "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>")
+
+add_test(NAME SingLiltNumberedEditor COMMAND SingLilt --numbered-editor-check --audio-backend system
+    --diagnostic-no-audio --language zh_CN --report "${CMAKE_BINARY_DIR}/numbered-editor/$<CONFIG>/report.json")
+set_tests_properties(SingLiltNumberedEditor PROPERTIES LABELS "ci" TIMEOUT 60 RUN_SERIAL TRUE
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QPA_FONTDIR=$ENV{WINDIR}/Fonts;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QOffscreenIntegrationPlugin>")
+add_test(NAME SingLiltNumberedReview COMMAND SingLilt --numbered-review-check --audio-backend system
+    --diagnostic-no-audio --language zh_CN --report "${CMAKE_BINARY_DIR}/numbered-review/$<CONFIG>/report.json")
+set_tests_properties(SingLiltNumberedReview PROPERTIES LABELS "ci" TIMEOUT 120 RUN_SERIAL TRUE
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QPA_FONTDIR=$ENV{WINDIR}/Fonts;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QOffscreenIntegrationPlugin>")

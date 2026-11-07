@@ -135,6 +135,8 @@ void MainWindow::chooseGmSoundFont()
 }
 AccompanimentPlan MainWindow::activeAccompanimentPlan() const
 {
+    if (project_.numberedComposition)
+        return compositionPlaybackPlan(project_.score, *project_.numberedComposition);
     if (project_.staffPerformance)
         return buildStaffPerformancePlan(project_.score, timeline_, *project_.staffPerformance);
     const auto &arrangement = auditionArrangement_ ? auditionArrangement_ : project_.accompaniment;
@@ -146,6 +148,11 @@ AccompanimentPlan MainWindow::activeAccompanimentPlan() const
 }
 void MainWindow::generatePracticeAccompaniment()
 {
+    if (project_.numberedComposition)
+    {
+        setStatus("ui.editor.shared_sound");
+        return;
+    }
     if (project_.staffPerformance)
     {
         setStatus("ui.staff.original_parts");
@@ -308,11 +315,11 @@ void MainWindow::refreshPracticeControls()
     bindText(accompanimentEnabled_,
              project_.staffPerformance ? "ui.staff.other_parts" : "ui.accompaniment.accompaniment_enabled");
     if (auto *generate = findChild<QPushButton *>("generateAccompaniment"))
-        generate->setEnabled(!project_.staffPerformance);
+        generate->setEnabled(!project_.staffPerformance && !project_.numberedComposition);
     if (auto *generate = findChild<QPushButton *>("quickGenerateAccompaniment"))
-        generate->setEnabled(!project_.staffPerformance);
+        generate->setEnabled(!project_.staffPerformance && !project_.numberedComposition);
     if (auto *action = findChild<QAction *>("menuGenerateAccompaniment"))
-        action->setEnabled(!project_.staffPerformance);
+        action->setEnabled(!project_.staffPerformance && !project_.numberedComposition);
     accompanimentState_->setText(trText(project_.staffPerformance ? "ui.staff.original_parts"
                                         : stale                   ? "ui.accompaniment.stale_confirmed"
                                         : auditionArrangement_    ? "ui.accompaniment.auditioning"
