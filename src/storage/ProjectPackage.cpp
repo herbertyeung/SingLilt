@@ -231,7 +231,8 @@ Project loadProjectPackage(const QString &path)
     QJsonParseError error;
     auto manifest = QJsonDocument::fromJson(file.read(length), &error).object();
     const int schema = manifest.value("schemaVersion").toInt();
-    require(error.error == QJsonParseError::NoError && (schema == 4 || schema == 5 || schema == 6) &&
+    require(error.error == QJsonParseError::NoError &&
+                (schema == 4 || schema == 5 || schema == 6 || schema == 7) &&
                 manifest.value("schemaVersion").toDouble() == schema &&
                 manifest.value("imageAsset").toString() == "asset:image" && manifest.value("resources").isArray(),
             "messages.package.invalid_container");
@@ -269,7 +270,7 @@ Project loadProjectPackage(const QString &path)
     require(names.contains("image") && totalSize == file.size(), "messages.package.invalid_container");
     const auto pageMetadata = manifest.value("staffPages").toArray();
     QMap<QString, bool> referencedPageRoles;
-    if (schema >= 5)
+    if (schema == 5 || schema == 6)
     {
         require(manifest.value("staffPages").isArray() && !pageMetadata.isEmpty() && pageMetadata.size() <= 32,
                 "messages.pages.invalid_project");

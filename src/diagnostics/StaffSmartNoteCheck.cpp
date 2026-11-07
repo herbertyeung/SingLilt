@@ -970,6 +970,12 @@ void runStaffSmartNoteCheck(MainWindow &window, const QCommandLineParser &args, 
                 QObject::connect(&switchDialogs, &QTimer::timeout, &window,
                                  [&]
                                  {
+                                     auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+                                     if (dialog && dialog->objectName() == "newScoreDialog")
+                                     {
+                                         dialog->accept();
+                                         return;
+                                     }
                                      auto *message =
                                          qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
                                      if (!message)

@@ -8,6 +8,9 @@
 #include "AccompanimentPanel.h"
 #include "ClassroomDialog.h"
 #include "NotationRenderer.h"
+#include "NumberedEditorToolbar.h"
+#include "PianoKeyboard.h"
+#include "WorkspaceHeader.h"
 #include "PracticeScore.h"
 #include "RecognitionPreviewDialog.h"
 #include "ScoreView.h"
@@ -39,6 +42,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSettings>
+#include <QScrollBar>
 #include <QShortcut>
 #include <QSignalBlocker>
 #include <QSlider>
@@ -256,6 +260,17 @@ void MainWindow::retranslateUi()
     refreshRecentProjects();
     if (accompanimentPanel_)
         accompanimentPanel_->retranslateUi();
+    if (editorToolbar_)
+        editorToolbar_->retranslate();
+    if (workspaceHeader_)
+        workspaceHeader_->retranslate();
+    if (pianoKeyboard_)
+        pianoKeyboard_->retranslate();
+    if (editorInspectorTabs_)
+    {
+        editorInspectorTabs_->setTabText(0, trText("ui.editor.properties"));
+        editorInspectorTabs_->setTabText(1, trText("ui.editor.notes"));
+    }
     refreshStaffPageControls();
 }
 void MainWindow::changeEvent(QEvent *event)
@@ -474,7 +489,7 @@ MainWindow::~MainWindow()
     player_.stop();
     watcher_.waitForFinished();
 }
-void MainWindow::setProject(Project project, bool modified)
+void MainWindow::setProject(Project project, bool modified, std::optional<NumberedScoreLayout> preparedLayout)
 {
     if (staffRecoveryPending_)
     {
@@ -538,6 +553,11 @@ void MainWindow::setProject(Project project, bool modified)
     }
     loading_ = true;
     project_ = std::move(project);
+    activeNumberedVoice_ = project_.numberedComposition ? project_.numberedComposition->voices.front().id : 1;
+    if (project_.numberedComposition)
+        project_.score.notes = project_.numberedComposition->voices.front().notes;
+    inputDynamic_ = 0;
+    inputAccent_ = inputStaccato_ = false;
     projectPath_.clear();
     debugText_.clear();
     materialUndo_.clear();
@@ -545,6 +565,9 @@ void MainWindow::setProject(Project project, bool modified)
     dirty_ = modified;
     selected_ = -1;
     selectedStaffNote_ = -1;
+    numberedInputTick_ = 0;
+    inputDuration_ = TicksPerQuarter;
+    inputOctave_ = inputAccidental_ = 0;
     playingNote_ = -1;
     playingVerse_ = -1;
     loopStart_ = loopEnd_ = 0;
@@ -575,32 +598,49 @@ void MainWindow::setProject(Project project, bool modified)
     verseView_->setCurrentIndex(verseView_->findData(0));
     refreshPracticeControls();
     loading_ = false;
-    rebuild(false);
+    if (preparedLayout)
+        numberedLayout_ = std::move(*preparedLayout);
+    rebuild(false, !preparedLayout.has_value());
     if (project_.staffImagePlayback)
         staffScoreTabs_->setCurrentIndex(0);
     else if (!project_.staffPages.empty() && !project_.staffPages.front().sourceImage.isNull())
         staffScoreTabs_->setCurrentIndex(1);
     restoreProjectPractice();
-    displayedScoreView()->fitWidth();
+    view_->fitWidth();
+    staffSourceView_->fitWidth();
     if (!project_.score.notes.empty())
         selectNote(0, false);
-    QTimer::singleShot(0, view_, [this] { displayedScoreView()->fitWidth(); });
+    QTimer::singleShot(0, view_,
+                       [this]
+                       {
+                           displayedScoreView()->refitIfAutomatic();
+                           if (project_.score.editorMinimumBars > 0 && view_->isFittingWidth())
+                               view_->verticalScrollBar()->setValue(view_->verticalScrollBar()->minimum());
+                       });
     refreshNotationControls();
     refreshProjectIdentity();
     refreshReviewStatus();
     refreshStaffPageControls();
     updatePlayback();
 }
-void MainWindow::rebuild(bool preserve)
+void MainWindow::rebuild(bool preserve, bool renderNotation)
 {
     auto pos = preserve ? practicePositionTick() : 0;
     bool wasPlaying = preserve && player_.isPlaying();
     player_.pause();
-    if (project_.generatedNotation && !project_.staffImagePlayback && !project_.score.notes.empty())
+    try
     {
-        try
+
+        if (renderNotation)
+            numberedLayout_ = {};
+        if (renderNotation && project_.generatedNotation && !project_.staffImagePlayback &&
+            (!project_.score.notes.empty() ||
+             (!project_.staffPerformance && project_.notationStyle == NotationStyle::Numbered)))
         {
-            if (project_.staffPerformance)
+            if (project_.numberedComposition)
+                project_.image = renderNumberedComposition(project_.score, *project_.numberedComposition,
+                                                           activeNumberedVoice_, numberedLayout_);
+            else if (project_.staffPerformance)
             {
                 if (!project_.staffPages.empty())
                 {
@@ -622,14 +662,13 @@ void MainWindow::rebuild(bool preserve)
                 project_.image = renderStaffScore(
                     project_.score, {project_.staffBassClef, project_.staffKeyFifths, project_.staffMinor});
             else
-                project_.image = renderNumberedScore(project_.score);
-        }
-        catch (const std::exception &error)
-        {
-            setStatusMessage(QString::fromUtf8(error.what()));
-        }
+                project_.image = renderNumberedScore(
+                    project_.score, project_.score.editorMinimumBars > 0 ? &numberedLayout_ : nullptr);
     }
-    timeline_ = buildTimeline(project_.score);
+    const auto playbackScore = project_.numberedComposition
+                                   ? compositionPlaybackScore(project_.score, *project_.numberedComposition)
+                                   : project_.score;
+    timeline_ = playbackScore.notes.empty() ? Timeline{} : buildTimeline(playbackScore);
     loopEnd_ = std::min(loopEnd_, timeline_.durationTicks);
     loopStart_ = std::min(loopStart_, timeline_.durationTicks);
     if (loopStart_ >= loopEnd_)
@@ -643,6 +682,7 @@ void MainWindow::rebuild(bool preserve)
     refreshProjectIdentity();
     view_->setScore(project_.image, project_.score, 0, project_.staffImagePlayback);
     view_->setStaffPerformance(project_.staffPerformance ? &*project_.staffPerformance : nullptr);
+    refreshNumberedEditor();
     refreshStaffAnchorEditing();
     refreshStaffPageControls();
     if (!project_.staffPages.empty())
@@ -661,7 +701,13 @@ void MainWindow::rebuild(bool preserve)
         settings.chordProgram = project_.staffPerformance->primaryProgram;
         settings.bassProgram = project_.staffPerformance->otherProgram;
     }
-    bool ok = player_.load(project_.score, timeline_, activeAccompanimentPlan(), settings);
+    if (project_.numberedComposition)
+    {
+        settings = {};
+        settings.originalStaff = true;
+        settings.chordProgram = settings.bassProgram = programForVerse(project_.score, 0);
+    }
+    bool ok = player_.load(playbackScore, timeline_, activeAccompanimentPlan(), settings);
     auto mix = auditionArrangement_ ? auditionMix_ : project_.practiceMix;
     if (!project_.staffPerformance &&
         (!arrangement || arrangement->melodyFingerprint != accompanimentFingerprint(project_.score)))
@@ -671,8 +717,8 @@ void MainWindow::rebuild(bool preserve)
     refreshPracticeControls();
     const bool tempoPending =
         project_.staffPerformance && project_.processing.value("tempoNeedsConfirmation").toBool();
-    play_->setEnabled(ok && !project_.score.notes.empty() && !tempoPending);
-    if (!ok)
+    play_->setEnabled(ok && !playbackScore.notes.empty() && !tempoPending);
+    if (!ok && !playbackScore.notes.empty())
         setStatusMessage(player_.errorString());
     player_.seek(pos);
     playIntent_ = wasPlaying && ok && !tempoPending;
@@ -681,12 +727,22 @@ void MainWindow::rebuild(bool preserve)
         playIntent_ = false;
         setStatusMessage(player_.errorString());
     }
+    }
+    catch (const std::exception &error)
+    {
+        playIntent_ = playbackActive_ = false;
+        play_->setEnabled(false);
+        view_->setCurrent(-1, false);
+        setStatusMessage(QString::fromUtf8(error.what()));
+    }
 }
 void MainWindow::selectNote(int index, bool seek)
 {
     if (index < 0 || index >= int(project_.score.notes.size()))
     {
         selected_ = -1;
+        view_->setCurrent(-1, false);
+        refreshNumberedEditor();
         if (project_.staffPerformance && !project_.staffImagePlayback &&
             project_.notationStyle == NotationStyle::Numbered)
         {
@@ -706,7 +762,7 @@ void MainWindow::selectNote(int index, bool seek)
     if (seek && !project_.staffPages.empty() &&
         project_.score.notes[std::size_t(index)].pageIndex != staffPageIndex_)
         setStaffPage(project_.score.notes[std::size_t(index)].pageIndex);
-    if (selected_ != index && !loadingNote_ && !resolveNoteDraft())
+    if ((selected_ != index || seek) && !loadingNote_ && !resolveNoteDraft())
     {
         view_->setCurrent(selected_, false);
         return;
@@ -726,6 +782,7 @@ void MainWindow::selectNote(int index, bool seek)
     lyricBEdit_->setDisabled(sharedLyric_->isChecked());
     tie_->setChecked(n.tieToNext);
     view_->setCurrent(index, false);
+    refreshNumberedEditor();
     const bool editable = !project_.staffPerformance ||
                           (!project_.staffImagePlayback && project_.notationStyle == NotationStyle::Numbered);
     for (QWidget *field : std::initializer_list<QWidget *>{degree_, octave_, accidental_, duration_, noteKey_,
@@ -738,6 +795,8 @@ void MainWindow::selectNote(int index, bool seek)
         remove->setEnabled(!project_.staffPerformance);
         remove->setToolTip(project_.staffPerformance && editable ? trText("ui.staff.numbered_remove_tip") : QString());
     }
+    if (project_.numberedComposition)
+        noteKey_->setEnabled(false);
     if (seek)
     {
         const int verse = verseView_->currentData().toInt();
@@ -796,6 +855,13 @@ void MainWindow::updateNote()
     n.lyric = legacyLines.join('\n').toStdString();
     n.tieToNext = tie_->isChecked();
     n.confidence = 1;
+    if (project_.numberedComposition)
+    {
+        auto score = project_.score;
+        score.notes[std::size_t(selected_)] = std::move(n);
+        commitNumberedScore(std::move(score), "ui.product.update_note", selected_, false);
+        return;
+    }
     if (numberedPerformance)
     {
         try
@@ -1135,6 +1201,11 @@ void MainWindow::startCloudRecognition()
 }
 void MainWindow::editRepeats()
 {
+    if (project_.numberedComposition)
+    {
+        setStatus("ui.editor.structure_unavailable");
+        return;
+    }
     if (project_.staffPerformance)
     {
         setStatus("ui.staff.guide_only");

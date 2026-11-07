@@ -14,6 +14,7 @@
 #include <QGraphicsPathItem>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsRectItem>
+#include <QGraphicsSimpleTextItem>
 #include <QJsonObject>
 #include <QKeyEvent>
 #include <QMenu>
@@ -22,6 +23,8 @@
 #include <QRawFont>
 #include <QScrollBar>
 #include <QWheelEvent>
+#include <QResizeEvent>
+#include <QTimer>
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -161,6 +164,8 @@ void ScoreView::changeEvent(QEvent *event)
     QGraphicsView::changeEvent(event);
     if (event->type() == QEvent::PaletteChange)
         setBackgroundBrush(palette().color(QPalette::Midlight));
+    if (event->type() == QEvent::LanguageChange)
+        setNumberedEditor(numberedLayout_, numberedTick_, numberedEditing_, numberedVoice_, numberedAppend_);
 }
 
 bool ScoreView::acceptsAnchor(const SourceRect &anchor, bool hasImageAnchor) const
@@ -181,6 +186,7 @@ void ScoreView::setScore(const QImage &image, const Score &score, int pageIndex,
     requireImageAnchor_ = requireImageAnchor;
     score_ = score;
     scene_.clear();
+    numberedInputLayer_ = nullptr;
     staffVisualLayer_ = nullptr;
     staffAnchorPreview_ = nullptr;
     staffVisualEdits_ = {};
@@ -231,14 +237,111 @@ void ScoreView::setCurrent(int index, bool follow)
         ensureVisible(cursor_, 65, 110);
     current_ = index;
 }
+void ScoreView::setNumberedEditor(const NumberedScoreLayout &layout, std::int64_t tick, bool enabled, int voice,
+                                  bool append)
+{
+    delete numberedInputLayer_;
+    numberedInputLayer_ = nullptr;
+    numberedLayout_ = layout;
+    numberedEditing_ = enabled;
+    numberedTick_ = tick;
+    numberedVoice_ = voice;
+    numberedAppend_ = append;
+    if (!enabled)
+    {
+        viewport()->update();
+        return;
+    }
+    numberedInputLayer_ = visualGroup(scene_, 5);
+    QFont font("Microsoft YaHei UI");
+    font.setPixelSize(20);
+    const QColor accent("#168577");
+    for (const auto &label : layout.voiceLabels)
+        if (label.voiceId == voice)
+        {
+            auto *indicator = scene_.addRect(label.bounds, QPen(accent, 1), QColor(22, 133, 119, 25));
+            numberedInputLayer_->addToGroup(indicator);
+        }
+    if (append)
+    {
+        auto *cursor = scene_.addRect(QRectF(layout.addBars.left() + 8, layout.addBars.top() + 6, 28, 34),
+                                      QPen(accent, 2), QColor(22, 133, 119, 25));
+        cursor->setData(0, "numberedAppendCursor");
+        cursor->setToolTip(trText("ui.editor.append_cursor"));
+        numberedInputLayer_->addToGroup(cursor);
+    }
+    for (const auto &slot : layout.slots)
+    {
+        const bool selected = slot.tick == tick && (slot.voiceId == 0 || slot.voiceId == voice);
+        auto *box = scene_.addRect(slot.bounds, QPen(selected ? accent : QColor("#CADDD9"), selected ? 2 : 1),
+                                   QColor(selected ? "#DDF5EE" : "#F4FAF8"));
+        numberedInputLayer_->addToGroup(box);
+        auto *text = scene_.addSimpleText("··", font);
+        text->setBrush(accent);
+        text->setPos(slot.bounds.center() - text->boundingRect().center());
+        numberedInputLayer_->addToGroup(text);
+    }
+    auto *add = scene_.addRect(layout.addBars, QPen(accent, 1, Qt::DashLine), QColor("#F4FAF8"));
+    numberedInputLayer_->addToGroup(add);
+    auto *text = scene_.addSimpleText(trText("ui.editor.add_bars"), font);
+    text->setBrush(accent);
+    text->setPos(layout.addBars.center() - text->boundingRect().center());
+    numberedInputLayer_->addToGroup(text);
+    viewport()->update();
+}
+
 void ScoreView::fitWidth()
 {
-    cancelAnchorGesture();
+    fitWidth_ = true;
     if (scene_.sceneRect().width() > 0)
     {
-        resetTransform();
-        double scaleValue = std::max(0.15, (viewport()->width() - 24) / scene_.sceneRect().width());
-        scale(scaleValue, scaleValue);
+        applyZoom((viewport()->width() - 24) / scene_.sceneRect().width(), viewport()->rect().center());
+    }
+}
+
+void ScoreView::refitIfAutomatic()
+{
+    if (fitWidth_)
+        fitWidth();
+}
+
+void ScoreView::setZoom(double factor)
+{
+    if (!std::isfinite(factor))
+        return;
+    fitWidth_ = false;
+    applyZoom(factor, viewport()->rect().center());
+}
+
+void ScoreView::applyZoom(double factor, const QPoint &anchor)
+{
+    cancelAnchorGesture();
+    factor = std::clamp(factor, MinimumZoom, MaximumZoom);
+    const auto sceneAnchor = mapToScene(anchor);
+    const auto previousAnchor = transformationAnchor();
+    setTransformationAnchor(NoAnchor);
+    QTransform transform;
+    transform.scale(factor, factor);
+    setTransform(transform);
+    centerOn(mapToScene(viewport()->rect().center()) + sceneAnchor - mapToScene(anchor));
+    setTransformationAnchor(previousAnchor);
+    if (zoomChanged)
+        zoomChanged(zoom());
+}
+
+void ScoreView::resizeEvent(QResizeEvent *event)
+{
+    QGraphicsView::resizeEvent(event);
+    if (fitWidth_ && !refitPending_)
+    {
+        // Let the viewport settle after scrollbars and side panels change size.
+        refitPending_ = true;
+        QTimer::singleShot(0, this,
+                           [this]
+                           {
+                               refitPending_ = false;
+                               refitIfAutomatic();
+                           });
     }
 }
 void ScoreView::showUncertain(bool enabled)
@@ -476,6 +579,34 @@ void ScoreView::setStaffCurrent(std::int64_t sourceTick, bool playing, bool prim
 }
 void ScoreView::mousePressEvent(QMouseEvent *event)
 {
+    if (numberedEditing_ && event->button() == Qt::LeftButton)
+    {
+        const auto point = mapToScene(event->pos());
+        setFocus(Qt::MouseFocusReason);
+        if (numberedLayout_.addBars.contains(point) && numberedBarsRequested)
+        {
+            numberedBarsRequested();
+            event->accept();
+            return;
+        }
+        for (const auto &note : numberedLayout_.notes)
+            if (note.bounds.adjusted(-5, -8, 5, 8).contains(point) && numberedVoiceNoteSelected)
+            {
+                numberedVoiceNoteSelected(note.voiceId, note.noteIndex);
+                event->accept();
+                return;
+            }
+        for (const auto &slot : numberedLayout_.slots)
+            if (slot.bounds.contains(point) && numberedInputSelected)
+            {
+                if (slot.voiceId && numberedVoiceInputSelected)
+                    numberedVoiceInputSelected(slot.voiceId, slot.tick);
+                else
+                    numberedInputSelected(slot.tick);
+                event->accept();
+                return;
+            }
+    }
     if (event->button() == Qt::LeftButton)
     {
         auto pos = mapToScene(event->pos());
@@ -597,6 +728,33 @@ void ScoreView::mouseReleaseEvent(QMouseEvent *event)
 }
 void ScoreView::keyPressEvent(QKeyEvent *event)
 {
+    if ((event->modifiers() & Qt::ControlModifier) && !(event->modifiers() & (Qt::AltModifier | Qt::MetaModifier)))
+    {
+        switch (event->key())
+        {
+        case Qt::Key_Plus:
+        case Qt::Key_Equal:
+            setZoom(zoom() * 1.15);
+            break;
+        case Qt::Key_Minus:
+            setZoom(zoom() / 1.15);
+            break;
+        case Qt::Key_0:
+            setZoom(1);
+            break;
+        default:
+            QGraphicsView::keyPressEvent(event);
+            return;
+        }
+        event->accept();
+        return;
+    }
+    if (numberedEditing_ && event->modifiers() == Qt::NoModifier && numberedKeyPressed &&
+        numberedKeyPressed(event->key()))
+    {
+        event->accept();
+        return;
+    }
     if (event->key() == Qt::Key_Escape && anchorGesture_)
     {
         cancelAnchorGesture();
@@ -706,10 +864,13 @@ void ScoreView::wheelEvent(QWheelEvent *event)
         cancelAnchorGesture();
     if (event->modifiers() & Qt::ControlModifier)
     {
-        double f = event->angleDelta().y() > 0 ? 1.15 : 1 / 1.15;
-        double s = transform().m11() * f;
-        if (s >= .15 && s <= 5)
-            scale(f, f);
+        const int delta = event->angleDelta().y() != 0 ? event->angleDelta().y() : event->pixelDelta().y();
+        if (delta != 0)
+        {
+            const double steps = delta / (event->angleDelta().y() != 0 ? 120.0 : 60.0);
+            fitWidth_ = false;
+            applyZoom(zoom() * std::pow(1.15, steps), event->position().toPoint());
+        }
         event->accept();
         return;
     }

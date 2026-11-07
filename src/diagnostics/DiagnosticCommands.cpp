@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: MIT
 
 #include "DiagnosticCommands.h"
+#include "NumberedEditorCheck.h"
+#include "NumberedReviewCheck.h"
 #include "LanguagePackCheck.h"
 #include "NativeStaffProcessCheck.h"
 #include "ThemeCheck.h"
@@ -65,7 +67,8 @@ bool configureDiagnosticSettings(const QStringList &rawArguments)
 {
     const auto hasOption = [&rawArguments](const QString &name)
     { return hasCommandLineOption(rawArguments, name); };
-    if (hasOption("--theme-check") || hasOption("--language-pack-check") || hasOption("--smoke") ||
+    if (hasOption("--numbered-review-check") || hasOption("--numbered-editor-check") ||
+        hasOption("--theme-check") || hasOption("--language-pack-check") || hasOption("--smoke") ||
         hasOption("--ui-localization-check") || hasOption("--async-recognition-check") ||
         hasOption("--accompaniment-check") || hasOption("--accompaniment-preview-check") ||
         hasOption("--audio-cancellation-check") || hasOption("--whole-song-check") ||
@@ -223,6 +226,10 @@ void runWindowDiagnostics(MainWindow &window, LanguageManager &languages, ThemeM
         runStaffRecognitionCheck(window, args, app);
     else if (args.isSet("menu-icons-check"))
         runMenuIconsCheck(window, languages, args, app);
+    else if (args.isSet("numbered-review-check"))
+        runNumberedReviewCheck(window, args, app);
+    else if (args.isSet("numbered-editor-check"))
+        runNumberedEditorCheck(window, args, app);
     else if (args.isSet("product-workspace-check"))
         runProductWorkspaceCheck(window, languages, args, app);
     else if (args.isSet("settings-product-check"))

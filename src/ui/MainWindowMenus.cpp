@@ -260,6 +260,14 @@ bool MainWindow::applyOptions(const AppSettings &s, const OptionsContext &c)
             (c.playbackSource == 3 && project_.audioSource->instrumentalPath.empty()))
             throw std::runtime_error(trText("messages.options.source_missing").toStdString());
     }
+    if (!c.classroom && project_.numberedComposition)
+    {
+        auto candidate = c.score;
+        auto composition = *project_.numberedComposition;
+        NumberedScoreLayout layout;
+        renderNumberedComposition(candidate, composition, activeNumberedVoice_, layout);
+        compositionPlaybackPlan(candidate, composition);
+    }
     const auto old = settings_;
     const bool staffProgramsChanged = !c.classroom && project_.staffPerformance &&
                                       (c.primaryStaffProgram != project_.staffPerformance->primaryProgram ||

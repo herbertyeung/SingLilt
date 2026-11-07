@@ -5,6 +5,7 @@
 
 #include "AccompanimentPanel.h"
 #include "MainWindow.h"
+#include "WorkspaceHeader.h"
 #include "MenuIcons.h"
 #include "ScoreView.h"
 #include "StaffNoteEditor.h"
@@ -81,11 +82,17 @@ MainWindow::MaterialState MainWindow::materialState() const
     if (project_.staffPerformance)
         state.staffProject = project_;
     state.selectedStaffNote = selectedStaffNote_;
+    state.numberedComposition = project_.numberedComposition;
+    state.activeVoice = activeNumberedVoice_;
     return state;
 }
 void MainWindow::commitMaterialEdit(const MaterialState &before, const char *key, bool anchorOnly)
 {
-    const auto after = materialState();
+    if (project_.numberedComposition)
+        numberedVoice(*project_.numberedComposition, activeNumberedVoice_).notes = project_.score.notes;
+    auto after = materialState();
+    if (before.numberedScore)
+        after.numberedScore = project_.score;
     materialUndo_.push(new MaterialEdit(
         trText(key),
         [this, before, anchorOnly]
@@ -157,6 +164,12 @@ void MainWindow::restoreMaterialState(const MaterialState &state)
                 restored.processing.remove(key);
         project_ = std::move(restored);
     }
+    project_.numberedComposition = state.numberedComposition;
+    if (activeNumberedVoice_ != state.activeVoice)
+        numberedInputTick_ = 0;
+    activeNumberedVoice_ = state.activeVoice;
+    if (state.numberedScore)
+        project_.score = *state.numberedScore;
     project_.score.notes = state.notes;
     project_.score.repeats = state.repeats;
     project_.warnings = state.warnings;
@@ -249,7 +262,15 @@ void MainWindow::removeNote()
     }
     if (selected_ < 0 || !resolveNoteDraft())
         return;
-    if (project_.score.notes.size() == 1)
+    if (project_.numberedComposition)
+    {
+        auto score = project_.score;
+        score.notes.erase(score.notes.begin() + selected_);
+        const int next = std::min(selected_, int(score.notes.size()) - 1);
+        commitNumberedScore(std::move(score), "ui.product.remove_note", next, false);
+        return;
+    }
+    if (project_.score.notes.size() == 1 && !numberedEditorActive())
     {
         showError(QStringLiteral("ui.error.last_note"));
         return;
@@ -288,6 +309,8 @@ void MainWindow::removeNote()
 }
 void MainWindow::insertNote(QPointF position)
 {
+    if (numberedEditorActive())
+        return;
     if (project_.staffPerformance)
     {
         setStatus("ui.staff.guide_only");
@@ -342,11 +365,12 @@ void MainWindow::setCorrectionMode(bool correction)
     if (correction && project_.staffImagePlayback)
         setStatus("ui.original_playback.drag_help");
     inspectorScroll_->setVisible(correction || (project_.staffImagePlayback && selectedStaffNote_ >= 0));
+    refreshNumberedEditor();
     if (correction)
         correctionModeButton_->setChecked(true);
     else
         practiceModeButton_->setChecked(true);
-    QTimer::singleShot(0, view_, [this] { view_->fitWidth(); });
+    QTimer::singleShot(0, view_, [this] { displayedScoreView()->refitIfAutomatic(); });
 }
 void MainWindow::refreshReviewStatus()
 {
@@ -386,12 +410,8 @@ void MainWindow::refreshProjectIdentity()
     dirty_ = nonMaterialDirty_ || !materialUndo_.isClean();
     const QString name =
         projectPath_.isEmpty() ? trText("ui.product.unsaved_project") : QFileInfo(projectPath_).fileName();
-    const QString identity = name + (dirty_ ? QStringLiteral(" *") : QString());
-    if (projectIdentity_)
-    {
-        projectIdentity_->setText(identity);
-        projectIdentity_->setToolTip(projectPath_.isEmpty() ? trText("ui.product.unsaved_project") : projectPath_);
-    }
+    if (workspaceHeader_)
+        workspaceHeader_->setDocument(QString::fromStdString(project_.score.title), projectPath_, dirty_);
     setWindowTitle(trText("ui.window.title").arg(QApplication::applicationVersion()) + " — " + name + "[*]");
     setWindowModified(dirty_);
     if (undoAction_)
@@ -451,6 +471,11 @@ void MainWindow::refreshRecentProjects()
 
 void MainWindow::editLyrics()
 {
+    if (project_.numberedComposition)
+    {
+        editNumberedLyrics();
+        return;
+    }
     if (project_.score.notes.empty() || busy_ || audioLoading_ || notePreviewLoading_ || audioTask_.isRunning() ||
         !resolveNoteDraft())
         return;
