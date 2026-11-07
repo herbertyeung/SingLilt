@@ -105,6 +105,8 @@ void MainWindow::createMenus()
         ->setShortcut(QKeySequence::Save);
     action(file, "ui.menu.save_as", "menuSaveAs", MenuIcon::SaveAs, [this] { save(true); })
         ->setShortcut(QKeySequence::SaveAs);
+    action(file, "ui.editor.recover_draft", "menuRecoverNumberedDraft", MenuIcon::OpenProject,
+           [this] { recoverNumberedDraft(); });
     action(file, "ui.menu.export_wave", "menuExportWave", MenuIcon::ExportAudio, [this] { exportWaveFile(); });
     file->addSeparator();
     action(file, "ui.menu.exit", "menuExit", MenuIcon::Exit, [this] { close(); });
@@ -252,7 +254,8 @@ bool MainWindow::applyOptions(const AppSettings &s, const OptionsContext &c)
     validateAppSettings(s, &settings_);
     if (busy_ || audioLoading_ || notePreviewLoading_)
         throw std::runtime_error(trText("messages.options.busy").toStdString());
-    if (!c.classroom && !c.score.notes.empty() && !buildTimeline(c.score, c.transpose).valid())
+    if (!c.classroom && !project_.numberedComposition && !c.score.notes.empty() &&
+        !buildTimeline(c.score, c.transpose).valid())
         throw std::runtime_error(trText("messages.options.score_invalid").toStdString());
     if (!c.classroom && c.playbackSource > 0)
     {
@@ -264,6 +267,7 @@ bool MainWindow::applyOptions(const AppSettings &s, const OptionsContext &c)
     {
         auto candidate = c.score;
         auto composition = *project_.numberedComposition;
+        validateNumberedComposition(candidate, composition, c.transpose);
         NumberedScoreLayout layout;
         renderNumberedComposition(candidate, composition, activeNumberedVoice_, layout);
         compositionPlaybackPlan(candidate, composition);

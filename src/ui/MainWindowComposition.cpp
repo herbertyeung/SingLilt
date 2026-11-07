@@ -32,6 +32,11 @@ bool MainWindow::commitNumberedComposition(Score score, NumberedComposition comp
         if (project_.numberedComposition && score == project_.score &&
             composition == *project_.numberedComposition)
             return true;
+        if (!composition.structure.measures.empty())
+        {
+            compositionTimeline(score, composition);
+            compositionPlaybackPlan(score, composition);
+        }
         NumberedScoreLayout layout;
         auto image = renderNumberedComposition(score, composition, active, layout);
         auto before = materialState();
@@ -76,7 +81,7 @@ bool MainWindow::selectNumberedVoice(int id)
     {
         auto guide = project_.score;
         guide.notes = numberedVoice(*project_.numberedComposition, id).notes;
-        auto timeline = buildTimeline(compositionPlaybackScore(guide, *project_.numberedComposition));
+        auto timeline = compositionTimeline(guide, *project_.numberedComposition);
         project_.score = std::move(guide);
         timeline_ = std::move(timeline);
         activeNumberedVoice_ = id;

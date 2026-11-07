@@ -85,6 +85,73 @@ singlilt::Note note(int degree, int ticks = singlilt::TicksPerQuarter)
     return result;
 }
 
+void numberedMeasureRests()
+{
+    using namespace singlilt;
+    Score score;
+    score.editorMinimumBars = 4;
+    auto held = note(1, 4800);
+    held.lyric = "held";
+    held.accent = true;
+    held.dynamicLevel = 3;
+    held.tieToNext = true;
+    score.notes = {held, note(1)};
+    check(replaceNumberedBarWithRest(score, 1), "Replace inside a sustained note");
+    check(score.notes.size() == 4 && score.notes[0].durationTicks == 1920 && score.notes[1].degree == 0 &&
+              score.notes[1].durationTicks == 1920 && score.notes[2].durationTicks == 960 &&
+              score.notes[3].durationTicks == 480,
+          "Rest replacement keeps absolute suffix time");
+    check(!score.notes[0].tieToNext && score.notes[2].tieToNext && score.notes[0].lyric == "held" &&
+              score.notes[2].lyric.empty() && !score.notes[2].accent && score.notes[2].dynamicLevel == 0,
+          "Split attacks and tie boundaries have explicit semantics");
+    NumberedComposition composition{{{1, "Voice", score.notes}}, 2};
+    const auto sounding = compositionPlaybackPlan(score, composition);
+    check(sounding.events.size() == 2 && sounding.events[0].durationTicks == 1920 &&
+              sounding.events[1].startTick == 3840 && sounding.events[1].durationTicks == 1440,
+          "No sounding event bridges the replaced interval");
+    score.notes = {note(1, 1920), note(1, 1920), note(3)};
+    score.notes[0].tieToNext = true;
+    score.notes[1].dynamicLevel = 2;
+    const auto outside = score.notes.back();
+    check(replaceNumberedBarWithRest(score, 1) && !score.notes[0].tieToNext && score.notes[1].dynamicLevel == 2 &&
+              score.notes.back() == outside,
+          "Boundary rests retain future inherited dynamics and outside notes");
+    composition.voices[0].notes = score.notes;
+    const auto after = compositionPlaybackPlan(score, composition);
+    check(after.events.back().startTick == 3840 && after.events.back().velocity == 48,
+          "Post-rest inherited dynamics stay unchanged");
+    const auto once = score;
+    check(replaceNumberedBarWithRest(score, 1) && score == once, "Repeated rest replacement is a no-op");
+    score.notes.clear();
+    check(replaceNumberedBarWithRest(score, 3) && numberedDuration(score) == 7680 &&
+              score.notes.back().degree == 0,
+          "An empty voice pads up to the requested measure");
+    const auto padded = score;
+    check(!replaceNumberedBarWithRest(score, 4) && score == padded, "Out-of-range rest is atomic");
+    score.notes = {note(2)};
+    check(replaceNumberedBarWithRest(score, 0) && score.notes.size() == 1 && score.notes[0].durationTicks == 1920,
+          "Partial measure becomes a whole measure rest");
+    score.beatsPerBar = 64;
+    score.beatUnit = 1;
+    score.notes.clear();
+    check(replaceNumberedBarWithRest(score, 0) && score.notes[0].durationTicks == MaximumNoteDurationTicks,
+          "Wide meter duration stays exact before layout validation");
+    score = Score{};
+    score.editorMinimumBars = 4;
+    score.notes = {note(1), note(2), note(3), note(4), note(5)};
+    for (int i = 0; i < 4; ++i)
+        score.notes[std::size_t(i)].dynamicLevel = i + 2;
+    check(replaceNumberedBarWithRest(score, 0) && score.notes[0].dynamicLevel == 5,
+          "The last dynamic in the replaced interval wins");
+    composition.voices[0].notes = score.notes;
+    check(compositionPlaybackPlan(score, composition).events[0].velocity == 96,
+          "Multiple removed dynamics preserve the effective boundary velocity");
+    score.notes = {note(1, 4800), note(1)};
+    score.notes[0].staccato = true;
+    check(replaceNumberedBarWithRest(score, 1) && score.notes[0].staccato && !score.notes[2].staccato,
+          "The surviving onset keeps staccato but the restarted suffix does not duplicate it");
+}
+
 void numberedDeletionTies()
 {
     using namespace singlilt;
@@ -103,6 +170,105 @@ void numberedDeletionTies()
     score.notes[0].tieToNext = true;
     check(removeNumberedBar(score, 1) && !score.notes[0].tieToNext,
           "Do not invent a tie to an unrelated survivor when original successor was removed");
+}
+
+void structuredNumberedPerformance()
+{
+    using namespace singlilt;
+    Score score;
+    score.editorMinimumBars = 4;
+    score.bpm = 120;
+    auto first = note(1, 1920);
+    auto second = note(1, 1440);
+    auto ending = note(3, 1440);
+    auto tail = note(5, 1440);
+    tail.verseLyrics = {"A", "B"};
+    score.notes = {first, second, ending, tail};
+    NumberedComposition composition{{{1, "Upper", score.notes}, {2, "Lower", {note(4, 6240)}}}, 3};
+    composition.structure = {{{1}, {2, 3, 4, 60, 2}, {3}, {4}}, {{1, 3, 3, 2}}, 5};
+    const auto map = performedScoreMap(score, composition);
+    check(map.order.size() == 6 && map.order[5].measure == 3 && map.order[5].pass == 1,
+          "Second ending follows the last repeat pass");
+    auto timeline = compositionTimeline(score, composition);
+    near(timeline.durationSeconds(), 16, "Repeated mixed tempo duration");
+    near(timeline.secondsAtPosition(1920.5), 2 + .5 / 480, "Fractional position crosses tempo boundary");
+    near(timeline.positionAtSeconds(8.25), 4800 + 240, "Repeat restores opening tempo");
+    check(timeline.tickAtSeconds(timeline.secondsAtTick(6241)) == 6241 && timeline.events.back().lyric == "B",
+          "Roundtrip clock and second ending lyric");
+    check(std::any_of(timeline.metronomeBeats.begin(), timeline.metronomeBeats.end(),
+                      [](const auto &beat) { return beat.startTick == 3360 && beat.downbeat; }),
+          "Local meter defines downbeats");
+    const auto sound = compositionPlaybackPlan(score, composition);
+    check(sound.durationTicks == timeline.durationTicks &&
+              std::any_of(sound.events.begin(), sound.events.end(),
+                          [](const auto &event) { return event.startTick == 1920 && event.midiPitch == 62; }),
+          "Local key drives actual output");
+    check(std::any_of(sound.events.begin(), sound.events.end(), [](const auto &event)
+                      { return event.startTick == 0 && event.durationTicks == 4800 && event.midiPitch == 65; }),
+          "Sustain crosses a tempo and key boundary without retrigger");
+    auto invalid = composition;
+    invalid.structure.repeats.push_back({2, 4, 0, 2});
+    bool rejected = false;
+    try
+    {
+        performedScoreMap(score, invalid);
+    }
+    catch (const std::invalid_argument &)
+    {
+        rejected = true;
+    }
+    check(rejected, "Overlapping repeats are rejected");
+    rejected = false;
+    try
+    {
+        timeline.setTempoChanges({{1920, 60}, {1920, 90}});
+    }
+    catch (const std::invalid_argument &)
+    {
+        rejected = true;
+    }
+    check(rejected, "Conflicting tempo boundaries are rejected");
+    near(timeline.durationSeconds(), 16, "Invalid tempo edit preserves clock");
+    auto edited = composition;
+    auto metadata = score;
+    editCompositionMeasure(metadata, edited, 1, false);
+    check(edited.structure.measures[2].id == 2 && edited.structure.repeats == composition.structure.repeats,
+          "Insertion shifts time while keeping repeat references stable");
+    editCompositionMeasure(metadata, edited, 1, true);
+    check(numberedMeasures(metadata, edited)[1].bpm == 60 &&
+              performedScoreMap(metadata, edited).duration == map.duration,
+          "Deleting inserted measure restores time");
+    const auto before = edited;
+    rejected = false;
+    try
+    {
+        editCompositionMeasure(metadata, edited, 2, true);
+    }
+    catch (const std::invalid_argument &)
+    {
+        rejected = true;
+    }
+    check(rejected && edited == before, "Deleting an ending boundary is atomic");
+    auto high = note(7);
+    high.octave = 4;
+    score.tonic = 11;
+    score.notes = {high};
+    NumberedComposition localKey{{{1, "Upper", score.notes}}, 2};
+    localKey.structure = {{{1, 0, 0, 0, 0}}, {}, 2};
+    check(compositionPlaybackPlan(score, localKey).events.front().midiPitch == 119,
+          "An in-range local note is valid even when the global key would overflow");
+    score.tonic = 0;
+    localKey.structure.measures.front().tonic = 11;
+    rejected = false;
+    try
+    {
+        validateNumberedComposition(score, localKey);
+    }
+    catch (const std::invalid_argument &)
+    {
+        rejected = true;
+    }
+    check(rejected, "Local key may not overflow the MIDI range even if the global key is valid");
 }
 
 void numberedComposition()
@@ -1025,8 +1191,7 @@ void outputGainAndLimiter()
               std::abs(quiet[1] / quiet[0] + 0.5f) < 1e-6f,
           "+6 dB scales quiet samples without changing stereo balance");
     float loud[]{2.0f, -1.0f};
-    check(level.process(loud, loud + 1, 1, 2, true) &&
-              std::abs(loud[0] - OutputLevel::PeakCeiling) < 1e-6f &&
+    check(level.process(loud, loud + 1, 1, 2, true) && std::abs(loud[0] - OutputLevel::PeakCeiling) < 1e-6f &&
               std::abs(loud[1] / loud[0] + 0.5f) < 1e-6f,
           "Dense peaks are stereo-linked and stay below PCM saturation");
     float plain[]{0.1f, -0.2f};
@@ -1089,7 +1254,9 @@ int main()
         {"ties", ties},
         {"validation", validation},
         {"numbered editor structure", numberedEditing},
+        {"numbered whole-measure rests", numberedMeasureRests},
         {"numbered deletion tie regression", numberedDeletionTies},
+        {"structured numbered performance", structuredNumberedPerformance},
         {"numbered voices and sounding marks", numberedComposition},
         {"seek bounds", seekBounds},
         {"verse lyrics and legacy migration", verseLyricsAndMigration},

@@ -156,3 +156,7 @@ add_test(NAME SingLiltNumberedReview COMMAND SingLilt --numbered-review-check --
     --diagnostic-no-audio --language zh_CN --report "${CMAKE_BINARY_DIR}/numbered-review/$<CONFIG>/report.json")
 set_tests_properties(SingLiltNumberedReview PROPERTIES LABELS "ci" TIMEOUT 120 RUN_SERIAL TRUE
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QPA_FONTDIR=$ENV{WINDIR}/Fonts;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QOffscreenIntegrationPlugin>")
+add_test(NAME SingLiltNumberedRhythm COMMAND SingLilt --numbered-rhythm-check --audio-backend system
+    --diagnostic-no-audio --language zh_CN --report "${CMAKE_BINARY_DIR}/numbered-rhythm/$<CONFIG>/report.json")
+set_tests_properties(SingLiltNumberedRhythm PROPERTIES LABELS "ci" TIMEOUT 120 RUN_SERIAL TRUE
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QPA_FONTDIR=$ENV{WINDIR}/Fonts;QT_QPA_PLATFORM_PLUGIN_PATH=$<TARGET_FILE_DIR:Qt6::QOffscreenIntegrationPlugin>")

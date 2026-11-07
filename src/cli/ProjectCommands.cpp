@@ -421,7 +421,9 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
         const auto playbackScore = project.numberedComposition
                                        ? compositionPlaybackScore(project.score, *project.numberedComposition)
                                        : project.score;
-        const auto timeline = buildTimeline(playbackScore);
+        const auto timeline = project.numberedComposition
+                                  ? compositionTimeline(project.score, *project.numberedComposition)
+                                  : buildTimeline(playbackScore);
         if (project.staffPerformance && project.processing.value("tempoNeedsConfirmation").toBool())
             throw std::runtime_error(trText("messages.local_staff.tempo_needs_confirmation").toStdString());
         AccompanimentPlan plan;
@@ -507,9 +509,9 @@ std::optional<int> runProjectCommand(const QCommandLineParser &args)
                        : args.positionalArguments().isEmpty() ? makePracticeScore()
                                                               : loadProject(args.positionalArguments().first());
         configurePractice(project, args);
-        const auto timeline = buildTimeline(
-            project.numberedComposition ? compositionPlaybackScore(project.score, *project.numberedComposition)
-                                        : project.score);
+        const auto timeline = project.numberedComposition
+                                  ? compositionTimeline(project.score, *project.numberedComposition)
+                                  : buildTimeline(project.score);
         QJsonObject report{{"valid", timeline.valid()},
                            {"notes", int(project.score.notes.size())},
                            {"bpm", project.score.bpm},

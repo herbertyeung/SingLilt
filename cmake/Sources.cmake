@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MIT
 
 set(CORE_FILES
-    src/domain/NumberedComposition.h src/domain/NumberedComposition.cpp
+    src/domain/NumberedComposition.h src/domain/NumberedComposition.cpp src/domain/NumberedScoreStructure.cpp
     src/application/NumberedCompositionEditing.h src/application/NumberedCompositionEditing.cpp
     src/domain/NumberedEditing.h src/domain/NumberedEditing.cpp
     src/audio/OutputLevel.h src/audio/OutputLevel.cpp
@@ -33,9 +33,10 @@ set(NUMBERED_RECOGNITION_FILES
 )
 
 set(APP_FILES
+    src/diagnostics/NumberedRhythmCheck.h src/diagnostics/NumberedRhythmCheck.cpp
     src/diagnostics/NumberedReviewCheck.h src/diagnostics/NumberedReviewCheck.cpp
     src/ui/NumberedVoicePanel.h src/ui/NumberedVoicePanel.cpp
-    src/ui/NumberedCompositionRenderer.cpp src/ui/MainWindowComposition.cpp
+    src/ui/NumberedCompositionRenderer.cpp src/ui/MainWindowComposition.cpp src/ui/MainWindowNumberedStructure.cpp
     src/ui/WorkspaceHeader.h src/ui/WorkspaceHeader.cpp
     src/diagnostics/NumberedEditorCheck.h src/diagnostics/NumberedEditorCheck.cpp
     src/ui/NumberedEditorToolbar.h src/ui/NumberedEditorToolbar.cpp

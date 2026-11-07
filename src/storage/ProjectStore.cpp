@@ -372,7 +372,7 @@ QJsonObject scoreToJson(const Score &s)
     }
     return result;
 }
-Score scoreFromJson(const QJsonObject &o)
+Score scoreFromJson(const QJsonObject &o, bool deferTimelineValidation)
 {
     require(o.value("notes").isArray(), "messages.storage.missing_notes");
     Score s;
@@ -535,9 +535,10 @@ Score scoreFromJson(const QJsonObject &o)
                 s.bpm <= MaximumScoreBpm,
             "messages.storage.invalid_key_tempo");
     require(ticksPerBar(s) > 0, "messages.storage.invalid_meter");
-    const auto timeline = s.notes.empty() && s.repeats.empty() && s.writtenMeasures.empty() && s.keyChanges.empty()
-                              ? Timeline{}
-                              : buildTimeline(s);
+    if (deferTimelineValidation ||
+        (s.notes.empty() && s.repeats.empty() && s.writtenMeasures.empty() && s.keyChanges.empty()))
+        return s;
+    const auto timeline = buildTimeline(s);
     for (const auto &diagnostic : timeline.diagnostics)
         if (diagnostic.severity == DiagnosticSeverity::Error)
             throw std::runtime_error(localizeMessage(QString::fromStdString(diagnostic.message)).toStdString());
@@ -554,7 +555,8 @@ QJsonObject projectToJson(const Project &p)
         canonical.notes = p.numberedComposition->voices.front().notes;
     }
     auto object = scoreToJson(canonical);
-    object.insert("schemaVersion", p.numberedComposition  ? 7
+    object.insert("schemaVersion", p.numberedComposition
+                                       ? (p.numberedComposition->structure.measures.empty() ? 7 : 8)
                                    : p.staffImagePlayback ? 6
                                    : p.staffPages.empty() ? 4
                                                           : 5);
@@ -610,7 +612,7 @@ QJsonObject projectToJson(const Project &p)
 Project projectFromJson(const QJsonObject &o, const QImage &image, const std::vector<StaffPage> &pages)
 {
     const int schema = integer(o, "schemaVersion", 0, true);
-    require(schema >= 1 && schema <= 7, "messages.storage.project_version");
+    require(schema >= 1 && schema <= 8, "messages.storage.project_version");
     Project p;
     p.staffImagePlayback = boolean(o, "staffImagePlayback", false, "messages.pages.invalid_project");
     require(p.staffImagePlayback == (schema == 6), "messages.pages.invalid_project");
@@ -633,8 +635,9 @@ Project projectFromJson(const QJsonObject &o, const QImage &image, const std::ve
     }
     else
         require(pages.empty() && !o.contains("staffPages"), "messages.pages.invalid_project");
-    p.score = scoreFromJson(o);
-    require(schema == 7 || std::none_of(p.score.notes.begin(), p.score.notes.end(), [](const Note &note)
+    // Schema 8 validates the guide together with the authoritative measure keys below.
+    p.score = scoreFromJson(o, schema == 8);
+    require(schema >= 7 || std::none_of(p.score.notes.begin(), p.score.notes.end(), [](const Note &note)
                                         { return note.dynamicLevel || note.accent || note.staccato; }),
             "ui.editor.invalid_composition");
     if (o.contains("staffPerformance"))
@@ -674,13 +677,15 @@ Project projectFromJson(const QJsonObject &o, const QImage &image, const std::ve
             p.audioSource = audioSourceFromJson(o.value("audioSource").toObject(), p.score);
         }
     }
-    require(o.contains("numberedComposition") == (schema == 7), "ui.editor.invalid_composition");
-    if (schema == 7)
+    require(o.contains("numberedComposition") == (schema >= 7), "ui.editor.invalid_composition");
+    if (schema >= 7)
     {
         require(p.generatedNotation && p.notationStyle == NotationStyle::Numbered && !p.staffPerformance &&
                     !p.audioSource && p.score.editorMinimumBars > 0 && o.value("numberedComposition").isObject(),
                 "ui.editor.invalid_composition");
         p.numberedComposition = numberedCompositionFromJson(p.score, o.value("numberedComposition").toObject());
+        require((schema == 8) == !p.numberedComposition->structure.measures.empty(),
+                "ui.editor.invalid_structure");
         auto canonical = p.score;
         canonical.notes = p.numberedComposition->voices.front().notes;
         require(scoreToJson(canonical) == scoreToJson(p.score), "ui.editor.invalid_composition");
@@ -735,7 +740,8 @@ Project projectFromJson(const QJsonObject &o, const QImage &image, const std::ve
                         s.originalSpeed >= .25 && s.originalSpeed <= 2 && s.originalVolume >= 0 &&
                         s.originalVolume <= 1 && s.playbackSource >= 0 && s.playbackSource <= 3 &&
                         s.loopStart >= 0 && s.loopEnd >= s.loopStart &&
-                        s.loopEnd <= (p.numberedComposition   ? compositionDuration(*p.numberedComposition)
+                        s.loopEnd <= (p.numberedComposition
+                                          ? performedScoreMap(p.score, *p.numberedComposition).duration
                                       : p.score.notes.empty() ? 0
                                                               : buildTimeline(p.score).durationTicks),
                     "messages.package.invalid_metadata");
@@ -744,8 +750,11 @@ Project projectFromJson(const QJsonObject &o, const QImage &image, const std::ve
                          (s.playbackSource == 1 || (s.playbackSource == 2 && !p.audioSource->vocalsPath.empty()) ||
                           (s.playbackSource == 3 && !p.audioSource->instrumentalPath.empty()))),
                     "messages.package.invalid_metadata");
-            require(p.score.notes.empty() || buildTimeline(p.score, s.transpose).valid(),
-                    "messages.package.invalid_metadata");
+            if (schema == 8)
+                validateNumberedComposition(p.score, *p.numberedComposition, s.transpose);
+            else
+                require(p.score.notes.empty() || buildTimeline(p.score, s.transpose).valid(),
+                        "messages.package.invalid_metadata");
             p.practiceSettings = s;
         }
     }

@@ -70,7 +70,7 @@ struct Project
 QJsonObject scoreToJson(const Score &score);
 QJsonObject staffPerformanceToJson(const StaffPerformance &performance);
 StaffPerformance staffPerformanceFromJson(const QJsonObject &json, const Score &score);
-Score scoreFromJson(const QJsonObject &json);
+Score scoreFromJson(const QJsonObject &json, bool deferTimelineValidation = false);
 QJsonObject projectToJson(const Project &project);
 Project projectFromJson(const QJsonObject &json, const QImage &image, const std::vector<StaffPage> &pages = {});
 void saveProject(const QString &path, const Project &project);

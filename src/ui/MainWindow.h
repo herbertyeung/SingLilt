@@ -20,6 +20,7 @@
 #include <QStringList>
 #include <QUndoStack>
 #include <functional>
+#include <memory>
 class QBoxLayout;
 class QLabel;
 class QPushButton;
@@ -37,6 +38,7 @@ class QCommandLineParser;
 class QAction;
 class QMenu;
 class QTimer;
+class QLockFile;
 class QTabWidget;
 class QStackedWidget;
 namespace singlilt
@@ -136,6 +138,7 @@ class MainWindow : public QMainWindow
     void dropEvent(QDropEvent *event) override;
 
   private:
+    friend void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, QApplication &app);
     friend void runNumberedReviewCheck(MainWindow &window, const QCommandLineParser &args, QApplication &app);
     friend void runNumberedEditorCheck(MainWindow &window, const QCommandLineParser &args, QApplication &app);
     friend void runHistoryRecoveryCheck(MainWindow &window, LanguageManager &languages,
@@ -162,6 +165,7 @@ class MainWindow : public QMainWindow
     bool commitNumberedComposition(Score score, NumberedComposition composition, int active, int selection,
                                    const char *key);
     NumberedComposition currentNumberedComposition() const;
+    void editNumberedStructure(bool repeat);
     bool selectNumberedVoice(int id);
     void numberedVoiceAction(VoiceAction action);
     void setNumberedDynamic(int level);
@@ -189,6 +193,10 @@ class MainWindow : public QMainWindow
     void scheduleStaffEditRecovery();
     bool saveStaffEditRecoverySnapshot();
     void recoverStaffEdits();
+    void scheduleNumberedDraft();
+    void saveNumberedDraft();
+    bool clearNumberedDraft();
+    void recoverNumberedDraft();
     void createHeader(QVBoxLayout *layout);
     void createMenus();
     void startCloudRecognition();
@@ -241,6 +249,7 @@ class MainWindow : public QMainWindow
     void updateNote();
     void rebuild(bool preservePosition, bool renderNotation = true);
     void updatePlayback();
+    void refreshSynthPosition(std::int64_t tick);
     void togglePlayback();
     void seekVerse(int verse);
     void updateVersePrograms();
@@ -320,6 +329,9 @@ class MainWindow : public QMainWindow
     QString staffRecoverySession_;
     QString staffRecoveryPath_;
     bool staffRecoveryPending_ = false;
+    QTimer *numberedDraftTimer_ = nullptr;
+    QString numberedDraftPath_;
+    std::unique_ptr<QLockFile> numberedDraftLock_;
     QString debugText_;
     int selected_ = -1;
     int selectedStaffNote_ = -1;

@@ -6,6 +6,7 @@
 #include "i18n/LanguageManager.h"
 #include <QPainter>
 #include <QFontMetricsF>
+#include <QStringList>
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -19,7 +20,35 @@ QImage renderNumberedComposition(Score &metadata, NumberedComposition &compositi
     numberedVoice(composition, activeVoice);
     std::vector<Score> scores;
     std::vector<NumberedScoreLayout> layouts;
-    const int bars = compositionBars(metadata, composition);
+    const auto measures = numberedMeasures(metadata, composition);
+    const bool structured = !composition.structure.measures.empty();
+    const auto *measureLayout = structured ? &measures : nullptr;
+    const int bars = int(measures.size());
+    std::vector<QString> labels(measures.size());
+    for (std::size_t i = 0; i < measures.size(); ++i)
+    {
+        const auto &measure = measures[i];
+        const auto *previous = i ? &measures[i - 1] : nullptr;
+        QStringList changes;
+        if (!previous || previous->beats != measure.beats || previous->unit != measure.unit)
+            changes << QString("%1/%2").arg(measure.beats).arg(measure.unit);
+        if (!previous || previous->bpm != measure.bpm)
+            changes << QString("BPM %1").arg(measure.bpm);
+        if (!previous || previous->tonic != measure.tonic)
+            changes << trText(qPrintable(QString("ui.key.%1").arg(measure.tonic)));
+        for (const auto &repeat : composition.structure.repeats)
+        {
+            if (measure.id == repeat.first)
+                changes << "|:";
+            if (repeat.firstEnding && measure.id == repeat.firstEnding)
+                changes << "1.";
+            if (measure.id == repeat.last)
+                changes << QString(":| x%1").arg(repeat.count);
+            if (previous && repeat.firstEnding && previous->id == repeat.last)
+                changes << "2.";
+        }
+        labels[i] = changes.join("  ");
+    }
     std::vector<NumberedMeasureGrid> shared(std::size_t(bars), NumberedMeasureGrid{});
     std::vector<std::map<std::int64_t, NumberedSpacingPoint>> points(
         static_cast<std::size_t>(bars), std::map<std::int64_t, NumberedSpacingPoint>{});
@@ -28,7 +57,7 @@ QImage renderNumberedComposition(Score &metadata, NumberedComposition &compositi
         auto score = metadata;
         score.notes = voice.notes;
         score.editorMinimumBars = bars;
-        auto measured = layoutNumberedScore(score);
+        auto measured = layoutNumberedScore(score, measureLayout);
         for (int i = 0; i < bars; ++i)
             for (const auto &point : measured.grid[std::size_t(i)].points)
             {
@@ -54,7 +83,7 @@ QImage renderNumberedComposition(Score &metadata, NumberedComposition &compositi
         {
             auto positioned = point;
             positioned.position =
-                used + point.left + (grid.width - required) * double(tick) / ticksPerBar(metadata);
+                used + point.left + (grid.width - required) * double(tick) / (measures[i].end - measures[i].start);
             grid.points.push_back(positioned);
             used += point.left + point.right;
         }
@@ -81,7 +110,8 @@ QImage renderNumberedComposition(Score &metadata, NumberedComposition &compositi
         throw std::runtime_error("messages.audio_import.notation_too_large");
     std::vector<QImage> images;
     for (std::size_t i = 0; i < scores.size(); ++i)
-        images.push_back(renderNumberedScore(scores[i], &layouts[i], &shared));
+        images.push_back(renderNumberedScore(scores[i], &layouts[i], &shared, measureLayout,
+                                             structured && i == 0 ? &labels : nullptr));
     const int header = int(layouts.front().systems.front().top());
     double totalHeight = header + 100;
     for (const auto &voiceLayout : layouts)

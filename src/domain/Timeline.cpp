@@ -6,6 +6,7 @@
 #include "Timeline.h"
 
 #include <algorithm>
+#include <stdexcept>
 #include <cmath>
 #include <limits>
 #include <utility>
@@ -213,20 +214,68 @@ double Timeline::durationSeconds() const
     return secondsAtTick(durationTicks);
 }
 
+void Timeline::setTempoChanges(const std::vector<TempoChange> &changes)
+{
+    if (!changes.empty() && (!std::isfinite(bpm) || bpm < MinimumScoreBpm || bpm > MaximumScoreBpm))
+        throw std::invalid_argument("messages.domain.tempo_range");
+    std::vector<TempoSegment> segments;
+    double seconds = 0;
+    double previousBpm = bpm;
+    std::int64_t previous = 0;
+    for (const auto &change : changes)
+    {
+        if (change.tick < previous || (!segments.empty() && change.tick == previous) ||
+            change.tick >= durationTicks || !std::isfinite(change.bpm) || change.bpm < MinimumScoreBpm ||
+            change.bpm > MaximumScoreBpm)
+            throw std::invalid_argument("messages.domain.tempo_range");
+        seconds += double(change.tick - previous) * 60 / (previousBpm * TicksPerQuarter);
+        segments.push_back({change.tick, seconds, change.bpm});
+        previous = change.tick;
+        previousBpm = change.bpm;
+    }
+    tempoSegments_ = std::move(segments);
+}
+
+Timeline Timeline::clockOnly() const
+{
+    Timeline result;
+    result.bpm = bpm;
+    result.durationTicks = durationTicks;
+    result.tempoSegments_ = tempoSegments_;
+    return result;
+}
+
+double Timeline::secondsAtPosition(double tick) const
+{
+    if (!std::isfinite(bpm) || bpm <= 0 || std::isnan(tick))
+        return 0;
+    tick = std::clamp(tick, 0.0, double(std::max<std::int64_t>(0, durationTicks)));
+    const auto it = std::upper_bound(tempoSegments_.begin(), tempoSegments_.end(), tick,
+                                     [](double value, const auto &segment) { return value < segment.tick; });
+    const auto segment = it == tempoSegments_.begin() ? TempoSegment{0, 0, bpm} : *std::prev(it);
+    return segment.seconds + (tick - segment.tick) * 60 / (segment.bpm * TicksPerQuarter);
+}
+
+double Timeline::positionAtSeconds(double seconds) const
+{
+    if (!(seconds > 0) || !std::isfinite(bpm) || bpm <= 0)
+        return 0;
+    if (seconds >= durationSeconds())
+        return double(std::max<std::int64_t>(0, durationTicks));
+    const auto it = std::upper_bound(tempoSegments_.begin(), tempoSegments_.end(), seconds,
+                                     [](double value, const auto &segment) { return value < segment.seconds; });
+    const auto segment = it == tempoSegments_.begin() ? TempoSegment{0, 0, bpm} : *std::prev(it);
+    return segment.tick + (seconds - segment.seconds) * segment.bpm * TicksPerQuarter / 60;
+}
+
 double Timeline::secondsAtTick(std::int64_t tick) const
 {
-    if (!std::isfinite(bpm) || bpm <= 0.0)
-        return 0.0;
-    return static_cast<double>(clampTick(tick)) * 60.0 / (bpm * TicksPerQuarter);
+    return secondsAtPosition(double(tick));
 }
 
 std::int64_t Timeline::tickAtSeconds(double seconds) const
 {
-    if (std::isnan(seconds) || seconds <= 0.0 || !std::isfinite(bpm) || bpm <= 0.0)
-        return 0;
-    if (seconds >= durationSeconds())
-        return durationTicks;
-    return clampTick(static_cast<std::int64_t>(std::llround(seconds * bpm * TicksPerQuarter / 60.0)));
+    return clampTick(std::llround(positionAtSeconds(seconds)));
 }
 
 std::int64_t Timeline::clampTick(std::int64_t tick) const
@@ -313,8 +362,8 @@ Timeline buildTimeline(const Score &score, int transpose)
     for (const auto &change : score.keyChanges)
     {
         if (change.startTick < 0 || change.startTick >= sourceDuration || change.startTick < previousKeyTick ||
-            (change.startTick == previousKeyTick && change.tonic != previousKeyTonic) ||
-            change.tonic < 0 || change.tonic > 11 || change.sourceNoteIndex < -1 ||
+            (change.startTick == previousKeyTick && change.tonic != previousKeyTonic) || change.tonic < 0 ||
+            change.tonic > 11 || change.sourceNoteIndex < -1 ||
             change.sourceNoteIndex >= int(sourceStarts.size()) ||
             (change.sourceNoteIndex >= 0 && sourceStarts[std::size_t(change.sourceNoteIndex)] != change.startTick))
             error(timeline, "messages.domain.key_change_range");

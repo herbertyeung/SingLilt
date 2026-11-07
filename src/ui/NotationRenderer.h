@@ -57,8 +57,10 @@ struct NumberedScoreLayout
 // Draws notation and replaces only source anchors, line and cumulative measure.
 // Throws std::runtime_error on invalid notation or an oversized single-image layout.
 QImage renderNumberedScore(Score &score, NumberedScoreLayout *layout = nullptr,
-                           const std::vector<NumberedMeasureGrid> *sharedGrid = nullptr);
-NumberedScoreLayout layoutNumberedScore(Score &score);
+                           const std::vector<NumberedMeasureGrid> *sharedGrid = nullptr,
+                           const std::vector<NumberedMeasureSpan> *measures = nullptr,
+                           const std::vector<QString> *labels = nullptr);
+NumberedScoreLayout layoutNumberedScore(Score &score, const std::vector<NumberedMeasureSpan> *measures = nullptr);
 QImage renderNumberedComposition(Score &score, NumberedComposition &composition, int activeVoice,
                                  NumberedScoreLayout &layout);
 

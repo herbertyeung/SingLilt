@@ -47,7 +47,7 @@ struct RhythmGlyph
 RhythmGlyph rhythmGlyph(std::int64_t duration)
 {
     RhythmGlyph glyph;
-    if (duration == 720 || duration == 360 || duration == 180 || duration == 90)
+    if (duration == 720 || duration == 360 || duration == 180 || duration == 90 || duration == 45)
     {
         glyph.dotted = true;
         duration = duration * 2 / 3;
@@ -86,6 +86,7 @@ struct Segment
     double numberTop = 0;
     std::int64_t startInBar = 0;
     double leftExtent = 0, rightExtent = 0;
+    int degree = 0, octave = 0, accidental = 0;
 };
 
 struct Bar
@@ -130,13 +131,19 @@ void recordNumberedRasterization()
 }
 
 static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
-                                      const std::vector<NumberedMeasureGrid> *sharedGrid, bool rasterize)
+                                      const std::vector<NumberedMeasureGrid> *sharedGrid, bool rasterize,
+                                      const std::vector<NumberedMeasureSpan> *measures,
+                                      const std::vector<QString> *labels)
 {
     auto validation = score;
     if (validation.notes.empty())
         validation.notes.push_back(Note{});
-    if (!qobject_cast<QGuiApplication *>(QCoreApplication::instance()) || !buildTimeline(validation).valid() ||
-        score.editorMinimumBars < 0 || score.editorMinimumBars > 128)
+    if (!qobject_cast<QGuiApplication *>(QCoreApplication::instance()) || score.editorMinimumBars < 0 ||
+        score.editorMinimumBars > 128)
+        fail("messages.audio_import.notation_invalid_score");
+    const auto written =
+        measures ? buildNumberedWrittenTimeline(std::move(validation), *measures) : buildTimeline(validation);
+    if (!written.valid())
         fail("messages.audio_import.notation_invalid_score");
     if (layout)
         *layout = {};
@@ -156,12 +163,21 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
         }
     }
     const auto barCount =
-        std::max<std::int64_t>({1, score.editorMinimumBars, (totalTicks + barTicks - 1) / barTicks});
+        measures ? std::int64_t(measures->size())
+                 : std::max<std::int64_t>({1, score.editorMinimumBars, (totalTicks + barTicks - 1) / barTicks});
+    const auto startOf = [&](std::size_t index)
+    { return measures ? (*measures)[index].start : std::int64_t(index) * barTicks; };
+    const auto endOf = [&](std::size_t index)
+    { return measures ? (*measures)[index].end : (std::int64_t(index) + 1) * barTicks; };
+    const auto beatOf = [&](std::size_t index)
+    { return TicksPerQuarter * 4 / (measures ? (*measures)[index].unit : score.beatUnit); };
+    const auto beatsOf = [&](std::size_t index)
+    { return measures ? (*measures)[index].beats : score.beatsPerBar; };
     const double headerHeight =
         HeaderHeight + ((!score.subtitle.empty() || !score.lyricist.empty() || !score.composer.empty()) ? 64 : 0);
     const bool marks = std::any_of(score.notes.begin(), score.notes.end(), [](const Note &note)
                                    { return note.dynamicLevel || note.accent || note.staccato; });
-    double rowHeight = 126 + 7 * (aboveDots + belowDots) + 26 * lyricRows + (marks ? 52 : 0);
+    double rowHeight = 126 + 7 * (aboveDots + belowDots) + 26 * lyricRows + (marks ? 52 : 0) + (measures ? 28 : 0);
     if (HeaderHeight + std::ceil(barCount / 4.0) * rowHeight + Margin > MaximumHeight)
         fail("messages.audio_import.notation_too_large");
 
@@ -183,21 +199,58 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
     sourcePitches.reserve(score.notes.size());
     std::int64_t tick = 0;
     int key = score.tonic;
+    const int initialDots = aboveDots + belowDots;
     int maximumUnderlines = 0;
     for (std::size_t i = 0; i < score.notes.size(); ++i)
     {
         const auto &note = score.notes[i];
         if (note.keyOverride >= 0)
             key = note.keyOverride;
+        if (measures)
+            key = (*measures)[numberedMeasureAt(*measures, tick)].tonic;
         sourcePitches.push_back(midiPitch(note, key));
         std::int64_t remaining = note.durationTicks;
         bool continuation = false;
         while (remaining > 0)
         {
-            const int measure = static_cast<int>(tick / barTicks);
-            const auto duration = std::min(remaining, barTicks - tick % barTicks);
+            const int measure = measures ? int(numberedMeasureAt(*measures, tick)) : int(tick / barTicks);
+            const auto duration = std::min(remaining, endOf(measure) - tick);
             Segment segment{i, duration, continuation, measure, rhythmGlyph(duration)};
-            segment.startInBar = tick % barTicks;
+            segment.degree = note.degree;
+            segment.octave = note.octave;
+            segment.accidental = note.accidental;
+            if (measures && continuation && note.degree && key != (*measures)[measure].tonic)
+            {
+                // A continuation keeps its sounding pitch; spell it in the new movable-do key.
+                const int tonic = (*measures)[measure].tonic;
+                bool spelled = false;
+                for (int alter : {0, 1, -1})
+                {
+                    for (int degree = 1; degree <= 7 && !spelled; ++degree)
+                        for (int octave = -6; octave <= 6; ++octave)
+                        {
+                            Note candidate;
+                            candidate.degree = degree;
+                            candidate.octave = octave;
+                            candidate.accidental = alter;
+                            if (midiPitch(candidate, tonic) == sourcePitches.back() && sourcePitches.back() >= 0)
+                            {
+                                segment.degree = degree;
+                                segment.octave = octave;
+                                segment.accidental = alter;
+                                spelled = true;
+                                break;
+                            }
+                        }
+                    if (spelled)
+                        break;
+                }
+                if (!spelled)
+                    fail("messages.domain.pitch_range");
+                aboveDots = std::max(aboveDots, segment.octave);
+                belowDots = std::max(belowDots, -segment.octave);
+            }
+            segment.startInBar = tick - startOf(measure);
             maximumUnderlines = std::max(maximumUnderlines, segment.rhythm.underlines);
             double lyricWidth = 0;
             if (!continuation)
@@ -207,14 +260,15 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
             }
             const double rhythmWidth = segment.rhythm.dashes * 30 + (segment.rhythm.dotted ? 13 : 0);
             const double pitchWidth =
-                numbers.horizontalAdvance(QString::number(note.degree)) +
-                small.horizontalAdvance(accidentalText(note.degree == 0 ? 0 : note.accidental)) + rhythmWidth;
+                numbers.horizontalAdvance(QString::number(segment.degree)) +
+                small.horizontalAdvance(accidentalText(segment.degree == 0 ? 0 : segment.accidental)) +
+                rhythmWidth;
             segment.cellWidth = std::max({48.0, pitchWidth + 22, lyricWidth + 14});
             if (!segment.rhythm.exact)
                 segment.cellWidth = std::max(segment.cellWidth, 88.0);
-            const double digitWidth = numbers.horizontalAdvance(QString::number(note.degree));
+            const double digitWidth = numbers.horizontalAdvance(QString::number(segment.degree));
             const double accidentalWidth =
-                small.horizontalAdvance(accidentalText(note.degree == 0 ? 0 : note.accidental));
+                small.horizontalAdvance(accidentalText(segment.degree == 0 ? 0 : segment.accidental));
             segment.leftExtent = std::max({24.0, digitWidth / 2 + accidentalWidth + 12, lyricWidth / 2 + 8});
             segment.rightExtent = std::max({24.0, digitWidth / 2 + rhythmWidth + 10, lyricWidth / 2 + 8});
             if (!segment.rhythm.exact)
@@ -231,7 +285,7 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
         }
     }
 
-    rowHeight += maximumUnderlines * 5;
+    rowHeight += maximumUnderlines * 5 + 7 * (aboveDots + belowDots - initialDots);
 
     int row = 0;
     int barsInRow = 0;
@@ -239,12 +293,11 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
     for (auto &bar : bars)
     {
         const auto barIndex = &bar - bars.data();
-        const auto barStart = std::int64_t(barIndex) * barTicks;
+        const auto barStart = startOf(barIndex);
         const auto firstEmpty = std::max(totalTicks, barStart);
-        const int beatTicks = TicksPerQuarter * 4 / score.beatUnit;
-        const int emptySlots = firstEmpty < barStart + barTicks
-                                   ? int((barStart + barTicks - firstEmpty + beatTicks - 1) / beatTicks)
-                                   : 0;
+        const int beatTicks = beatOf(barIndex);
+        const int emptySlots =
+            firstEmpty < endOf(barIndex) ? int((endOf(barIndex) - firstEmpty + beatTicks - 1) / beatTicks) : 0;
         if (layout && emptySlots)
         {
             if (bar.width + 12 * emptySlots > ContentWidth)
@@ -285,7 +338,7 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
             fail("ui.editor.invalid_composition");
         return *found;
     };
-    const double numberTopOffset = 34 + aboveDots * 7 + (marks ? 30 : 0);
+    const double numberTopOffset = 34 + aboveDots * 7 + (marks ? 30 : 0) + (measures ? 28 : 0);
     const double lyricTopOffset =
         numberTopOffset + numbers.height() + maximumUnderlines * 5 + belowDots * 7 + 27 + (marks ? 22 : 0);
     for (auto &bar : bars)
@@ -294,9 +347,9 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
         for (const auto index : bar.segments)
             usedWidth += segments[index].cellWidth;
         const auto barIndex = &bar - bars.data();
-        const auto emptyStart = std::max(totalTicks, std::int64_t(barIndex) * barTicks);
-        const auto emptyTicks = std::max<std::int64_t>(0, (barIndex + 1) * barTicks - emptyStart);
-        const int beatTicks = TicksPerQuarter * 4 / score.beatUnit;
+        const auto emptyStart = std::max(totalTicks, startOf(barIndex));
+        const auto emptyTicks = std::max<std::int64_t>(0, endOf(barIndex) - emptyStart);
+        const int beatTicks = beatOf(barIndex);
         const int emptySlots = int((emptyTicks + beatTicks - 1) / beatTicks);
         const double reserve = layout ? std::min(48.0 * emptySlots, bar.width - usedWidth) : 0;
         const double extra = bar.segments.empty() ? 0 : (bar.width - usedWidth - reserve) / bar.segments.size();
@@ -304,17 +357,16 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
         for (const auto index : bar.segments)
         {
             auto &segment = segments[index];
-            const auto &note = score.notes[segment.noteIndex];
             const double cellWidth = segment.cellWidth + extra;
             const double rhythmWidth = segment.rhythm.dashes * 30 + (segment.rhythm.dotted ? 13 : 0);
             const double accidentalWidth =
-                small.horizontalAdvance(accidentalText(note.degree == 0 ? 0 : note.accidental));
+                small.horizontalAdvance(accidentalText(segment.degree == 0 ? 0 : segment.accidental));
             segment.row = bar.row;
             segment.centerX = left + (cellWidth - rhythmWidth + accidentalWidth) / 2;
             if (sharedGrid)
                 segment.centerX = bar.left + gridPoint(std::size_t(barIndex), segment.startInBar).position;
             segment.numberTop = headerHeight + bar.row * rowHeight + numberTopOffset;
-            const double digitWidth = numbers.horizontalAdvance(QString::number(note.degree));
+            const double digitWidth = numbers.horizontalAdvance(QString::number(segment.degree));
             if (!segment.continuation)
                 anchors[segment.noteIndex] = {
                     {segment.centerX - digitWidth / 2, segment.numberTop, digitWidth, numbers.height()},
@@ -343,12 +395,12 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
                 used += segment.cellWidth;
                 grid.points.push_back({segment.startInBar, segment.leftExtent, segment.rightExtent, 0});
             }
-            const auto start = std::int64_t(i) * barTicks;
+            const auto start = startOf(i);
             const auto firstEmpty = std::max(totalTicks, start);
-            if (firstEmpty >= start + barTicks)
+            if (firstEmpty >= endOf(i))
                 continue;
-            const int beatTicks = TicksPerQuarter * 4 / score.beatUnit;
-            const int slots = int((start + barTicks - firstEmpty + beatTicks - 1) / beatTicks);
+            const int beatTicks = beatOf(i);
+            const int slots = int((endOf(i) - firstEmpty + beatTicks - 1) / beatTicks);
             const double reserve =
                 bar.segments.empty() ? bar.width - 2 * BarPadding : std::min(48.0 * slots, bar.width - used);
             const double slotWidth = reserve / slots;
@@ -373,7 +425,7 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
                 const double width =
                     std::max(1.0, cellRight - cellLeft - std::min(4.0, (cellRight - cellLeft) / 5));
                 layout->slots.push_back({QRectF(cellLeft, top, width, numbers.height() + 20), slotTick});
-                const double half = std::max(6.0, std::min(16.0, ContentWidth / (4 * score.beatsPerBar)));
+                const double half = std::max(6.0, std::min(16.0, ContentWidth / (4 * beatsOf(i))));
                 grid.points.push_back({slotTick - start, half, half, 0});
             }
         }
@@ -444,18 +496,18 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
     for (const auto &segment : segments)
     {
         const auto &note = score.notes[segment.noteIndex];
-        const double digitWidth = numbers.horizontalAdvance(QString::number(note.degree));
+        const double digitWidth = numbers.horizontalAdvance(QString::number(segment.degree));
         const double baseline = segment.numberTop + numbers.ascent();
         painter.setPen(Ink);
         painter.setFont(numberFont);
-        painter.drawText(QPointF(segment.centerX - digitWidth / 2, baseline), QString::number(note.degree));
+        painter.drawText(QPointF(segment.centerX - digitWidth / 2, baseline), QString::number(segment.degree));
         painter.setFont(smallFont);
-        const auto accidental = accidentalText(note.degree == 0 ? 0 : note.accidental);
+        const auto accidental = accidentalText(segment.degree == 0 ? 0 : segment.accidental);
         painter.drawText(
             QPointF(segment.centerX - digitWidth / 2 - small.horizontalAdvance(accidental) - 4, baseline - 9),
             accidental);
         painter.setBrush(Ink);
-        const int octave = note.degree == 0 ? 0 : note.octave;
+        const int octave = segment.degree == 0 ? 0 : segment.octave;
         for (int dot = 0; dot < std::abs(octave); ++dot)
         {
             const double y =
@@ -528,6 +580,16 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
         }
     }
 
+    if (labels)
+    {
+        painter.setFont(smallFont);
+        painter.setPen(Ink);
+        for (std::size_t i = 0; i < bars.size(); ++i)
+            painter.drawText(
+                QRectF(bars[i].left + 4, headerHeight + bars[i].row * rowHeight, bars[i].width - 8, 24),
+                Qt::AlignLeft | Qt::AlignVCenter,
+                small.elidedText((*labels)[i], Qt::ElideRight, bars[i].width - 8));
+    }
     painter.setPen(QPen(Ink, 1.5));
     for (const auto &bar : bars)
     {
@@ -547,29 +609,31 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
                           sourcePitches[previous.noteIndex] == sourcePitches[current.noteIndex];
         if (!continuation && !tied)
             continue;
-        const double firstY = headerHeight + previous.row * rowHeight + 26;
+        const double firstY = headerHeight + previous.row * rowHeight + 26 + (measures ? 28 : 0);
         if (previous.row == current.row)
             drawArc(painter, previous.centerX + 8, current.centerX - 8, firstY);
         else
         {
             drawArc(painter, previous.centerX + 8, ImageWidth - Margin, firstY);
-            drawArc(painter, Margin, current.centerX - 8, headerHeight + current.row * rowHeight + 26);
+            drawArc(painter, Margin, current.centerX - 8,
+                    headerHeight + current.row * rowHeight + 26 + (measures ? 28 : 0));
         }
     }
     painter.end();
     return image;
 }
 
-NumberedScoreLayout layoutNumberedScore(Score &score)
+NumberedScoreLayout layoutNumberedScore(Score &score, const std::vector<NumberedMeasureSpan> *measures)
 {
     NumberedScoreLayout layout;
-    renderNumberedScoreImpl(score, &layout, nullptr, false);
+    renderNumberedScoreImpl(score, &layout, nullptr, false, measures, nullptr);
     return layout;
 }
 QImage renderNumberedScore(Score &score, NumberedScoreLayout *layout,
-                           const std::vector<NumberedMeasureGrid> *sharedGrid)
+                           const std::vector<NumberedMeasureGrid> *sharedGrid,
+                           const std::vector<NumberedMeasureSpan> *measures, const std::vector<QString> *labels)
 {
-    return renderNumberedScoreImpl(score, layout, sharedGrid, true);
+    return renderNumberedScoreImpl(score, layout, sharedGrid, true, measures, labels);
 }
 
 } // namespace singlilt

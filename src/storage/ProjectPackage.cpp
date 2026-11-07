@@ -232,7 +232,7 @@ Project loadProjectPackage(const QString &path)
     auto manifest = QJsonDocument::fromJson(file.read(length), &error).object();
     const int schema = manifest.value("schemaVersion").toInt();
     require(error.error == QJsonParseError::NoError &&
-                (schema == 4 || schema == 5 || schema == 6 || schema == 7) &&
+                (schema == 4 || schema == 5 || schema == 6 || schema == 7 || schema == 8) &&
                 manifest.value("schemaVersion").toDouble() == schema &&
                 manifest.value("imageAsset").toString() == "asset:image" && manifest.value("resources").isArray(),
             "messages.package.invalid_container");

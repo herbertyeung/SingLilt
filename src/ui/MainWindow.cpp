@@ -37,6 +37,7 @@
 #include <QImageReader>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLockFile>
 #include <QMessageBox>
 #include <QMimeData>
 #include <QPlainTextEdit>
@@ -330,12 +331,16 @@ MainWindow::MainWindow(LanguageManager &languageManager, ThemeManager &themes, Q
     staffRecoveryTimer_ = new QTimer(this);
     staffRecoveryTimer_->setSingleShot(true);
     connect(staffRecoveryTimer_, &QTimer::timeout, this, [this] { saveStaffEditRecoverySnapshot(); });
+    numberedDraftTimer_ = new QTimer(this);
+    numberedDraftTimer_->setSingleShot(true);
+    connect(numberedDraftTimer_, &QTimer::timeout, this, [this] { saveNumberedDraft(); });
     createUi();
     connect(&materialUndo_, &QUndoStack::indexChanged, this,
             [this]
             {
                 refreshProjectIdentity();
                 scheduleStaffEditRecovery();
+                scheduleNumberedDraft();
             });
     metronome_->setChecked(settings_.metronome);
     player_.setOutputBoost(settings_.outputBoost);
@@ -497,6 +502,10 @@ void MainWindow::setProject(Project project, bool modified, std::optional<Number
         if (!saveStaffEditRecoverySnapshot())
             throw std::runtime_error(status_->text().toStdString());
     }
+    if (numberedDraftTimer_->isActive())
+        saveNumberedDraft();
+    numberedDraftLock_.reset();
+    numberedDraftPath_.clear();
     staffRecoverySession_ = QUuid::createUuid().toString(QUuid::WithoutBraces);
     staffRecoveryPath_.clear();
     if (project.staffPerformance && project.processing.value("local").toBool() &&
@@ -622,6 +631,7 @@ void MainWindow::setProject(Project project, bool modified, std::optional<Number
     refreshReviewStatus();
     refreshStaffPageControls();
     updatePlayback();
+    scheduleNumberedDraft();
 }
 void MainWindow::rebuild(bool preserve, bool renderNotation)
 {
@@ -668,7 +678,9 @@ void MainWindow::rebuild(bool preserve, bool renderNotation)
     const auto playbackScore = project_.numberedComposition
                                    ? compositionPlaybackScore(project_.score, *project_.numberedComposition)
                                    : project_.score;
-    timeline_ = playbackScore.notes.empty() ? Timeline{} : buildTimeline(playbackScore);
+    timeline_ = project_.numberedComposition  ? compositionTimeline(project_.score, *project_.numberedComposition)
+                : playbackScore.notes.empty() ? Timeline{}
+                                              : buildTimeline(playbackScore);
     loopEnd_ = std::min(loopEnd_, timeline_.durationTicks);
     loopStart_ = std::min(loopStart_, timeline_.durationTicks);
     if (loopStart_ >= loopEnd_)
@@ -721,6 +733,8 @@ void MainWindow::rebuild(bool preserve, bool renderNotation)
     if (!ok && !playbackScore.notes.empty())
         setStatusMessage(player_.errorString());
     player_.seek(pos);
+    if (!originalAudioMode())
+        refreshSynthPosition(player_.positionTicks());
     playIntent_ = wasPlaying && ok && !tempoPending;
     if (playIntent_ && !player_.play())
     {
@@ -884,6 +898,13 @@ void MainWindow::updateNote()
     rebuild(true);
     selectNote(selected_, false);
 }
+void MainWindow::refreshSynthPosition(std::int64_t tick)
+{
+    if (!position_->isSliderDown())
+        position_->setValue(int(tick));
+    time_->setText(trText("ui.format.range")
+                       .arg(clockText(timeline_.secondsAtTick(tick)), clockText(timeline_.durationSeconds())));
+}
 void MainWindow::updatePlayback()
 {
     if (originalAudio_.isLoading())
@@ -948,10 +969,7 @@ void MainWindow::updatePlayback()
         refreshStaffAnchorEditing();
     playbackActive_ = active;
     play_->setText(trText(active ? "ui.transport.pause" : "ui.transport.play"));
-    if (!position_->isSliderDown())
-        position_->setValue(int(tick));
-    time_->setText(trText("ui.format.range")
-                       .arg(clockText(timeline_.secondsAtTick(tick)), clockText(timeline_.durationSeconds())));
+    refreshSynthPosition(tick);
     auto event = timeline_.eventIndexAtTick(tick);
     if (event)
     {
@@ -1361,6 +1379,8 @@ void MainWindow::closeEvent(QCloseEvent *e)
             e->ignore();
             return;
         }
+        if (numberedDraftTimer_->isActive())
+            saveNumberedDraft();
         cloudTask_.cancel();
         localStaffTask_.cancel();
         audioTask_.cancel();

@@ -404,6 +404,7 @@ void MainWindow::markModified()
         return;
     nonMaterialDirty_ = true;
     refreshProjectIdentity();
+    scheduleNumberedDraft();
 }
 void MainWindow::refreshProjectIdentity()
 {

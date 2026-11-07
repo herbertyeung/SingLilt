@@ -14,9 +14,11 @@
 #include "domain/NumberedEditing.h"
 #include "i18n/LanguageManager.h"
 #include <QCheckBox>
+#include <QButtonGroup>
 #include <QAction>
 #include <QComboBox>
 #include <QDialog>
+#include <QInputDialog>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QLabel>
@@ -145,11 +147,10 @@ void MainWindow::refreshNumberedEditor()
         inspectorScroll_->setVisible(findChild<QPushButton *>("editorPropertiesToggle")->isChecked());
         scoreProperties_->setScore(project_.score);
         editorToolbar_->retranslate();
-        const int barTicks = ticksPerBar(project_.score);
         const auto end = numberedDuration(project_.score);
-        const int barCount = project_.numberedComposition
-                                 ? compositionBars(project_.score, *project_.numberedComposition)
-                                 : numberedBarCount(project_.score);
+        const auto measures = project_.numberedComposition
+                                  ? numberedMeasures(project_.score, *project_.numberedComposition)
+                                  : numberedMeasures(project_.score, {}, end);
         const auto requested = std::max(end, numberedInputTick_);
         numberedInputTick_ = end;
         for (const auto &slot : numberedLayout_.slots)
@@ -158,21 +159,25 @@ void MainWindow::refreshNumberedEditor()
                 numberedInputTick_ = std::max(numberedInputTick_, slot.tick);
         const int bar = selected_ >= 0 && selected_ < int(project_.score.notes.size())
                             ? project_.score.notes[std::size_t(selected_)].measure
-                            : std::min(barCount - 1, int(numberedInputTick_ / barTicks));
-        const auto used =
-            std::clamp<std::int64_t>(numberedDuration(project_.score) - std::int64_t(bar) * barTicks, 0, barTicks);
+                            : int(numberedMeasureAt(measures, numberedInputTick_));
+        const auto &measure = measures[std::size_t(bar)];
+        const auto barTicks = measure.end - measure.start;
+        const auto used = std::clamp<std::int64_t>(end - measure.start, 0, barTicks);
         editorToolbar_->setPosition(bar, double(used) / TicksPerQuarter, double(barTicks) / TicksPerQuarter,
-                                    selected_ < 0 && end >= std::int64_t(barCount) * barTicks);
+                                    selected_ < 0 && end >= measures.back().end);
         const Note *selected = selected_ >= 0 && selected_ < int(project_.score.notes.size())
                                    ? &project_.score.notes[std::size_t(selected_)]
                                    : nullptr;
         const int duration = selected ? selected->durationTicks : inputDuration_;
-        const bool dotted =
-            duration == 1440 || duration == 720 || duration == 360 || duration == 180 || duration == 90;
+        const bool dotted = duration == 1440 || duration == 720 || duration == 360 || duration == 180 ||
+                            duration == 90 || duration == 45;
         const int baseDuration = dotted ? duration * 2 / 3 : duration;
-        for (int ticks : {960, 480, 240, 120, 60})
+        auto *durations = findChild<QPushButton *>("editorDuration480")->group();
+        durations->setExclusive(false);
+        for (int ticks : {960, 480, 240, 120, 60, 30})
             if (auto *button = findChild<QPushButton *>(qPrintable(QString("editorDuration%1").arg(ticks))))
                 button->setChecked(ticks == baseDuration);
+        durations->setExclusive(true);
         auto *dot = findChild<QPushButton *>("editorDotted");
         dot->setCheckable(true);
         dot->setChecked(dotted);
@@ -278,7 +283,11 @@ void MainWindow::inputNumberedPitch(int degree, int octave, int accidental)
         note.dynamicLevel = inputDynamic_;
         note.accent = inputAccent_;
         note.staccato = inputStaccato_;
-        if (!appendNumberedNote(score, numberedInputTick_, note))
+        const auto limit =
+            project_.numberedComposition && !project_.numberedComposition->structure.measures.empty()
+                ? std::int64_t(MaximumEditorBars) * MaximumNoteDurationTicks
+                : 0;
+        if (!appendNumberedNote(score, numberedInputTick_, note, limit))
         {
             setStatus("ui.editor.structure_unavailable");
             return;
@@ -302,7 +311,15 @@ void MainWindow::numberedAction(NumberedEditAction action)
     using Action = NumberedEditAction;
 
     if (!numberedEditorActive() || !resolveNoteDraft())
+    {
+        refreshNumberedEditor();
         return;
+    }
+    if (action == Action::MeasureProperties || action == Action::MeasureRepeat)
+    {
+        editNumberedStructure(action == Action::MeasureRepeat);
+        return;
+    }
     if (action == Action::Append)
     {
         selectNumberedInput(numberedDuration(project_.score));
@@ -326,6 +343,47 @@ void MainWindow::numberedAction(NumberedEditAction action)
     }
     auto score = project_.score;
     int selection = selected_;
+    const auto measures = project_.numberedComposition ? numberedMeasures(score, *project_.numberedComposition)
+                                                       : numberedMeasures(score, {}, numberedDuration(score));
+    const int currentBar = selected_ >= 0 ? score.notes[std::size_t(selected_)].measure
+                                          : int(numberedMeasureAt(measures, numberedInputTick_));
+    if (action == Action::MeasureRest)
+    {
+        const int count = int(measures.size());
+        QInputDialog target(this);
+        target.setObjectName("measureRestDialog");
+        target.setWindowTitle(trText("ui.editor.measure_rest"));
+        target.setLabelText(trText("ui.editor.measure_rest_target").arg(count));
+        target.setInputMode(QInputDialog::IntInput);
+        target.setIntRange(1, count);
+        target.setIntValue(currentBar + 1);
+        target.setOkButtonText(trText("ui.inspector.apply"));
+        target.setCancelButtonText(trText("ui.button.cancel"));
+        if (target.exec() != QDialog::Accepted)
+            return;
+        const int bar = target.intValue() - 1;
+        const auto &span = measures[std::size_t(bar)];
+        if (!replaceNumberedTimeWithRest(score, span.start, int(span.end - span.start)))
+        {
+            setStatus("ui.editor.structure_unavailable");
+            return;
+        }
+        std::int64_t tick = 0;
+        int restIndex = -1;
+        for (std::size_t i = 0; i < score.notes.size(); ++i)
+        {
+            if (tick == span.start)
+            {
+                restIndex = int(i);
+                break;
+            }
+            tick += score.notes[i].durationTicks;
+        }
+        if (commitNumberedScore(std::move(score), "ui.editor.measure_rest", restIndex, false))
+            selectNote(restIndex, false);
+        return;
+    }
+
     if (action == Action::AddBars)
     {
         score.editorMinimumBars =
@@ -340,11 +398,7 @@ void MainWindow::numberedAction(NumberedEditAction action)
     }
     else if (action == Action::InsertBarBefore || action == Action::InsertBarAfter || action == Action::DeleteBar)
     {
-        int bar = selected_ < 0 ? int(numberedInputTick_ / ticksPerBar(score))
-                                : score.notes[std::size_t(selected_)].measure;
-        bar = std::min(bar, (project_.numberedComposition ? compositionBars(score, *project_.numberedComposition)
-                                                          : numberedBarCount(score)) -
-                                1);
+        int bar = currentBar;
         if (action == Action::InsertBarAfter)
             ++bar;
         if (project_.numberedComposition)
@@ -391,7 +445,7 @@ void MainWindow::numberedAction(NumberedEditAction action)
             break;
         case Action::Dotted:
             if (note.durationTicks == 1440 || note.durationTicks == 720 || note.durationTicks == 360 ||
-                note.durationTicks == 180 || note.durationTicks == 90)
+                note.durationTicks == 180 || note.durationTicks == 90 || note.durationTicks == 45)
                 note.durationTicks = note.durationTicks * 2 / 3;
             else
                 note.durationTicks = std::min(MaximumNoteDurationTicks, note.durationTicks * 3 / 2);

@@ -80,9 +80,9 @@ NumberedEditorToolbar::NumberedEditorToolbar(QWidget *parent) : QWidget(parent)
     };
     auto *notes = page("ui.editor.notes");
     auto *durations = new QButtonGroup(this);
-    const int ticks[] = {960, 480, 240, 120, 60};
-    const char *keys[] = {"half", "quarter", "eighth", "sixteenth", "thirty_second"};
-    for (int i = 0; i < 5; ++i)
+    const int ticks[] = {960, 480, 240, 120, 60, 30};
+    const char *keys[] = {"half", "quarter", "eighth", "sixteenth", "thirty_second", "sixty_fourth"};
+    for (int i = 0; i < 6; ++i)
     {
         const QString key = "ui.editor." + QString(keys[i]);
         auto *button = new QPushButton(trText(qPrintable(key)));
@@ -110,6 +110,9 @@ NumberedEditorToolbar::NumberedEditorToolbar(QWidget *parent) : QWidget(parent)
     action(notes, "ui.editor.tie", "editorTie", NumberedEditAction::Tie);
     notes->addStretch();
     auto *bars = page("ui.editor.bars");
+    action(bars, "ui.editor.measure_properties", "editorMeasureProperties", NumberedEditAction::MeasureProperties);
+    action(bars, "ui.editor.measure_repeat", "editorMeasureRepeat", NumberedEditAction::MeasureRepeat);
+    action(bars, "ui.editor.measure_rest", "editorBarRest", NumberedEditAction::MeasureRest);
     action(bars, "ui.editor.bar_before", "editorBarBefore", NumberedEditAction::InsertBarBefore);
     action(bars, "ui.editor.bar_after", "editorBarAfter", NumberedEditAction::InsertBarAfter);
     action(bars, "ui.editor.bar_delete", "editorBarDelete", NumberedEditAction::DeleteBar);

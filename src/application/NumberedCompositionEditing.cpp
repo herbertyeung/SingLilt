@@ -41,6 +41,60 @@ void editCompositionMeasure(Score &metadata, NumberedComposition &composition, i
 {
     auto candidate = composition;
     const int count = compositionBars(metadata, composition);
+    if (!candidate.structure.measures.empty())
+    {
+        const auto measures = numberedMeasures(metadata, candidate);
+        if (measure < 0 || measure > count || (remove && measure == count) ||
+            (!remove && count >= MaximumEditorBars))
+            throw std::invalid_argument("ui.editor.invalid_structure");
+        auto &structure = candidate.structure;
+        while (structure.measures.size() < measures.size())
+        {
+            if (structure.nextId == std::numeric_limits<int>::max())
+                throw std::invalid_argument("ui.editor.invalid_structure");
+            structure.measures.push_back({structure.nextId++});
+        }
+        const auto start = measure == count ? measures.back().end : measures[measure].start;
+        const auto &meter = measures[std::size_t(remove ? measure : std::max(0, measure - 1))];
+        const int length = int(meter.end - meter.start);
+        if (remove)
+        {
+            const int id = structure.measures[measure].id;
+            for (const auto &repeat : structure.repeats)
+                if (id == repeat.first || id == repeat.last || id == repeat.firstEnding)
+                    throw std::invalid_argument("ui.editor.structure_repeat_boundary");
+            structure.measures.erase(structure.measures.begin() + measure);
+            if (measure < int(structure.measures.size()))
+            {
+                auto &next = structure.measures[measure];
+                const auto &resolved = measures[measure + 1];
+                next.beats = resolved.beats;
+                next.unit = resolved.unit;
+                next.bpm = resolved.bpm;
+                next.tonic = resolved.tonic;
+            }
+        }
+        else
+        {
+            if (structure.nextId == std::numeric_limits<int>::max())
+                throw std::invalid_argument("ui.editor.invalid_structure");
+            structure.measures.insert(structure.measures.begin() + measure,
+                                      NumberedMeasure{structure.nextId++, meter.beats, meter.unit});
+        }
+        for (auto &voice : candidate.voices)
+        {
+            auto score = metadata;
+            score.notes = std::move(voice.notes);
+            if (remove)
+                removeNumberedTime(score, start, length);
+            else if (!insertNumberedTime(score, start, length))
+                throw std::invalid_argument("ui.editor.invalid_structure");
+            voice.notes = std::move(score.notes);
+        }
+        metadata.editorMinimumBars = std::max(1, count + (remove ? -1 : 1));
+        composition = std::move(candidate);
+        return;
+    }
     for (auto &voice : candidate.voices)
     {
         auto score = metadata;
