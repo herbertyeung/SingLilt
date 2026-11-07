@@ -95,6 +95,7 @@ QWidget#pianoKeyboard QPushButton { border-radius: 0; border: 1px solid #B7C6D3;
 QWidget#pianoKeyboard QPushButton[pianoBlack="true"] { background: #1B2536; color: #FFFFFF; padding: 22px 0 0 0; border: 1px solid #101827; }
 QWidget#pianoKeyboard QPushButton:hover, QWidget#pianoKeyboard QPushButton:pressed { background: #DDF5EE; color: #075C51; }
 QWidget#pianoKeyboard QPushButton:focus { border: 2px solid #168577; }
+QWidget#pianoKeyboard QPushButton:disabled, QWidget#pianoKeyboard QPushButton[pianoBlack="true"]:disabled { background: palette(alternate-base); color: palette(placeholder-text); border: 1px solid palette(mid); }
 
 QWidget#numberedEditorToolbar QPushButton:checked { background: palette(highlight); color: palette(highlighted-text); border-color: palette(highlight); }
 

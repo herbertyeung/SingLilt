@@ -33,7 +33,7 @@ no new workers, audio engines or persistence backends were introduced.
 
 Score metadata adds optional `subtitle`, `lyricist`, `composer` and `editorMinimumBars` fields.
 Missing fields keep legacy defaults. Input is validated before mutating the live score.
-The existing JPP save path and format version remain in use.
+The JPP envelope and save path are unchanged. Authored voices and marks use schema 7; shared measure structure uses schema 8. See [project format](PROJECT_FORMAT.md).
 
 ## Validation and test environment
 
@@ -135,7 +135,7 @@ A temporary guide is padded only for playback, so all voices remain audible beyo
 voice's last note. GUI and CLI WAV exports use this same plan. No additional audio backend or
 worker thread was introduced. Existing staff-image/import workflows remain separate.
 
-Composition/mark projects use JPP schema 7. Legacy projects still load unchanged; conversion happens
+Composition/mark projects without shared measure structure use JPP schema 7. Legacy projects still load unchanged; conversion happens
 on the first voice/mark edit. Schema 7 validates every voice, stable IDs, names, note fields and the
 canonical guide. Older executables reject this version rather than silently losing extra voices.
 Per-voice instruments, ornamentation and region-scoped voice management are not included.

@@ -471,12 +471,14 @@ static QImage renderNumberedScoreImpl(Score &score, NumberedScoreLayout *layout,
     static constexpr std::array<const char *, 12> keyNames{"C",  "C#", "D",  "Eb", "E",  "F",
                                                            "F#", "G",  "Ab", "A",  "Bb", "B"};
     painter.setFont(lyricFont);
-    painter.drawText(QPointF(Margin, headerHeight - 25), QString("1=%1     %2/%3     %4=%5")
-                                                             .arg(keyNames[static_cast<std::size_t>(score.tonic)])
-                                                             .arg(score.beatsPerBar)
-                                                             .arg(score.beatUnit)
-                                                             .arg(QChar(0x2669))
-                                                             .arg(score.bpm, 0, 'g', 5));
+    const auto *opening = measures && !measures->empty() ? &measures->front() : nullptr;
+    painter.drawText(QPointF(Margin, headerHeight - 25),
+                     QString("1=%1     %2/%3     %4=%5")
+                         .arg(keyNames[static_cast<std::size_t>(opening ? opening->tonic : score.tonic)])
+                         .arg(opening ? opening->beats : score.beatsPerBar)
+                         .arg(opening ? opening->unit : score.beatUnit)
+                         .arg(QChar(0x2669))
+                         .arg(opening ? opening->bpm : score.bpm, 0, 'g', 5));
 
     if (lyricRows > 1)
     {

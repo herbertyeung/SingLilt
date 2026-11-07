@@ -104,6 +104,7 @@
   "ui.editor.repeat_remove": "Remove repeat",
   "ui.editor.structure_first": "First repeat measure",
   "ui.editor.structure_last": "Last repeat measure (inclusive)",
+  "ui.editor.structure_no_ending": "None",
   "ui.editor.structure_ending": "First ending starts at (0=none)",
   "ui.editor.structure_passes": "Total passes",
   "ui.editor.structure_repeat_boundary": "Edit the repeat range before deleting its boundary measure.",

@@ -22,6 +22,9 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QPlainTextEdit>
+#include <QDoubleSpinBox>
+#include "ui/ScorePropertiesPanel.h"
 #include <QSpinBox>
 #include <QTextStream>
 #include <QTimer>
@@ -114,6 +117,20 @@ void runNumberedReviewCheck(MainWindow &window, const QCommandLineParser &args, 
                               !window.findChild<QAction *>("menuRepeats")->isEnabled());
                         check("Staff conversion stays disabled after generic refresh",
                               !window.findChild<QAction *>("menuStaffView")->isEnabled());
+                        auto *style = window.findChild<QComboBox *>("notationStyle");
+                        style->setCurrentIndex(style->findData(int(NotationStyle::Staff)));
+                        check("Rejected Staff selection keeps the view selector on Numbered",
+                              style->currentData().toInt() == int(NotationStyle::Numbered));
+                        auto withArrangement = fixture();
+                        withArrangement.accompaniment = generateAccompaniment(withArrangement.score, {});
+                        setup(withArrangement);
+                        auto *pattern = window.findChild<QComboBox *>("accompanimentPattern");
+                        check("An authored composition disables the legacy accompaniment selector",
+                              !pattern->isEnabled());
+                        const auto originalPattern = window.project_.accompaniment->settings.pattern;
+                        pattern->setCurrentIndex((pattern->currentIndex() + 1) % pattern->count());
+                        check("A retained arrangement cannot replace the composed voice plan",
+                              window.project_.accompaniment->settings.pattern == originalPattern);
                         check("Shared instrument label survives refresh",
                               window.findChild<QLabel *>("programALabel")->text() ==
                                   trText("ui.editor.shared_sound"));
@@ -126,6 +143,49 @@ void runNumberedReviewCheck(MainWindow &window, const QCommandLineParser &args, 
                         const int count = cancelDialogs([&] { window.editRepeats(); });
                         check("Repeat entry rejects composition before opening a dialog",
                               count == 0 && before == scoreToJson(window.project_.score));
+                    });
+            attempt("draft and note edits compose",
+                    [&]
+                    {
+                        setup(fixture());
+                        QTimer responder;
+                        QObject::connect(
+                            &responder, &QTimer::timeout, &window,
+                            []
+                            {
+                                auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+                                if (auto *message = qobject_cast<QMessageBox *>(dialog))
+                                    message->button(QMessageBox::Apply)->click();
+                                else if (dialog)
+                                {
+                                    if (auto *text = dialog->findChild<QPlainTextEdit *>("numberedLyricsText"))
+                                        text->setPlainText("L");
+                                    dialog->accept();
+                                }
+                            });
+                        responder.start(5);
+                        window.duration_->setValue(.5);
+                        window.findChild<QAction *>("menuLyrics")->trigger();
+                        check("Lyrics command preserves an applied inspector duration",
+                              window.project_.score.notes.front().durationTicks == 240 &&
+                                  window.project_.score.notes.front().lyric == "L");
+                        window.duration_->setValue(.75);
+                        auto *title = window.findChild<QLineEdit *>("editorTitle");
+                        title->setText("Requested title");
+                        title->editingFinished();
+                        check("Changing a property preserves it and the applied inspector draft",
+                              window.project_.score.title == "Requested title" &&
+                                  window.project_.score.notes.front().durationTicks == 360);
+                        window.busy_ = true;
+                        const auto before = window.project_.score;
+                        window.findChild<QAction *>("menuLyrics")->trigger();
+                        window.busy_ = false;
+                        check("Busy lyrics command leaves the score unchanged", window.project_.score == before);
+                        responder.stop();
+                        window.inputNumberedPitch(0, 0, 0);
+                        const auto &rest = window.project_.score.notes.front();
+                        check("Converting a sung note to rest clears both lyric forms",
+                              rest.degree == 0 && rest.lyric.empty() && rest.verseLyrics.empty());
                     });
             attempt("playback exception boundary",
                     [&]
@@ -271,8 +331,29 @@ void runNumberedReviewCheck(MainWindow &window, const QCommandLineParser &args, 
                                 contained &=
                                     slot.bounds.right() <= layout.measures[std::size_t(slot.tick / 1920)].right();
                             check("Empty slots stay inside their measure", contained);
-                            image.save(folder + QString("/dense-%1.png").arg(duration));
+                            check("Dense-layout PNG was written",
+                                  image.save(folder + QString("/dense-%1.png").arg(duration)));
                         });
+            attempt("opening measure signature",
+                    [&]
+                    {
+                        auto project = fixture();
+                        auto &composition = *project.numberedComposition;
+                        composition.structure = {{{1, 3, 4, 67, 2}}, {}, 2};
+                        const auto measures = numberedMeasures(project.score, composition);
+                        auto inherited = project.score;
+                        auto explicitOpening = inherited;
+                        explicitOpening.tonic = 2;
+                        explicitOpening.beatsPerBar = 3;
+                        explicitOpening.bpm = 67;
+                        NumberedScoreLayout layout;
+                        const auto inferredImage = renderNumberedScore(inherited, &layout, nullptr, &measures);
+                        const auto explicitImage =
+                            renderNumberedScore(explicitOpening, &layout, nullptr, &measures);
+                        const auto header = QRect(0, 0, inferredImage.width(), int(layout.systems.front().top()));
+                        check("Header key, meter and tempo reflect the opening written measure",
+                              inferredImage.copy(header) == explicitImage.copy(header));
+                    });
             attempt("wide empty meter",
                     [&]
                     {
@@ -291,7 +372,22 @@ void runNumberedReviewCheck(MainWindow &window, const QCommandLineParser &args, 
                         window.inputNumberedPitch(4, 0, 0);
                         const auto editCount = numberedRasterizationCount() - start;
                         metrics.insert("editRasterizations", double(editCount));
-                        check("Composition edit rasterizes each voice and final page once", editCount <= 3);
+                        check("Composition edit rasterizes each voice and final page once", editCount == 3);
+                        OptionsContext context;
+                        context.score = window.project_.score;
+                        context.mix = window.project_.practiceMix;
+                        context.speed = 1.25;
+                        auto settings = window.settings_;
+                        const auto optionsStart = numberedRasterizationCount();
+                        window.applyOptions(settings, context);
+                        check("Applying playback speed does not rasterize the score",
+                              numberedRasterizationCount() == optionsStart);
+                        context.score.title = "Updated in options";
+                        const auto changedStart = numberedRasterizationCount();
+                        window.applyOptions(settings, context);
+                        check("Changing score metadata applies the prepared raster exactly once",
+                              window.project_.score.title == "Updated in options" &&
+                                  numberedRasterizationCount() - changedStart == 3);
                         const auto image = window.project_.image;
                         const auto selectionStart = numberedRasterizationCount();
                         window.selectNumberedVoice(2);
@@ -306,6 +402,13 @@ void runNumberedReviewCheck(MainWindow &window, const QCommandLineParser &args, 
                     {
                         setup(fixture());
                         window.languageManager_.setLanguage("en_US");
+                        QApplication::processEvents();
+                        auto *propertyTitle = window.findChild<QLineEdit *>("editorTitle");
+                        auto *propertyTempo = window.findChild<QDoubleSpinBox *>("editorTempo");
+                        check("Property accessible label follows the installed language",
+                              propertyTitle && propertyTitle->accessibleName() == trText("ui.editor.title"));
+                        check("Properties do not repeat the tempo unit",
+                              propertyTempo && propertyTempo->suffix().isEmpty());
                         QApplication::processEvents();
                         check("Position text retranslates immediately",
                               window.findChild<QLabel *>("editorPosition")->text().startsWith("Measure"));

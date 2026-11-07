@@ -55,10 +55,16 @@ void numberedEditing()
     score.notes = {note};
     score.notes[0].durationTicks = 4800;
     score.notes[0].lyric = "held";
+    score.notes[0].dynamicLevel = 4;
+    score.notes[0].accent = true;
+    score.notes[0].staccato = true;
     check(insertNumberedBar(score, 1), "Insertion splits crossing note");
     check(score.notes.size() == 3 && score.notes[0].durationTicks == 1920 && score.notes[1].degree == 0 &&
               score.notes[2].durationTicks == 2880 && score.notes[2].lyric.empty(),
           "Split keeps pitch and one lyric");
+    check(score.notes.front().accent && score.notes.front().staccato && score.notes.front().dynamicLevel == 4 &&
+              !score.notes.back().accent && !score.notes.back().staccato && score.notes.back().dynamicLevel == 0,
+          "An inserted measure does not duplicate the original attack's markings");
     check(removeNumberedBar(score, 1) && numberedDuration(score) == 4800, "Remove inserted silence");
     score.repeats = {{0, 2, 2}};
     check(!insertNumberedBar(score, 0) && !removeNumberedBar(score, 0),
@@ -75,6 +81,14 @@ void numberedEditing()
     score.notes = {note};
     check(removeNumberedBar(score, 0) && score.notes.empty() && numberedBarCount(score) == 1,
           "Deleting the last measure retains an editable empty bar");
+    note.durationTicks = 1;
+    score.notes.assign(MaximumScoreNotes, note);
+    const int lastBar = numberedBarCount(score);
+    check(insertNumberedBar(score, lastBar) && score.notes.size() == MaximumScoreNotes,
+          "A trailing empty measure does not need note capacity");
+    score.notes.pop_back();
+    check(insertNumberedBar(score, 0) && score.notes.size() == MaximumScoreNotes,
+          "Boundary-aligned insertion uses just one note slot");
 }
 
 singlilt::Note note(int degree, int ticks = singlilt::TicksPerQuarter)
@@ -239,6 +253,7 @@ void structuredNumberedPerformance()
               performedScoreMap(metadata, edited).duration == map.duration,
           "Deleting inserted measure restores time");
     const auto before = edited;
+    const auto metadataBefore = metadata;
     rejected = false;
     try
     {
@@ -248,7 +263,24 @@ void structuredNumberedPerformance()
     {
         rejected = true;
     }
-    check(rejected && edited == before, "Deleting an ending boundary is atomic");
+    check(rejected && edited == before && metadata == metadataBefore, "Deleting an ending boundary is atomic");
+    auto tied = note(1, 2400);
+    tied.tieToNext = true;
+    Score tieScore;
+    tieScore.notes = {tied, note(1, 480)};
+    NumberedComposition tiedComposition{{{1, "Tied", tieScore.notes}}, 2};
+    tiedComposition.structure = {{{1}, {2, 0, 0, 60}}, {{1, 2, 0, 2}}, 3};
+    const auto repeatedTie = compositionTimeline(tieScore, tiedComposition);
+    check(repeatedTie.events.size() >= 6 && repeatedTie.events[0].attack && !repeatedTie.events[1].attack &&
+              !repeatedTie.events[2].attack && repeatedTie.events[4].attack,
+          "Held and tied notes do not retrigger at written boundaries, but do after a repeat jump");
+    Score nearLimit;
+    nearLimit.notes.assign(MaximumScoreNotes - 1, note(1, 1));
+    NumberedComposition dense{{{1, "Dense", nearLimit.notes}, {2, "Long", {note(3, 120000)}}}, 3};
+    const auto densePlayback = compositionTimeline(nearLimit, dense);
+    check(densePlayback.valid() && densePlayback.durationTicks == 120000 &&
+              !densePlayback.metronomeBeats.empty() && densePlayback.metronomeBeats.back().startTick == 119520,
+          "A near-limit guide preserves the longest voice and trailing metronome without exceeding note limits");
     auto high = note(7);
     high.octave = 4;
     score.tonic = 11;
@@ -293,6 +325,20 @@ void numberedComposition()
           "Dynamic inherits independently without staccato leaking");
     const auto playback = compositionPlaybackScore(score, composition);
     check(numberedDuration(playback) == 1920 && score.notes.size() == 2, "Only playback guide is padded");
+    const auto beforeInvalidName = composition;
+    for (const auto &invalidName : {std::string{}, std::string(257, 'x')})
+    {
+        bool invalidRejected = false;
+        try
+        {
+            addNumberedVoice(composition, invalidName);
+        }
+        catch (const std::invalid_argument &)
+        {
+            invalidRejected = true;
+        }
+        check(invalidRejected && composition == beforeInvalidName, "Invalid voice name does not consume an ID");
+    }
     const int added = addNumberedVoice(composition, "Third");
     moveNumberedVoice(composition, added, -1);
     check(numberedVoice(composition, added).name == "Third" && composition.voices[1].id == added,

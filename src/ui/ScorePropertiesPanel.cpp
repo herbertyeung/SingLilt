@@ -34,6 +34,7 @@ ScorePropertiesPanel::ScorePropertiesPanel(QWidget *parent) : QWidget(parent)
         edit->setObjectName(name);
         edit->setMaxLength(512);
         edit->setAccessibleName(trText(key));
+        edit->setProperty("_ui_accessibleName", QByteArray(key));
         form->addRow(trText(key), edit);
         form->labelForField(edit)->setProperty("_ui_text", QByteArray(key));
         connect(edit, &QLineEdit::editingFinished, this,
@@ -75,7 +76,6 @@ ScorePropertiesPanel::ScorePropertiesPanel(QWidget *parent) : QWidget(parent)
     tempo_->setObjectName("editorTempo");
     tempo_->setRange(MinimumScoreBpm, MaximumScoreBpm);
     tempo_->setDecimals(1);
-    tempo_->setSuffix(" BPM");
     form->addRow(trText("ui.option.tempo"), tempo_);
     form->labelForField(tempo_)->setProperty("_ui_text", QByteArray("ui.option.tempo"));
     lyricist_ = field("ui.editor.lyricist", "editorLyricist");

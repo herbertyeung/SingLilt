@@ -472,6 +472,8 @@ MainWindow::MainWindow(LanguageManager &languageManager, ThemeManager &themes, Q
 }
 MainWindow::~MainWindow()
 {
+    if (numberedDraftTimer_->isActive())
+        saveNumberedDraft();
     if (staffRecoveryPending_)
     {
         staffRecoveryTimer_->stop();
@@ -871,6 +873,12 @@ void MainWindow::updateNote()
     n.confidence = 1;
     if (project_.numberedComposition)
     {
+        if (n.degree == 0)
+        {
+            n.lyric.clear();
+            n.verseLyrics.clear();
+            n.tieToNext = false;
+        }
         auto score = project_.score;
         score.notes[std::size_t(selected_)] = std::move(n);
         commitNumberedScore(std::move(score), "ui.product.update_note", selected_, false);
@@ -1114,7 +1122,7 @@ bool MainWindow::confirmDiscard()
         save();
         return !dirty_;
     }
-    return true;
+    return clearNumberedDraft();
 }
 void MainWindow::openFile(const QString &path)
 {

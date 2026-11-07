@@ -308,7 +308,8 @@ void MainWindow::refreshPracticeControls()
         accompanimentPattern_->setCurrentIndex(
             accompanimentPattern_->findData(int(arrangement->settings.pattern)));
     const bool stale = arrangement && arrangement->melodyFingerprint != accompanimentFingerprint(project_.score);
-    accompanimentPattern_->setEnabled(!project_.staffPerformance && !auditionArrangement_);
+    accompanimentPattern_->setEnabled(!project_.staffPerformance && !project_.numberedComposition &&
+                                      !auditionArrangement_);
     accompanimentEnabled_->setEnabled(project_.staffPerformance || (arrangement.has_value() && !stale));
     bindText(melodyEnabled_,
              project_.staffPerformance ? "ui.staff.primary_parts" : "ui.accompaniment.melody_enabled");
@@ -328,7 +329,8 @@ void MainWindow::refreshPracticeControls()
 }
 void MainWindow::changeAccompanimentPattern()
 {
-    if (loading_ || audioLoading_ || auditionArrangement_ || !project_.accompaniment)
+    if (loading_ || audioLoading_ || auditionArrangement_ || !project_.accompaniment ||
+        project_.numberedComposition)
         return;
     auto changed = *project_.accompaniment;
     changed.settings.pattern = AccompanimentPattern(accompanimentPattern_->currentData().toInt());

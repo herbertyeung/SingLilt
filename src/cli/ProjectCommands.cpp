@@ -158,7 +158,16 @@ QJsonObject accompanimentJson(const Project &project, const Timeline &timeline)
     if (!project.accompaniment)
         return report;
     const auto &arrangement = *project.accompaniment;
-    const auto plan = buildAccompanimentPlan(project.score, timeline, arrangement);
+    // Arrangements are indexed by complete written notes, not the segmented performed guide.
+    const auto plan = project.numberedComposition
+                          ? buildAccompanimentPlan(
+                                project.score,
+                                buildNumberedWrittenTimeline(
+                                    project.score, numberedMeasures(project.score, *project.numberedComposition)),
+                                arrangement)
+                          : buildAccompanimentPlan(project.score, timeline, arrangement);
+    if (project.numberedComposition)
+        report.insert("writtenPreviewOnly", true);
     QJsonArray chords;
     for (const auto &chord : arrangement.chords)
         chords.append(QJsonObject{{"startTick", qint64(chord.startTick)},

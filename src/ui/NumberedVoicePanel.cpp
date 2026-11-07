@@ -19,13 +19,14 @@ NumberedVoicePanel::NumberedVoicePanel(QWidget *parent) : QWidget(parent)
     voices_->setMinimumWidth(150);
     voices_->setMaximumWidth(220);
     row->addWidget(voices_);
-    const char *keys[] = {"voice_add", "voice_rename", "voice_remove", "voice_up", "voice_down"};
+    const char *keys[] = {"ui.editor.voice_add", "ui.editor.voice_rename", "ui.editor.voice_remove",
+                          "ui.editor.voice_up", "ui.editor.voice_down"};
     const char *names[] = {"voiceAdd", "voiceRename", "voiceRemove", "voiceUp", "voiceDown"};
     for (int i = 0; i < 5; ++i)
     {
         auto *button = new QPushButton;
         button->setObjectName(names[i]);
-        button->setProperty("voiceTextKey", "ui.editor." + QString::fromLatin1(keys[i]));
+        button->setProperty("voiceTextKey", QByteArray(keys[i]));
         button->setFocusPolicy(Qt::NoFocus);
         row->addWidget(button);
         connect(button, &QPushButton::clicked, this,

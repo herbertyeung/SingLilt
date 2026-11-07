@@ -81,11 +81,12 @@ NumberedEditorToolbar::NumberedEditorToolbar(QWidget *parent) : QWidget(parent)
     auto *notes = page("ui.editor.notes");
     auto *durations = new QButtonGroup(this);
     const int ticks[] = {960, 480, 240, 120, 60, 30};
-    const char *keys[] = {"half", "quarter", "eighth", "sixteenth", "thirty_second", "sixty_fourth"};
+    const char *keys[] = {"ui.editor.half",      "ui.editor.quarter",       "ui.editor.eighth",
+                          "ui.editor.sixteenth", "ui.editor.thirty_second", "ui.editor.sixty_fourth"};
     for (int i = 0; i < 6; ++i)
     {
-        const QString key = "ui.editor." + QString(keys[i]);
-        auto *button = new QPushButton(trText(qPrintable(key)));
+        const QByteArray key(keys[i]);
+        auto *button = new QPushButton(trText(key.constData()));
         button->setProperty("editorTextKey", key);
         button->setObjectName(QString("editorDuration%1").arg(ticks[i]));
         button->setCheckable(true);

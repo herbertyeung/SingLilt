@@ -664,8 +664,16 @@ void MainWindow::createScorePane(QVBoxLayout *layout)
     propertiesScroll->setWidget(scoreProperties_);
     scoreProperties_->edited = [this]
     {
-        if (!loading_ && numberedEditorActive() && resolveNoteDraft())
-            commitNumberedScore(scoreProperties_->editedScore(project_.score), "ui.editor.properties", selected_);
+        if (loading_ || !numberedEditorActive())
+            return;
+        auto candidate = scoreProperties_->editedScore(project_.score);
+        if (!resolveNoteDraft())
+        {
+            scoreProperties_->setScore(project_.score);
+            return;
+        }
+        candidate.notes = project_.score.notes;
+        commitNumberedScore(std::move(candidate), "ui.editor.properties", selected_);
     };
     editorInspectorTabs_->addTab(propertiesScroll, trText("ui.editor.properties"));
     editorInspectorTabs_->addTab(legacyScroll, trText("ui.editor.notes"));

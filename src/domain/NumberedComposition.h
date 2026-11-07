@@ -4,6 +4,9 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "AccompanimentTimeline.h"
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace singlilt
 {

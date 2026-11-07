@@ -78,7 +78,7 @@ Score compositionPlaybackScore(const Score &metadata, const NumberedComposition 
     auto score = metadata;
     // The UI supplies the active voice as a guide. Only this temporary playback copy is padded.
     auto remaining = performedScoreMap(metadata, composition).writtenEnd - numberedDuration(score);
-    while (remaining > 0)
+    while (remaining > 0 && score.notes.size() < MaximumScoreNotes)
     {
         Note rest;
         rest.degree = 0;

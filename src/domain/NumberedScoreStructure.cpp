@@ -158,7 +158,21 @@ Timeline compositionTimeline(const Score &metadata, const NumberedComposition &c
     if (score.notes.empty())
         return {};
     if (composition.structure.measures.empty())
-        return buildTimeline(score);
+    {
+        auto timeline = buildTimeline(score);
+        // A guide at the note limit can leave an unnotated silent tail.
+        const auto end = compositionDuration(composition);
+        if (timeline.valid() && timeline.durationTicks < end)
+        {
+            const auto beatTicks = ticksPerMetronomeBeat(score);
+            const auto barTicks = ticksPerBar(score);
+            auto tick = (timeline.durationTicks + beatTicks - 1) / beatTicks * beatTicks;
+            for (; tick < end; tick += beatTicks)
+                timeline.metronomeBeats.push_back({tick, tick % barTicks == 0});
+            timeline.durationTicks = end;
+        }
+        return timeline;
+    }
     const auto map = performedScoreMap(metadata, composition);
     Timeline timeline;
     timeline.bpm = metadata.bpm;
@@ -167,6 +181,7 @@ Timeline compositionTimeline(const Score &metadata, const NumberedComposition &c
     std::vector<std::int64_t> starts{0};
     for (const auto &note : score.notes)
         starts.push_back(starts.back() + note.durationTicks);
+    std::int64_t previousWrittenEnd = -1;
     for (const auto &occurrence : map.order)
     {
         const auto &measure = map.written[occurrence.measure];
@@ -188,9 +203,19 @@ Timeline compositionTimeline(const Score &metadata, const NumberedComposition &c
             const auto pitch = midiPitch(note, map.written[numberedMeasureAt(map.written, starts[index])].tonic);
             if (timeline.events.size() >= 100000 || (note.degree && (pitch < 0 || pitch > 127)))
                 invalidStructure();
-            timeline.events.push_back({index, occurrence.start + start - measure.start, length, pitch, true,
+            bool attack = pitch >= 0;
+            if (attack && previousWrittenEnd == start && !timeline.events.empty())
+            {
+                const auto &previous = timeline.events.back();
+                if (previous.midiPitch == pitch &&
+                    (previous.sourceNoteIndex == index ||
+                     (previous.sourceNoteIndex + 1 == index && score.notes[previous.sourceNoteIndex].tieToNext)))
+                    attack = false;
+            }
+            timeline.events.push_back({index, occurrence.start + start - measure.start, length, pitch, attack,
                                        occurrence.pass, programForVerse(score, 0),
                                        lyricForVerse(note, occurrence.pass), pitch < 0 ? 0 : score.baseVelocity});
+            previousWrittenEnd = start + length;
             ++index;
         }
     }

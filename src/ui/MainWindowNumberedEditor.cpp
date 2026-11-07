@@ -300,6 +300,12 @@ void MainWindow::inputNumberedPitch(int degree, int octave, int accidental)
         note.octave = octave;
         note.accidental = accidental;
         note.confidence = 1;
+        if (degree == 0)
+        {
+            note.lyric.clear();
+            note.verseLyrics.clear();
+            note.tieToNext = false;
+        }
     }
     if (commitNumberedScore(std::move(score), "ui.editor.notes", selected_) && inserting)
         selectNumberedInput(numberedDuration(project_.score));
@@ -482,7 +488,12 @@ void MainWindow::numberedAction(NumberedEditAction action)
             return;
         }
     }
-    commitNumberedScore(std::move(score), "ui.editor.bars", selection);
+    const char *undoKey = "ui.editor.notes";
+    if (action == Action::InsertBarBefore || action == Action::InsertBarAfter || action == Action::DeleteBar)
+        undoKey = "ui.editor.bars";
+    else if (action == Action::Accent || action == Action::Staccato)
+        undoKey = "ui.editor.marks";
+    commitNumberedScore(std::move(score), undoKey, selection);
 }
 
 void MainWindow::editNumberedLyrics()

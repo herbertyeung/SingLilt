@@ -911,6 +911,7 @@ void MainWindow::setNotationStyle(NotationStyle style)
     if (project_.numberedComposition)
     {
         setStatus("ui.editor.composition_numbered");
+        refreshNotationControls();
         return;
     }
     if (project_.staffImagePlayback || !project_.generatedNotation || busy_ || audioLoading_ ||

@@ -158,6 +158,13 @@ class WaveExportProbe final : public QObject
         check("2x fragment across a tempo boundary uses exact frames and preserves the tied note",
               mixedTempoResult.musicFrames == SampleRate / 4 && pcmRms(fragment, 0.01, 0.22) > 1e-5);
         artifacts_.append(fragment);
+        auto retrigger = variableTempo;
+        retrigger.events[1].attack = true;
+        const auto untiedFragment = output("mixed-tempo-retrigger");
+        renderWave(score, retrigger, plan, untiedFragment, mixedTempo);
+        check("A retrigger at the tempo boundary differs from an uninterrupted held note",
+              std::abs(pcmRms(fragment, 0.135, 0.17) - pcmRms(untiedFragment, 0.135, 0.17)) > 1e-5);
+        artifacts_.append(untiedFragment);
         const QString invalid = output("invalid-range");
         for (const auto &range : {std::pair{-1.0, 1.0}, std::pair{0.0, 3.0}, std::pair{1.0, 0.5},
                                   std::pair{2.0, 2.0}, std::pair{std::numeric_limits<double>::quiet_NaN(), 1.0}})

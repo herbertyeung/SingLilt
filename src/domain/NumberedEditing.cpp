@@ -60,8 +60,7 @@ bool appendNumberedNote(Score &score, std::int64_t tick, Note note, std::int64_t
 bool insertNumberedBar(Score &score, int bar)
 {
     const int count = numberedBarCount(score);
-    if (!canRestructureNumberedScore(score) || bar < 0 || bar > count || count >= MaximumEditorBars ||
-        score.notes.size() + 2 > MaximumScoreNotes)
+    if (!canRestructureNumberedScore(score) || bar < 0 || bar > count || count >= MaximumEditorBars)
         return false;
     const int length = ticksPerBar(score);
     if (!insertNumberedTime(score, std::int64_t(bar) * length, length))
@@ -72,21 +71,25 @@ bool insertNumberedBar(Score &score, int bar)
 
 bool insertNumberedTime(Score &score, std::int64_t boundary, int length)
 {
-    if (score.notes.size() + 2 > MaximumScoreNotes)
-        return false;
     std::int64_t tick = 0;
     for (std::size_t i = 0; i < score.notes.size(); ++i)
     {
         const auto end = tick + score.notes[i].durationTicks;
         if (boundary < end)
         {
-            if (boundary > tick)
+            const bool split = boundary > tick;
+            if (score.notes.size() + (split ? 2 : 1) > MaximumScoreNotes)
+                return false;
+            if (split)
             {
                 auto tail = score.notes[i];
                 tail.durationTicks = int(end - boundary);
                 tail.lyric.clear();
                 tail.verseLyrics.clear();
                 tail.keyOverride = -1;
+                tail.dynamicLevel = 0;
+                tail.accent = false;
+                tail.staccato = false;
                 score.notes[i].durationTicks = int(boundary - tick);
                 score.notes[i].tieToNext = false;
                 ++i;

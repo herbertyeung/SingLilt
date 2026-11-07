@@ -472,14 +472,14 @@ void MainWindow::refreshRecentProjects()
 
 void MainWindow::editLyrics()
 {
+    if (project_.score.notes.empty() || busy_ || audioLoading_ || notePreviewLoading_ || audioTask_.isRunning() ||
+        !resolveNoteDraft())
+        return;
     if (project_.numberedComposition)
     {
         editNumberedLyrics();
         return;
     }
-    if (project_.score.notes.empty() || busy_ || audioLoading_ || notePreviewLoading_ || audioTask_.isRunning() ||
-        !resolveNoteDraft())
-        return;
     QDialog dialog(this);
     dialog.setObjectName("songLyricsDialog");
     dialog.setWindowTitle(trText("ui.audio_import.edit_lyrics"));

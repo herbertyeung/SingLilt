@@ -263,14 +263,29 @@ bool MainWindow::applyOptions(const AppSettings &s, const OptionsContext &c)
             (c.playbackSource == 3 && project_.audioSource->instrumentalPath.empty()))
             throw std::runtime_error(trText("messages.options.source_missing").toStdString());
     }
-    if (!c.classroom && project_.numberedComposition)
+    const bool scoreChanged = !c.classroom && project_.score != c.score;
+    std::optional<NumberedComposition> preparedComposition;
+    NumberedScoreLayout preparedLayout;
+    QImage preparedImage;
+    if (!c.classroom && project_.numberedComposition && (scoreChanged || c.transpose != player_.transpose()))
     {
-        auto candidate = c.score;
-        auto composition = *project_.numberedComposition;
-        validateNumberedComposition(candidate, composition, c.transpose);
-        NumberedScoreLayout layout;
-        renderNumberedComposition(candidate, composition, activeNumberedVoice_, layout);
-        compositionPlaybackPlan(candidate, composition);
+        try
+        {
+            validateNumberedComposition(c.score, *project_.numberedComposition, c.transpose);
+            if (scoreChanged)
+            {
+                auto candidate = c.score;
+                preparedComposition = *project_.numberedComposition;
+                compositionTimeline(candidate, *preparedComposition);
+                compositionPlaybackPlan(candidate, *preparedComposition);
+                preparedImage = renderNumberedComposition(candidate, *preparedComposition, activeNumberedVoice_,
+                                                          preparedLayout);
+            }
+        }
+        catch (const std::exception &error)
+        {
+            throw std::runtime_error(localizeMessage(QString::fromUtf8(error.what())).toStdString());
+        }
     }
     const auto old = settings_;
     const bool staffProgramsChanged = !c.classroom && project_.staffPerformance &&
@@ -319,7 +334,6 @@ bool MainWindow::applyOptions(const AppSettings &s, const OptionsContext &c)
     metronome_->setChecked(s.metronome);
     if (!c.classroom)
     {
-        const bool scoreChanged = scoreToJson(project_.score) != scoreToJson(c.score);
         const bool mixChanged = project_.practiceMix.melodyEnabled != c.mix.melodyEnabled ||
                                 project_.practiceMix.accompanimentEnabled != c.mix.accompanimentEnabled ||
                                 project_.practiceMix.melodyVolume != c.mix.melodyVolume ||
@@ -333,6 +347,13 @@ bool MainWindow::applyOptions(const AppSettings &s, const OptionsContext &c)
             project_.processing.insert("confirmedQuarterBpm", c.score.bpm);
         }
         project_.score = c.score;
+        if (preparedComposition)
+        {
+            project_.numberedComposition = std::move(preparedComposition);
+            project_.score.notes = numberedVoice(*project_.numberedComposition, activeNumberedVoice_).notes;
+            project_.image = std::move(preparedImage);
+            numberedLayout_ = std::move(preparedLayout);
+        }
         if (project_.staffPerformance)
         {
             project_.staffPerformance->primaryProgram = c.primaryStaffProgram;
@@ -363,7 +384,7 @@ bool MainWindow::applyOptions(const AppSettings &s, const OptionsContext &c)
             c.originalVolume != findChild<QSlider *>("originalVolume")->value() / 100.0)
             markModified();
         if (scoreChanged)
-            rebuild(true);
+            rebuild(true, !project_.numberedComposition);
         else
         {
             player_.setPracticeMix(c.mix);

@@ -23,6 +23,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QInputDialog>
 #include <QComboBox>
 #include <QSpinBox>
@@ -33,6 +34,8 @@
 #include <QKeyEvent>
 #include <QPushButton>
 #include <QTimer>
+#include <QTemporaryDir>
+#include <QScopeGuard>
 #include <QTabWidget>
 #include <QScrollBar>
 #include <QTextStream>
@@ -41,6 +44,16 @@
 
 namespace singlilt
 {
+namespace
+{
+template <typename Widget> Widget *requiredControl(QObject *parent, const char *name)
+{
+    if (auto *widget = parent->findChild<Widget *>(name))
+        return widget;
+    throw std::runtime_error(std::string("Missing diagnostic control: ") + name);
+}
+} // namespace
+
 void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, QApplication &app)
 {
     QTimer::singleShot(
@@ -56,7 +69,42 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                 checks.append(QJsonObject{{"name", name}, {"passed", condition}});
                 passed &= condition;
             };
-            auto click = [&](const char *name) { window.findChild<QAbstractButton *>(name)->click(); };
+            auto click = [&](const char *name)
+            {
+                auto *button = window.findChild<QAbstractButton *>(name);
+                if (!button)
+                    throw std::runtime_error(std::string("Missing diagnostic button: ") + name);
+                button->click();
+            };
+            const auto runDialog = [&window](QAbstractButton *button, const auto &handle)
+            {
+                QTimer timer;
+                timer.setSingleShot(true);
+                QString failure;
+                bool opened = false;
+                QObject::connect(&timer, &QTimer::timeout, &window,
+                                 [&]
+                                 {
+                                     auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+                                     if (!dialog)
+                                         return;
+                                     opened = true;
+                                     try
+                                     {
+                                         handle(dialog);
+                                     }
+                                     catch (const std::exception &error)
+                                     {
+                                         failure = QString::fromUtf8(error.what());
+                                         dialog->reject();
+                                     }
+                                 });
+                timer.start(0);
+                button->click();
+                if (!opened || !failure.isEmpty())
+                    throw std::runtime_error(opened ? failure.toStdString()
+                                                    : "Expected diagnostic dialog did not open");
+            };
             try
             {
                 Project project;
@@ -73,23 +121,30 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                 window.setCorrectionMode(true);
                 window.selectNote(1, false);
                 auto *sixtyFourth = window.findChild<QPushButton *>("editorDuration30");
-                check("64th duration is reachable from the toolbar", sixtyFourth != nullptr);
-                check("Dotted 64th selection reflects its duration",
-                      window.findChild<QPushButton *>("editorDotted")->isChecked());
+                auto *dottedButton = window.findChild<QPushButton *>("editorDotted");
+                if (!sixtyFourth || !dottedButton)
+                    throw std::runtime_error("Missing numbered duration or dotted toolbar control");
+                check("64th duration is reachable from the toolbar", true);
+                check("Dotted 64th selection reflects its duration", dottedButton->isChecked());
                 const auto hasFourLines = [](const QImage &image, const Note &note)
                 {
                     const int center = int(std::lround(note.source.x + note.source.width / 2));
-                    for (int line = 0; line < 4; ++line)
+                    const int bottom = int(std::floor(note.source.y + note.source.height));
+                    int lines = 0;
+                    bool previousInk = false;
+                    // Antialiasing and font metrics can move a stroke to an adjacent scan row.
+                    for (int y = bottom + 1; y <= bottom + 21; ++y)
                     {
-                        const int y = int(std::lround(note.source.y + note.source.height + 2 + line * 5));
                         int ink = 0;
                         for (int x = center - 10; x <= center + 10; ++x)
-                            if (image.valid(x, y) && image.pixelColor(x, y).lightness() < 160)
+                            if (image.valid(x, y) && image.pixelColor(x, y).lightness() < 224)
                                 ++ink;
-                        if (ink < 12)
-                            return false;
+                        const bool hasInk = ink >= 12;
+                        if (hasInk && !previousInk)
+                            ++lines;
+                        previousInk = hasInk;
                     }
-                    return true;
+                    return lines == 4;
                 };
                 check("Plain 64th renders four duration lines",
                       hasFourLines(window.project_.image, window.project_.score.notes[0]));
@@ -118,7 +173,7 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                           window.project_.score == before && window.inputDuration_ == preset &&
                               window.materialUndo_.index() == history &&
                               window.lyricEdit_->text() == "keep rhythm draft" &&
-                              window.findChild<QPushButton *>("editorDotted")->isChecked() == (index == 1));
+                              dottedButton->isChecked() == (index == 1));
                     window.lyricEdit_->setText("");
                 }
                 if (sixtyFourth)
@@ -132,12 +187,10 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                               numberedDuration(window.project_.score) == 105);
                     click("editorDotted");
                     check("Dotted entry preset is 45 ticks",
-                          window.inputDuration_ == 45 &&
-                              window.findChild<QPushButton *>("editorDotted")->isChecked());
+                          window.inputDuration_ == 45 && dottedButton->isChecked());
                     click("editorDotted");
                     check("Dotted entry preset toggles back exactly",
-                          window.inputDuration_ == 30 &&
-                              !window.findChild<QPushButton *>("editorDotted")->isChecked());
+                          window.inputDuration_ == 30 && !dottedButton->isChecked());
                 }
                 saveProject(folder + "/sixty-fourth.jpp", window.project_);
                 const auto restored = loadProject(folder + "/sixty-fourth.jpp");
@@ -195,9 +248,9 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                     applyRest(1);
                     bool durationChecked = false;
                     for (int ticks : {960, 480, 240, 120, 60, 30})
-                        durationChecked |=
-                            window.findChild<QPushButton *>(qPrintable(QString("editorDuration%1").arg(ticks)))
-                                ->isChecked();
+                        durationChecked |= requiredControl<QPushButton>(
+                                               &window, qPrintable(QString("editorDuration%1").arg(ticks)))
+                                               ->isChecked();
                     check("Whole-measure rest does not retain a shorter duration highlight", !durationChecked);
                     const auto &notes = numberedVoice(*window.project_.numberedComposition, 1).notes;
                     check("Measure rest replaces time without shifting the suffix",
@@ -221,7 +274,7 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                     check("Measure rest reopens with other voices intact",
                           saved.numberedComposition && saved.numberedComposition->voices[0].notes[0].degree == 0 &&
                               saved.numberedComposition->voices[1].notes[0].durationTicks == 2400);
-                    window.findChild<QTabWidget *>("editorToolTabs")->setCurrentIndex(1);
+                    requiredControl<QTabWidget>(&window, "editorToolTabs")->setCurrentIndex(1);
                     QApplication::processEvents();
                     window.view_->fitWidth();
                     window.view_->verticalScrollBar()->setValue(window.view_->verticalScrollBar()->minimum());
@@ -277,7 +330,7 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                     dense.score.notes.assign(20, shortNote);
                     window.setProject(dense);
                     window.setCorrectionMode(true);
-                    window.findChild<QTabWidget *>("editorToolTabs")->setCurrentIndex(0);
+                    requiredControl<QTabWidget>(&window, "editorToolTabs")->setCurrentIndex(0);
                     window.selectNumberedInput(numberedDuration(window.project_.score));
                     click("editorDuration30");
                     bool rejectedAtomically = false;
@@ -320,32 +373,30 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                 check("Measure and repeat commands exist", measure && repeat);
                 if (measure && repeat)
                 {
-                    QTimer::singleShot(0, &window,
-                                       []
-                                       {
-                                           auto *dialog =
-                                               qobject_cast<QDialog *>(QApplication::activeModalWidget());
-                                           dialog->findChild<QSpinBox *>("structureMeasure")->setValue(2);
-                                           dialog->findChild<QSpinBox *>("structureBeats")->setValue(3);
-                                           dialog->findChild<QDoubleSpinBox *>("structureTempo")->setValue(60);
-                                           auto *key = dialog->findChild<QComboBox *>("structureTonic");
-                                           key->setCurrentIndex(key->findData(2));
-                                           dialog->accept();
-                                       });
-                    measure->click();
+                    runDialog(measure,
+                              [](QDialog *dialog)
+                              {
+                                  requiredControl<QSpinBox>(dialog, "structureMeasure")->setValue(2);
+                                  requiredControl<QSpinBox>(dialog, "structureBeats")->setValue(3);
+                                  requiredControl<QDoubleSpinBox>(dialog, "structureTempo")->setValue(60);
+                                  auto *key = requiredControl<QComboBox>(dialog, "structureTonic");
+                                  key->setCurrentIndex(key->findData(2));
+                                  dialog->accept();
+                              });
+                    if (!window.project_.numberedComposition ||
+                        window.project_.numberedComposition->structure.measures.size() < 4)
+                        throw std::runtime_error("Measure dialog did not commit the structured fixture");
                     check("Local tempo integrates from measure boundary",
                           std::abs(window.timeline_.secondsAtTick(3360) - 5) < 1e-8);
-                    QTimer::singleShot(0, &window,
-                                       []
-                                       {
-                                           auto *dialog =
-                                               qobject_cast<QDialog *>(QApplication::activeModalWidget());
-                                           dialog->findChild<QSpinBox *>("repeatFirst")->setValue(1);
-                                           dialog->findChild<QSpinBox *>("repeatLast")->setValue(3);
-                                           dialog->findChild<QSpinBox *>("repeatEnding")->setValue(3);
-                                           dialog->accept();
-                                       });
-                    repeat->click();
+                    runDialog(repeat,
+                              [](QDialog *dialog)
+                              {
+                                  requiredControl<QSpinBox>(dialog, "repeatFirst")->setValue(1);
+                                  requiredControl<QSpinBox>(dialog, "repeatLast")->setValue(3);
+                                  auto *ending = requiredControl<QComboBox>(dialog, "repeatEnding");
+                                  ending->setCurrentIndex(ending->findData(3));
+                                  dialog->accept();
+                              });
                     check("Repeat skips first ending on second pass",
                           window.timeline_.durationTicks == 9600 &&
                               std::abs(window.timeline_.durationSeconds() - 16) < 1e-8);
@@ -363,13 +414,30 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                     check("Transport shows the edited performed duration immediately",
                           window.time_->text().endsWith("00:16"));
                     window.resize(1320, 940);
-                    window.findChild<QTabWidget *>("editorToolTabs")->setCurrentIndex(1);
+                    requiredControl<QTabWidget>(&window, "editorToolTabs")->setCurrentIndex(1);
                     QApplication::processEvents();
                     window.view_->fitWidth();
                     window.view_->verticalScrollBar()->setValue(window.view_->verticalScrollBar()->minimum());
                     check("Structured score and controls render",
                           window.grab().save(folder + "/structured-editor.png"));
                     saveProject(folder + "/structured.jpp", window.project_);
+                    const auto arrangementReport = folder + "/structured-arrangement.json";
+                    QProcess cli;
+                    cli.start(QApplication::applicationFilePath(),
+                              {folder + "/structured.jpp", "--generate-accompaniment", "--language", "en_US",
+                               "--report", arrangementReport});
+                    if (!cli.waitForFinished(15000) || cli.exitStatus() != QProcess::NormalExit ||
+                        cli.exitCode() != 0)
+                        throw std::runtime_error("Structured accompaniment CLI probe failed");
+                    QFile arrangementFile(arrangementReport);
+                    if (!arrangementFile.open(QIODevice::ReadOnly))
+                        throw std::runtime_error("Structured accompaniment CLI report is missing");
+                    const auto arrangement = QJsonDocument::fromJson(arrangementFile.readAll()).object();
+                    const auto practice = arrangement.value("practice").toObject();
+                    check("CLI uses a complete written guide for legacy arrangement previews",
+                          arrangement.value("durationTicks").toInt() == 9600 && practice.value("valid").toBool() &&
+                              practice.value("writtenPreviewOnly").toBool() &&
+                              !practice.value("events").toArray().isEmpty());
                     auto reopened = loadProject(folder + "/structured.jpp");
                     check("Structure roundtrips in version 8",
                           projectToJson(reopened).value("schemaVersion").toInt() == 8);
@@ -446,12 +514,11 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                     bool rangePicker = false;
                     int rangeStart = -1;
                     int rangeEnd = -1;
-                    QTimer::singleShot(
-                        0, &window,
-                        [&]
+                    runDialog(
+                        repeat,
+                        [&](QDialog *dialog)
                         {
-                            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
-                            auto *range = dialog->findChild<QListWidget *>("repeatRange");
+                            auto *range = requiredControl<QListWidget>(dialog, "repeatRange");
                             rangePicker = range != nullptr;
                             if (range)
                             {
@@ -469,14 +536,16 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                                 };
                                 clickMeasure(1, Qt::NoModifier);
                                 clickMeasure(3, Qt::ShiftModifier);
-                                rangeStart = dialog->findChild<QSpinBox *>("repeatFirst")->value();
-                                rangeEnd = dialog->findChild<QSpinBox *>("repeatLast")->value();
+                                rangeStart = requiredControl<QSpinBox>(dialog, "repeatFirst")->value();
+                                rangeEnd = requiredControl<QSpinBox>(dialog, "repeatLast")->value();
+                                auto *ending = requiredControl<QComboBox>(dialog, "repeatEnding");
                                 rangePicker = dialog->grab().save(folder + "/repeat-range.png") &&
-                                              rangeStart == 2 && rangeEnd == 4;
+                                              rangeStart == 2 && rangeEnd == 4 && ending->count() == 3 &&
+                                              ending->findData(0) >= 0 && ending->findData(2) < 0 &&
+                                              ending->findData(3) >= 0 && ending->findData(4) >= 0;
                             }
                             dialog->reject();
                         });
-                    repeat->click();
                     check("Visual range selection updates both endpoints and cancelling preserves playback",
                           rangePicker && window.timeline_.durationSeconds() == 16);
                     if (!rangePicker)
@@ -487,17 +556,15 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                         checks[checks.size() - 1] = failure;
                     }
                     window.selectNote(1, false);
-                    QTimer::singleShot(0, &window,
-                                       []
-                                       {
-                                           auto *dialog =
-                                               qobject_cast<QDialog *>(QApplication::activeModalWidget());
-                                           dialog->findChild<QSpinBox *>("repeatFirst")->setValue(2);
-                                           dialog->findChild<QSpinBox *>("repeatLast")->setValue(3);
-                                           dialog->findChild<QSpinBox *>("repeatEnding")->setValue(3);
-                                           dialog->accept();
-                                       });
-                    repeat->click();
+                    runDialog(repeat,
+                              [](QDialog *dialog)
+                              {
+                                  requiredControl<QSpinBox>(dialog, "repeatFirst")->setValue(2);
+                                  requiredControl<QSpinBox>(dialog, "repeatLast")->setValue(3);
+                                  auto *ending = requiredControl<QComboBox>(dialog, "repeatEnding");
+                                  ending->setCurrentIndex(ending->findData(3));
+                                  dialog->accept();
+                              });
                     const auto &editedRepeats = window.project_.numberedComposition->structure.repeats;
                     const bool moved =
                         editedRepeats.size() == 1 && std::abs(window.timeline_.durationSeconds() - 14) < 1e-8;
@@ -509,23 +576,20 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                     int removeFirst = -1;
                     int removeLast = -1;
                     window.selectNote(1, false);
-                    QTimer::singleShot(0, &window,
-                                       [&]
-                                       {
-                                           auto *dialog =
-                                               qobject_cast<QDialog *>(QApplication::activeModalWidget());
-                                           removeFirst = dialog->findChild<QSpinBox *>("repeatFirst")->value();
-                                           removeLast = dialog->findChild<QSpinBox *>("repeatLast")->value();
-                                           auto *remove = dialog->findChild<QPushButton *>("repeatRemove");
-                                           if (remove && remove->isEnabled())
-                                           {
-                                               removed = true;
-                                               remove->click();
-                                           }
-                                           else
-                                               dialog->reject();
-                                       });
-                    repeat->click();
+                    runDialog(repeat,
+                              [&](QDialog *dialog)
+                              {
+                                  removeFirst = requiredControl<QSpinBox>(dialog, "repeatFirst")->value();
+                                  removeLast = requiredControl<QSpinBox>(dialog, "repeatLast")->value();
+                                  auto *remove = requiredControl<QPushButton>(dialog, "repeatRemove");
+                                  if (remove && remove->isEnabled())
+                                  {
+                                      removed = true;
+                                      remove->click();
+                                  }
+                                  else
+                                      dialog->reject();
+                              });
                     check("Opening inside an existing repeat offers explicit removal",
                           removed && window.project_.numberedComposition->structure.repeats.empty() &&
                               window.timeline_.durationSeconds() == 11);
@@ -547,16 +611,13 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                     }
                     for (int bpm : {90, 0})
                     {
-                        QTimer::singleShot(
-                            0, &window,
-                            [bpm]
-                            {
-                                auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
-                                dialog->findChild<QSpinBox *>("structureMeasure")->setValue(3);
-                                dialog->findChild<QDoubleSpinBox *>("structureTempo")->setValue(bpm);
-                                dialog->accept();
-                            });
-                        measure->click();
+                        runDialog(measure,
+                                  [bpm](QDialog *dialog)
+                                  {
+                                      requiredControl<QSpinBox>(dialog, "structureMeasure")->setValue(3);
+                                      requiredControl<QDoubleSpinBox>(dialog, "structureTempo")->setValue(bpm);
+                                      dialog->accept();
+                                  });
                         const auto &spec = window.project_.numberedComposition->structure.measures[2];
                         check("Tempo-only edit leaves meter and key inherited",
                               spec.beats == 0 && spec.unit == 0 && spec.tonic == -1 && spec.bpm == bpm);
@@ -614,7 +675,19 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                     if (recover)
                     {
                         window.setProject(reopened);
-                        const auto draftDirectory = folder + "/isolated-draft";
+                        QTemporaryDir draftFixture(folder + "/draft-XXXXXX");
+                        if (!draftFixture.isValid())
+                            throw std::runtime_error("Could not create an isolated draft fixture");
+                        const auto draftDirectory = draftFixture.path();
+                        const auto oldDraftDirectory = qgetenv("SINGLILT_NUMBERED_DRAFT_DIRECTORY");
+                        const auto restoreDraftDirectory = qScopeGuard(
+                            [&]
+                            {
+                                if (oldDraftDirectory.isNull())
+                                    qunsetenv("SINGLILT_NUMBERED_DRAFT_DIRECTORY");
+                                else
+                                    qputenv("SINGLILT_NUMBERED_DRAFT_DIRECTORY", oldDraftDirectory);
+                            });
                         qputenv("SINGLILT_NUMBERED_DRAFT_DIRECTORY", draftDirectory.toUtf8());
                         const auto source = folder + "/structured.jpp";
                         window.projectPath_ = source;
@@ -637,7 +710,7 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                         {
                             MainWindow other(window.languageManager_, window.themes_);
                             other.setProject(Project{});
-                            other.findChild<QAction *>("menuRecoverNumberedDraft")->trigger();
+                            requiredControl<QAction>(&other, "menuRecoverNumberedDraft")->trigger();
                             check("Another window cannot claim an active draft",
                                   !other.hasUnsavedChanges() && !other.project_.numberedComposition);
                         }
@@ -682,6 +755,33 @@ void runNumberedRhythmCheck(MainWindow &window, const QCommandLineParser &args, 
                         check("Successful explicit save retires the recovered snapshot",
                               !window.hasUnsavedChanges() && files().empty() && !QFileInfo::exists(lockPath) &&
                                   QFileInfo::exists(window.projectPath_));
+                        window.setProject(reopened);
+                        window.project_.score.title = "Discarded numbered draft";
+                        window.markModified();
+                        window.saveNumberedDraft();
+                        const bool draftWasPresent = files().size() == 1;
+                        QTimer::singleShot(
+                            0, &window,
+                            []
+                            {
+                                if (auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
+                                    message->button(QMessageBox::Discard)->click();
+                            });
+                        const bool discarded = window.confirmDiscard();
+                        window.setProject(Project{});
+                        check("Explicit discard retires the numbered draft without recreating it",
+                              draftWasPresent && discarded && files().empty());
+                        {
+                            MainWindow teardown(window.languageManager_, window.themes_);
+                            teardown.setProject(reopened);
+                            teardown.project_.score.title = "Draft on teardown";
+                            teardown.markModified();
+                        }
+                        const auto pendingDrafts = files();
+                        check("Destruction flushes a pending committed draft without a close event",
+                              pendingDrafts.size() == 1 &&
+                                  loadProject(QDir(draftDirectory).filePath(pendingDrafts.front())).score.title ==
+                                      "Draft on teardown");
                     }
                 }
             }

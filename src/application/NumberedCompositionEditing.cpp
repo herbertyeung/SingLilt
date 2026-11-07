@@ -14,8 +14,11 @@ int addNumberedVoice(NumberedComposition &composition, std::string name)
     if (composition.voices.size() >= MaximumNumberedVoices ||
         composition.nextId == std::numeric_limits<int>::max())
         throw std::invalid_argument("ui.editor.voice_limit");
-    const int id = composition.nextId++;
+    if (name.empty() || name.size() > 256)
+        throw std::invalid_argument("ui.editor.invalid_composition");
+    const int id = composition.nextId;
     composition.voices.push_back({id, std::move(name), {}});
+    ++composition.nextId;
     return id;
 }
 void removeNumberedVoice(NumberedComposition &composition, int id)

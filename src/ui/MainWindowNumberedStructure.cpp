@@ -65,7 +65,8 @@ void MainWindow::editNumberedStructure(bool repeat)
             form.addRow(trText(key), field);
             return field;
         };
-        QSpinBox *first = nullptr, *last = nullptr, *ending = nullptr, *passes = nullptr;
+        QSpinBox *first = nullptr, *last = nullptr, *passes = nullptr;
+        QComboBox *ending = nullptr;
         QSpinBox *measure = nullptr, *beats = nullptr;
         QComboBox *unit = nullptr, *tonic = nullptr;
         QDoubleSpinBox *tempo = nullptr;
@@ -114,8 +115,18 @@ void MainWindow::editNumberedStructure(bool repeat)
             first = spin("ui.editor.structure_first", "repeatFirst", 1, count, initialFirst);
             last = spin("ui.editor.structure_last", "repeatLast", initialFirst, count,
                         existing ? measureNumber(existing->last) : initialFirst);
-            ending = spin("ui.editor.structure_ending", "repeatEnding", 0, count,
-                          existing ? measureNumber(existing->firstEnding) : 0);
+            ending = new QComboBox;
+            ending->setObjectName("repeatEnding");
+            form.addRow(trText("ui.editor.structure_ending"), ending);
+            const auto refreshEnding = [first, last, ending](int value)
+            {
+                ending->clear();
+                ending->addItem(trText("ui.editor.structure_no_ending"), 0);
+                for (int bar = first->value() + 1; bar <= last->value(); ++bar)
+                    ending->addItem(QString::number(bar), bar);
+                ending->setCurrentIndex(std::max(0, ending->findData(value)));
+            };
+            refreshEnding(existing ? measureNumber(existing->firstEnding) : 0);
             passes = spin("ui.editor.structure_passes", "repeatPasses", 2, 8, existing ? existing->count : 2);
             remove = new QPushButton(trText("ui.editor.repeat_remove"), &dialog);
             remove->setObjectName("repeatRemove");
@@ -130,15 +141,21 @@ void MainWindow::editNumberedStructure(bool repeat)
                 range->scrollTo(start);
             };
             connect(first, &QSpinBox::valueChanged, &dialog,
-                    [last, selectRange](int value)
+                    [last, ending, refreshEnding, selectRange](int value)
                     {
                         const QSignalBlocker blockLast(last);
                         last->setMinimum(value);
+                        refreshEnding(ending->currentData().toInt());
                         selectRange();
                     });
-            connect(last, &QSpinBox::valueChanged, &dialog, selectRange);
+            connect(last, &QSpinBox::valueChanged, &dialog,
+                    [ending, refreshEnding, selectRange]
+                    {
+                        refreshEnding(ending->currentData().toInt());
+                        selectRange();
+                    });
             connect(range, &QListWidget::itemSelectionChanged, &dialog,
-                    [range, first, last]
+                    [range, first, last, ending, refreshEnding]
                     {
                         const auto rows = range->selectionModel()->selectedIndexes();
                         if (rows.isEmpty())
@@ -151,6 +168,7 @@ void MainWindow::editNumberedStructure(bool repeat)
                         first->setValue(begin->row() + 1);
                         last->setMinimum(first->value());
                         last->setValue(end->row() + 1);
+                        refreshEnding(ending->currentData().toInt());
                     });
             connect(remove, &QPushButton::clicked, &dialog, [&dialog] { dialog.done(RemoveRepeat); });
             selectRange();
@@ -219,7 +237,8 @@ void MainWindow::editNumberedStructure(bool repeat)
                 std::erase_if(structure.repeats, [editedRepeatFirstId](const auto &entry)
                               { return entry.first == editedRepeatFirstId; });
             if (result != RemoveRepeat)
-                structure.repeats.push_back({start, id(last->value()), id(ending->value()), passes->value()});
+                structure.repeats.push_back(
+                    {start, id(last->value()), id(ending->currentData().toInt()), passes->value()});
         }
         else
         {

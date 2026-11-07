@@ -81,17 +81,15 @@ bool MainWindow::selectNumberedVoice(int id)
     {
         auto guide = project_.score;
         guide.notes = numberedVoice(*project_.numberedComposition, id).notes;
-        auto timeline = compositionTimeline(guide, *project_.numberedComposition);
         project_.score = std::move(guide);
-        timeline_ = std::move(timeline);
         activeNumberedVoice_ = id;
         inputDynamic_ = 0;
         inputAccent_ = inputStaccato_ = false;
         selected_ = -1;
         numberedInputTick_ = 0;
         playingNote_ = playingVerse_ = -1;
-        // Voice selection changes the guide and overlays, not the shared sounding plan or raster.
-        view_->setScore(project_.image, project_.score);
+        // Refresh the engine's guide and retain both the transport position and the cached raster.
+        rebuild(true, false);
         selectNumberedInput(0);
         setStatus("ui.editor.voice_ready", {QString::number(project_.numberedComposition->voices.size())});
         return true;
